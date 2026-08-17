@@ -1,0 +1,7 @@
+services:
+  pokerkit-open-spiel:
+    build: .
+    working_dir: /app
+    volumes:
+      - .:/app
+    command: python -c "import open_spiel, pokerkit; print('open_spiel and pokerkit OK')"
