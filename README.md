@@ -96,17 +96,21 @@ This is the core solver model currently being used in the wrapper-based HULH flo
 
 ---
 
+
+new "lightweight" run for preflop ranges
 ```
-cd /Users/lalligagger/py_dev/pokerkit_test && \
-docker compose run --rm pokerkit-open-spiel python profile_wrapper_solver.py \
-  hulh \
-  --iterations 2500 \
-  --checkpoint-every 500 \
+docker compose run pokerkit-open-spiel \
+  python profile_wrapper_solver.py hulh \
+  --iterations 400000 \
+  --checkpoint-every 2000 \
   --preset hulh-preflop \
-  --samples 1000 \
+  --samples 4000 \
   --stability-threshold 0.01 \
   --stop-patience 3 \
   --solver outcome \
-  --report-mode all \
-  --output-json /app/hulh_deeper_report.json
+  --report-mode summary \
+  --artifact-mode lightweight \
+  --checkpoint-history-limit 2 \
+  --range-last-n 2000 \
+  --output-json /app/overnight_runs/hulh_400k_lightweight/report.json
 ```

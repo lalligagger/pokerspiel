@@ -6,6 +6,7 @@ import resource
 import statistics
 import sys
 import time
+import warnings
 from collections import defaultdict
 from typing import Dict, Iterable, Tuple
 
@@ -75,7 +76,11 @@ HULH_NODE_LABELS = {
     "response_to_open": "response_to_open",
     "response_to_limp_raise": "response_to_limp_raise",
     "response_to_open_3bet": "response_to_open_3bet",
+    "response_to_open_4bet": "response_to_open_4bet",
+    "response_to_open_5bet": "response_to_open_5bet",
     "opener_response_to_3bet": "response_to_open_3bet",
+    "opener_response_to_4bet": "response_to_open_4bet",
+    "opener_response_to_5bet": "response_to_open_5bet",
 }
 
 
@@ -104,10 +109,16 @@ def format_hulh_history_label(history):
         return "response_to_open_3bet_call"
     if normalized == ["bet", "bet", "raise"]:
         return "response_to_open_4bet"
+    if normalized == ["bet", "bet", "raise", "raise"]:
+        return "response_to_open_5bet"
     if normalized == ["bet", "bet", "raise", "fold"]:
         return "response_to_open_4bet_fold"
     if normalized == ["bet", "bet", "raise", "call"]:
         return "response_to_open_4bet_call"
+    if normalized == ["bet", "bet", "raise", "raise", "fold"]:
+        return "response_to_open_5bet_fold"
+    if normalized == ["bet", "bet", "raise", "raise", "call"]:
+        return "response_to_open_5bet_call"
     return "history_" + "_".join(normalized)
 
 
@@ -118,6 +129,8 @@ NODE_PRESETS = {
         {"name": "response_to_open", "history": ["bet"]},
         {"name": "response_to_limp_raise", "history": ["call", "bet"]},
         {"name": "response_to_open_3bet", "history": ["bet", "bet"]},
+        {"name": "response_to_open_4bet", "history": ["bet", "bet", "raise"]},
+        {"name": "response_to_open_5bet", "history": ["bet", "bet", "raise", "raise"]},
     ],
     "root": [{"name": "first_to_act", "history": []}],
 }
@@ -947,6 +960,8 @@ def prepare_selected_node_probes(game, node_specs, samples_per_node: int, max_at
     for spec in node_specs:
         seen = set()
         attempts = 0
+        no_progress_rounds = 0
+        cold_start = True
         while len(seen) < samples_per_node and attempts < max_attempts:
             attempts += 1
             state = state_after_history(game, spec["history"])
@@ -954,13 +969,21 @@ def prepare_selected_node_probes(game, node_specs, samples_per_node: int, max_at
                 continue
             signature = exact_hole_board_signature(state)
             if signature in seen:
+                no_progress_rounds += 1
+                if len(seen) > 0 and no_progress_rounds >= max(50, min(250, samples_per_node // 2)):
+                    break
                 continue
+
             seen.add(signature)
+            cold_start = False
+            no_progress_rounds = 0
             probes.append({"node_name": spec["name"], "history": list(spec["history"]), "state": state})
 
         if len(seen) < samples_per_node:
-            raise RuntimeError(
-                f"could only sample {len(seen)} distinct deals for selected node '{spec['name']}'"
+            warnings.warn(
+                f"only sampled {len(seen)} distinct deals for selected node '{spec['name']}' (requested {samples_per_node}); continuing with the available states",
+                UserWarning,
+                stacklevel=2,
             )
     return probes
 
@@ -1205,7 +1228,7 @@ def filter_recent_iteration_records(records, last_n_iterations: int | None):
     return filtered
 
 
-def write_run_artifacts(output_json_path, report, range_records, checkpoint_paths):
+def write_run_artifacts(output_json_path, report, range_records, checkpoint_paths, artifact_mode: str = "standard"):
     """Write each final run artifact exactly once and return its manifest path."""
     if output_json_path is None:
         return None
@@ -1233,7 +1256,7 @@ def write_run_artifacts(output_json_path, report, range_records, checkpoint_path
         handle.write("\n")
 
     checkpoint_history = report.get("checkpoint_history", [])
-    if checkpoint_history:
+    if checkpoint_history and artifact_mode != "lightweight":
         with open(stability_path, "w", encoding="utf-8") as handle:
             json.dump(checkpoint_history, handle, indent=2, sort_keys=True)
             handle.write("\n")
@@ -1245,7 +1268,7 @@ def write_run_artifacts(output_json_path, report, range_records, checkpoint_path
         range_path=range_path,
         stability_path=stability_path,
         summary_path=summary_path,
-        checkpoint_paths=checkpoint_paths,
+        checkpoint_paths=[] if artifact_mode == "lightweight" else checkpoint_paths,
     )
 
 
@@ -1253,14 +1276,14 @@ def profile_variant(
     name: str,
     params: Dict[str, object],
     iterations: int = 10,
-    checkpoint_every: int = 0,
+    stability_checkpoint: int = 0,
     solver_name: str = "external",
     history_samples: int = 0,
     history_depth: int = 3,
     street_samples: int = 0,
     report_mode: str = "policy",
     output_json_path: str = None,
-    deal_samples: int = None,
+    range_samples: int | None = None,
     heartbeat_seconds: float = 10.0,
     node_preset: str = None,
     node_selectors=(),
@@ -1268,15 +1291,27 @@ def profile_variant(
     stop_patience: int = 3,
     min_iterations: int = 500000,
     range_last_n: int | None = None,
+    artifact_mode: str = "standard",
+    checkpoint_history_limit: int | None = None,
+    checkpoint_every: int | None = None,
+    samples: int | None = None,
 ):
+    if checkpoint_every is not None:
+        if stability_checkpoint != 0 and stability_checkpoint != checkpoint_every:
+            raise ValueError("stability_checkpoint and checkpoint_every must match when both are specified")
+        stability_checkpoint = checkpoint_every
+    if samples is not None:
+        if range_samples is not None and range_samples != samples:
+            raise ValueError("range_samples and samples must match when both are specified")
+        range_samples = samples
     if iterations <= 0:
         raise ValueError("iterations must be greater than zero")
-    if checkpoint_every < 0:
-        raise ValueError("checkpoint_every cannot be negative")
+    if stability_checkpoint < 0:
+        raise ValueError("stability_checkpoint cannot be negative")
     if any(value < 0 for value in (history_samples, history_depth, street_samples)):
         raise ValueError("sample counts and history depth cannot be negative")
-    if deal_samples is not None and deal_samples < 0:
-        raise ValueError("deal_samples cannot be negative")
+    if range_samples is not None and range_samples < 0:
+        raise ValueError("range_samples cannot be negative")
     if heartbeat_seconds < 0:
         raise ValueError("heartbeat_seconds cannot be negative")
     if stability_threshold <= 0:
@@ -1285,6 +1320,10 @@ def profile_variant(
         raise ValueError("stop_patience must be greater than zero")
     if min_iterations < 0:
         raise ValueError("min_iterations cannot be negative")
+    if artifact_mode not in {"standard", "lightweight"}:
+        raise ValueError("artifact_mode must be 'standard' or 'lightweight'")
+    if checkpoint_history_limit is not None and checkpoint_history_limit < 0:
+        raise ValueError("checkpoint_history_limit cannot be negative")
 
     report_snapshots = []
     checkpoint_history = []
@@ -1323,7 +1362,7 @@ def profile_variant(
     solver_elapsed = time.perf_counter() - start
     print(f"solver_construct: {solver_elapsed:.4f}s")
 
-    probe_count = deal_budget_for_iterations(iterations) if deal_samples is None else deal_samples
+    probe_count = deal_budget_for_iterations(iterations) if range_samples is None else range_samples
     start = time.perf_counter()
     probes = prepare_selected_node_probes(
         game,
@@ -1340,7 +1379,7 @@ def profile_variant(
         solver.run_iteration()
         iteration_durations.append(time.perf_counter() - iteration_start)
 
-        if checkpoint_every and (idx + 1) % checkpoint_every == 0:
+        if stability_checkpoint and (idx + 1) % stability_checkpoint == 0:
             checkpoint_start = time.perf_counter()
             policy = solver.average_policy()
             checkpoint_records = snapshot_probe_states(policy, probes)
@@ -1362,24 +1401,27 @@ def profile_variant(
                 "mode": name,
                 "solver": solver_name,
                 "iteration": idx + 1,
-                "checkpoint_every": checkpoint_every,
+                "stability_checkpoint": stability_checkpoint,
                 "records": checkpoint_records,
                 "range_policies": checkpoint_ranges,
                 "stability": checkpoint_summary,
             }
             checkpoint_history.append(checkpoint_payload)
-            checkpoint_artifact = write_checkpoint_payload(
-                output_json_path,
-                idx + 1,
-                checkpoint_payload,
-                {
-                    "iteration": idx + 1,
-                    "checkpoint_every": checkpoint_every,
-                    "stability": checkpoint_summary,
-                },
-            )
-            if checkpoint_artifact:
-                checkpoint_file_paths.append(checkpoint_artifact["checkpoint_path"])
+            if checkpoint_history_limit is not None:
+                checkpoint_history = checkpoint_history[-checkpoint_history_limit:]
+            if artifact_mode != "lightweight":
+                checkpoint_artifact = write_checkpoint_payload(
+                    output_json_path,
+                    idx + 1,
+                    checkpoint_payload,
+                    {
+                        "iteration": idx + 1,
+                        "stability_checkpoint": stability_checkpoint,
+                        "stability": checkpoint_summary,
+                    },
+                )
+                if checkpoint_artifact:
+                    checkpoint_file_paths.append(checkpoint_artifact["checkpoint_path"])
             previous_checkpoint_ranges = checkpoint_ranges
             checkpoint_durations.append(time.perf_counter() - checkpoint_start)
             if (
@@ -1480,16 +1522,18 @@ def profile_variant(
 
     report = {
         "schema_version": 2,
+        "artifact_mode": artifact_mode,
         "mode": name,
         "game_parameters": params,
         "solver": solver_name,
         "iterations": iterations,
         "completed_iterations": len(iteration_durations),
         "stopped_early": stop_policy_state["stopped_early"],
-        "checkpoint_every": checkpoint_every,
+        "stability_checkpoint": stability_checkpoint,
         "history_samples": history_samples,
         "history_depth": history_depth,
         "street_samples": street_samples,
+        "range_samples": range_samples,
         "samples_per_node": probe_count,
         "selected_node_preset": node_preset or ("hulh-preflop" if name == "hulh" else "root"),
         "selected_nodes": selected_node_specs,
@@ -1572,7 +1616,7 @@ def profile_variant(
         },
     }
 
-    write_run_artifacts(output_json_path, report, final_records, checkpoint_file_paths)
+    write_run_artifacts(output_json_path, report, final_records, checkpoint_file_paths, artifact_mode=artifact_mode)
     return report
 
 
@@ -1590,10 +1634,10 @@ def main():
         help="number of measured MCCFR iterations to run (default: 100)",
     )
     parser.add_argument(
-        "--checkpoint-every",
+        "--stability-checkpoint",
         type=int,
         default=0,
-        help="export a policy checkpoint every N iterations; 0 disables checkpoints",
+        help="evaluate policy stability every N iterations; 0 disables stability checkpoints",
     )
     parser.add_argument(
         "--solver",
@@ -1602,10 +1646,10 @@ def main():
         help="MCCFR variant to use: external or outcome (default: external)",
     )
     parser.add_argument(
-        "--samples",
+        "--range-samples",
         type=int,
         default=1000,
-        help="distinct deals sampled per selected node (default: 1000)",
+        help="distinct deals sampled per selected node for the final range export (default: 1000)",
     )
     parser.add_argument(
         "--preset",
@@ -1651,6 +1695,18 @@ def main():
         help="export recent range data only from the final N iterations; defaults to the full run",
     )
     parser.add_argument(
+        "--artifact-mode",
+        choices=["standard", "lightweight"],
+        default="standard",
+        help="standard keeps every checkpoint file; lightweight keeps only final compact outputs and recent stability history",
+    )
+    parser.add_argument(
+        "--checkpoint-history-limit",
+        type=int,
+        default=None,
+        help="when using lightweight mode, keep only the most recent N checkpoint stability entries in memory for the report",
+    )
+    parser.add_argument(
         "--output-json",
         type=str,
         default=None,
@@ -1668,11 +1724,11 @@ def main():
         args.mode,
         GAME_CONFIGS[args.mode],
         iterations=args.iterations,
-        checkpoint_every=args.checkpoint_every,
+        stability_checkpoint=args.stability_checkpoint,
         solver_name=args.solver,
         report_mode=args.report_mode,
         output_json_path=args.output_json,
-        deal_samples=args.samples,
+        range_samples=args.range_samples,
         heartbeat_seconds=args.heartbeat_seconds,
         node_preset=args.preset,
         node_selectors=args.node,
@@ -1680,6 +1736,8 @@ def main():
         stop_patience=args.stop_patience,
         min_iterations=args.min_iterations,
         range_last_n=args.range_last_n,
+        artifact_mode=args.artifact_mode,
+        checkpoint_history_limit=args.checkpoint_history_limit,
     )
 
 

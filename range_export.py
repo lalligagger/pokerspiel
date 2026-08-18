@@ -341,6 +341,10 @@ def format_node_label(node_name: Any, history: Iterable[Any] = ()) -> str:
         return "response_to_limp_raise"
     if name in {"response_to_open_3bet", "opener_response_to_3bet"} or history_tokens == ["bet", "bet"]:
         return "response_to_open_3bet"
+    if name in {"response_to_open_4bet", "opener_response_to_4bet"} or history_tokens == ["bet", "bet", "raise"]:
+        return "response_to_open_4bet"
+    if name in {"response_to_open_5bet", "opener_response_to_5bet"} or history_tokens == ["bet", "bet", "raise", "raise"]:
+        return "response_to_open_5bet"
     return name or "selected_node"
 
 

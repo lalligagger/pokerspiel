@@ -1,0 +1,263 @@
+openapi: 3.0.3
+info:
+  title: Freerunning Solver Live Probe API
+  version: 0.1.0
+  description: |
+    Contract for a long-running solver that keeps training in the background and answers
+    selected-node range requests on demand. This package is intentionally schema-first and
+    does not modify the existing solver implementation.
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+  - url: http://host.docker.internal:8000
+    description: Local Docker bridge
+  - url: https://example.remote-host
+    description: Remote deployment placeholder
+paths:
+  /health:
+    get:
+      summary: Check solver liveness
+      operationId: getHealth
+      responses:
+        '200':
+          description: Solver health status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthStatus'
+  /status:
+    get:
+      summary: Read convergence and readiness state
+      operationId: getStatus
+      responses:
+        '200':
+          description: Current solver readiness and stability summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SolverStatusResponse'
+  /probe:
+    post:
+      summary: Request a selected-node range snapshot at the current solver iteration
+      operationId: requestProbe
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProbeRequest'
+      responses:
+        '200':
+          description: The requested single-node range snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProbeResponse'
+        '409':
+          description: The node is not ready to be probed yet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /bulk-probe:
+    post:
+      summary: Request multiple selected-node range snapshots in one call
+      operationId: requestBulkProbe
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkProbeRequest'
+      responses:
+        '200':
+          description: Results for each requested node
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkProbeResponse'
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [running, idle, stopped, error]
+        iteration:
+          type: integer
+          nullable: true
+        stable:
+          type: boolean
+          nullable: true
+        last_probe_at:
+          type: integer
+          nullable: true
+        ready_for_queries:
+          type: boolean
+        message:
+          type: string
+          nullable: true
+    StabilitySummary:
+      type: object
+      properties:
+        passed:
+          type: boolean
+        max_abs_delta:
+          type: number
+          nullable: true
+        avg_abs_delta:
+          type: number
+          nullable: true
+        threshold:
+          type: number
+          nullable: true
+        consecutive_passes:
+          type: integer
+          nullable: true
+        matched_nodes:
+          type: integer
+          nullable: true
+        top_moving:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+    ProbeRequest:
+      type: object
+      required:
+        - node
+      properties:
+        node:
+          type: string
+          description: Node name or selected-node label, for example response_to_open
+        history:
+          type: array
+          items:
+            type: string
+          nullable: true
+        samples:
+          type: integer
+          default: 1326
+        min_iteration:
+          type: integer
+          nullable: true
+        include_stability:
+          type: boolean
+          default: true
+        include_hands:
+          type: boolean
+          default: true
+        action_filter:
+          type: array
+          items:
+            type: string
+          nullable: true
+    HandPolicy:
+      type: object
+      required:
+        - hand
+        - policy
+      properties:
+        hand:
+          type: string
+        policy:
+          type: object
+          additionalProperties:
+            type: number
+    ProbeResponse:
+      type: object
+      required:
+        - iteration
+        - node
+      properties:
+        iteration:
+          type: integer
+        node:
+          type: string
+        display_name:
+          type: string
+          nullable: true
+        history:
+          type: array
+          items:
+            type: string
+          nullable: true
+        sample_count:
+          type: integer
+        action_frequencies:
+          type: object
+          additionalProperties:
+            type: number
+        hands:
+          type: array
+          items:
+            $ref: '#/components/schemas/HandPolicy'
+        stability:
+          $ref: '#/components/schemas/StabilitySummary'
+          nullable: true
+        ready:
+          type: boolean
+        message:
+          type: string
+          nullable: true
+    BulkProbeRequest:
+      type: object
+      required:
+        - requests
+      properties:
+        requests:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProbeRequest'
+    BulkProbeResponse:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProbeResponse'
+        failed:
+          type: array
+          items:
+            type: string
+    SolverStatusResponse:
+      type: object
+      required:
+        - solver
+        - iteration
+        - stable
+      properties:
+        solver:
+          type: string
+        iteration:
+          type: integer
+        stable:
+          type: boolean
+        stability:
+          $ref: '#/components/schemas/StabilitySummary'
+          nullable: true
+        ready_for_queries:
+          type: boolean
+        last_probe_at:
+          type: integer
+          nullable: true
+        min_iteration:
+          type: integer
+          nullable: true
+        probe_budget_remaining:
+          type: integer
+          nullable: true
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: string
+        details:
+          type: object
+          additionalProperties: true
+          nullable: true
