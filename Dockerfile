@@ -11,8 +11,9 @@ WORKDIR /app
 COPY . /app
 
 RUN pip install --upgrade pip setuptools wheel \
-    && pip install open-spiel==2.0.2 pokerkit pytest
+    && pip install open-spiel==2.0.2 pokerkit pytest fastapi uvicorn
 
 ENV PYTHONPATH=/app
+EXPOSE 8080
 
-CMD ["python", "-c", "import open_spiel, pokerkit; print('open_spiel and pokerkit OK')"]
+CMD ["uvicorn", "api.app:app", "--host", "0.0.0.0", "--port", "8080"]
