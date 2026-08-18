@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import FastAPI
 
 from .router import router
+from .service import service
 
 app = FastAPI(
     title="Freerunning Solver Live Probe API",
@@ -12,6 +13,17 @@ app = FastAPI(
         "queries on demand without changing the existing solver code path."
     ),
 )
+
+
+@app.on_event("startup")
+def startup_event() -> None:
+    service.start()
+
+
+@app.on_event("shutdown")
+def shutdown_event() -> None:
+    service.stop()
+
 
 app.include_router(router)
 

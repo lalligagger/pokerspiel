@@ -100,7 +100,7 @@ This is the core solver model currently being used in the wrapper-based HULH flo
 new "lightweight" run for preflop ranges
 ```
 docker compose run pokerkit-open-spiel \
-  python profile_wrapper_solver.py hulh \
+  python app_solver.py hulh \
   --iterations 400000 \
   --checkpoint-every 2000 \
   --preset hulh-preflop \
