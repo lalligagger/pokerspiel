@@ -318,6 +318,101 @@ def canonical_action_bucket(action: Any) -> int:
     return 4
 
 
+def canonical_action_name(action: Any) -> str:
+    return {0: "fold", 1: "check_call", 4: "bet_raise"}[canonical_action_bucket(action)]
+
+
+def format_node_label(node_name: Any, history: Iterable[Any] = ()) -> str:
+    """Return the canonical HULH reporting label for a selected node history."""
+    name = str(node_name or "")
+    history_tokens = []
+    for item in history or ():
+        if item is None:
+            continue
+        history_tokens.append(str(item).strip().lower())
+
+    if name in {"first_to_act", "root"} or not history_tokens:
+        return "first_to_act"
+    if name in {"response_to_limp", "c"} or history_tokens == ["call"]:
+        return "response_to_limp"
+    if name in {"response_to_open", "rf", "rc", "rr"} or history_tokens == ["bet"]:
+        return "response_to_open"
+    if name in {"response_to_limp_raise", "cr"} or history_tokens == ["call", "bet"]:
+        return "response_to_limp_raise"
+    if name in {"response_to_open_3bet", "opener_response_to_3bet"} or history_tokens == ["bet", "bet"]:
+        return "response_to_open_3bet"
+    return name or "selected_node"
+
+
+def aggregate_selected_node_ranges(snapshots: Iterable[Dict[str, Any]]) -> Dict[str, Any]:
+    """Aggregate average-strategy samples by selected node and starting-hand class."""
+    grouped: Dict[str, Dict[str, List[Dict[str, Any]]]] = defaultdict(lambda: defaultdict(list))
+    node_metadata: Dict[str, Dict[str, Any]] = {}
+    for snapshot in snapshots or []:
+        node_name = str(snapshot.get("node_name") or snapshot.get("label") or "node")
+        compact_label = canonical_preflop_label(snapshot.get("hole_cards") or [])
+        if compact_label is None:
+            continue
+        grouped[node_name][compact_label].append(snapshot)
+        history = list(snapshot.get("selected_history") or snapshot.get("history") or [])
+        label = format_node_label(node_name, history)
+        node_metadata.setdefault(
+            node_name,
+            {
+                "name": node_name,
+                "display_name": label,
+                "history": history,
+                "history_label": label,
+                "player": snapshot.get("player"),
+                "street": snapshot.get("street"),
+            },
+        )
+
+    nodes = []
+    for node_name, hands in sorted(grouped.items()):
+        hand_rows = []
+        node_action_totals: Dict[str, float] = defaultdict(float)
+        node_sample_count = 0
+        for compact_label, items in sorted(hands.items()):
+            action_totals: Dict[str, float] = defaultdict(float)
+            for item in items:
+                for entry in item.get("action_probabilities") or []:
+                    action_totals[canonical_action_name(entry["action"])] += float(entry["probability"])
+            sample_count = len(items)
+            node_sample_count += sample_count
+            for action, total in action_totals.items():
+                node_action_totals[action] += total
+            hand_rows.append(
+                {
+                    "hand": compact_label,
+                    "sample_count": sample_count,
+                    "policy": {
+                        action: total / sample_count
+                        for action, total in sorted(action_totals.items())
+                    },
+                }
+            )
+
+        metadata = node_metadata[node_name]
+        nodes.append(
+            {
+                **metadata,
+                "sample_count": node_sample_count,
+                "hand_count": len(hand_rows),
+                "action_frequencies": {
+                    action: total / node_sample_count
+                    for action, total in sorted(node_action_totals.items())
+                },
+                "hands": hand_rows,
+            }
+        )
+
+    return {
+        "action_families": ["fold", "check_call", "bet_raise"],
+        "nodes": nodes,
+    }
+
+
 def aggregate_range_profiles(snapshots: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Aggregate exact-policy samples into a compact range dump keyed by canonical bucket, not action-history noise."""
     grouped: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
@@ -412,12 +507,15 @@ def export_range_dump(snapshots: Iterable[Dict[str, Any]], output_path: str) -> 
     rows = aggregate_range_profiles(snapshots)
     flattened_preflop = aggregate_flattened_preflop_ranges(snapshots)
     context_rows = aggregate_preflop_context_profiles(snapshots)
+    selected_node_ranges = aggregate_selected_node_ranges(snapshots)
     payload = {
         "range_rows": rows,
         "range_count": len(rows),
         "unique_infosets": len(rows),
         "preflop_flattened": flattened_preflop,
         "preflop_context_rows": context_rows,
+        "selected_node_ranges": selected_node_ranges,
+        "selected_node_count": len(selected_node_ranges.get("nodes", [])),
         "facing_open_ranges": [row for row in context_rows if "facing_open" in row.get("context_bucket", "")],
         "respond_to_3bet_ranges": [row for row in context_rows if "respond_to_3bet" in row.get("context_bucket", "")],
     }

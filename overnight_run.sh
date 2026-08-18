@@ -14,10 +14,13 @@ echo "=== baseline run ==="
 docker compose run --rm pokerkit-open-spiel \
   python profile_wrapper_solver.py \
     hulh \
-    -n "$N_ITERATIONS" \
+    --iterations "$N_ITERATIONS" \
     --checkpoint-every "$CHECKPOINT_EVERY" \
-    --history-samples 3 \
-    --history-depth 3 \
+    --preset hulh-preflop \
+    --samples 1000 \
+    --stability-threshold 0.01 \
+    --stop-patience 3 \
+    --min-iterations 500000 \
     --solver outcome \
     --report-mode all \
     --output-json "$run_dir/report.json"
