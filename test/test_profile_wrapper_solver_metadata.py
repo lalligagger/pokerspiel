@@ -12,7 +12,9 @@ from range_export import (
 
 if "python_pokerkit_wrapper" not in {game.short_name for game in pyspiel.registered_games()}:
     pytest.skip("PokerKit OpenSpiel wrapper not registered in this environment", allow_module_level=True)
-from profile_wrapper_solver import (
+from api.service import SolverService
+from api.state_machine import SolverState
+from app_solver import (
     GAME_CONFIGS,
     exact_hole_board_signature,
     filter_recent_iteration_records,
@@ -171,6 +173,46 @@ def test_prepare_selected_node_probes_warns_and_keeps_available_states():
         probes = prepare_selected_node_probes(game, specs, samples_per_node=5000, max_attempts=2000)
 
     assert 0 < len(probes) < 5000
+
+
+def test_solver_service_stays_live_after_min_iterations_when_stability_is_reached(monkeypatch):
+    class FakeSolver:
+        def __init__(self):
+            self.iteration = 0
+
+        def run_iteration(self):
+            self.iteration += 1
+
+        def average_policy(self):
+            return {"policy": self.iteration}
+
+    def fake_make_solver(game, solver_name):
+        return FakeSolver()
+
+    monkeypatch.setattr("api.service.pyspiel.load_game", lambda *args, **kwargs: object())
+    monkeypatch.setattr("api.service.make_solver", fake_make_solver)
+    monkeypatch.setattr("api.service.resolve_node_specs", lambda *args, **kwargs: [{"name": "first_to_act", "display_name": "first_to_act", "history": []}])
+    monkeypatch.setattr("api.service.prepare_selected_node_probes", lambda *args, **kwargs: [{"state": "probe"}])
+    monkeypatch.setattr(
+        "api.service.snapshot_probe_states",
+        lambda policy, probes: [{"name": "first_to_act", "action_frequencies": {"fold": 0.0, "check_call": 1.0, "bet_raise": 0.0}, "hands": []}],
+    )
+    monkeypatch.setattr(
+        "api.service.aggregate_selected_node_ranges",
+        lambda records: {"nodes": [{"name": "first_to_act", "display_name": "first_to_act", "action_frequencies": {"fold": 0.0, "check_call": 1.0, "bet_raise": 0.0}, "hands": [], "sample_count": 1}]},
+    )
+    monkeypatch.setattr(
+        "api.service.summarize_selected_node_stability",
+        lambda current_ranges, previous_ranges, threshold: {"passed": True, "max_abs_delta": 0.0, "avg_abs_delta": 0.0, "threshold": threshold, "matched_nodes": 1, "top_moving": []},
+    )
+
+    service = SolverService(max_iterations=3, checkpoint_every=1, min_iterations=1, stop_patience=1, range_samples=1)
+    service._run_live_solver()
+
+    assert service.runtime.iteration == 3
+    assert service.runtime.state in {SolverState.RUNNING, SolverState.STOPPED}
+    assert service.runtime.ready_for_queries is True
+    assert service.runtime.stable is True
 
 
 def test_flatten_preflop_range_uses_actual_rank_set_for_short_deck():
@@ -394,6 +436,26 @@ def test_hulh_history_labels_include_4bet_and_5bet_names():
     preset_names = [spec["display_name"] for spec in resolve_node_specs("hulh-preflop")]
     assert "response_to_open_4bet" in preset_names
     assert "response_to_open_5bet" in preset_names
+
+
+def test_profile_variant_reports_runtime_state_machine():
+    report = profile_variant(
+        "hulh",
+        GAME_CONFIGS["hulh"],
+        iterations=6,
+        checkpoint_every=2,
+        solver_name="outcome",
+        history_samples=0,
+        street_samples=0,
+        report_mode="summary",
+        output_json_path=str("/tmp/runtime_state_run.json"),
+    )
+
+    runtime = report["runtime_state"]
+    assert runtime["state"] in {"stable", "queryable", "running"}
+    assert runtime["current_policy_in_memory"] is True
+    assert runtime["latest_stable_snapshot"] is not None or runtime["state"] in {"running", "queryable"}
+    assert runtime["checkpoint_on_disk"] is not None
 
 
 def test_profile_variant_rejects_non_positive_iteration_count():

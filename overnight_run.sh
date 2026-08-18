@@ -12,7 +12,7 @@ mkdir -p "$run_dir"
 
 echo "=== baseline run ==="
 docker compose run --rm pokerkit-open-spiel \
-  python profile_wrapper_solver.py \
+  python app_solver.py \
     hulh \
     --iterations "$N_ITERATIONS" \
     --checkpoint-every "$CHECKPOINT_EVERY" \
