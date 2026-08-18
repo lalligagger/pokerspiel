@@ -100,11 +100,12 @@ This is the core solver model currently being used in the wrapper-based HULH flo
 cd /Users/lalligagger/py_dev/pokerkit_test && \
 docker compose run --rm pokerkit-open-spiel python profile_wrapper_solver.py \
   hulh \
-  -n 2500 \
+  --iterations 2500 \
   --checkpoint-every 500 \
-  --street-samples 3 \
-  --history-samples 3 \
-  --history-depth 3 \
+  --preset hulh-preflop \
+  --samples 1000 \
+  --stability-threshold 0.01 \
+  --stop-patience 3 \
   --solver outcome \
   --report-mode all \
   --output-json /app/hulh_deeper_report.json
