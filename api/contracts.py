@@ -51,6 +51,18 @@ class HandPolicy:
 
 
 @dataclass
+class SpotFrequencyResponse:
+    """Single-hand lookup for a preflop spot using compact combo keys like TT or AKs."""
+
+    spot: str
+    hand: str
+    iteration: int
+    frequencies: Dict[str, float] = field(default_factory=dict)
+    ready: bool = True
+    message: Optional[str] = None
+
+
+@dataclass
 class ProbeResponse:
     """Response payload for a single selected-node probe."""
 

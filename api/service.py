@@ -299,5 +299,103 @@ class SolverService:
         failed = [result.node for result in results if not result.ready]
         return BulkProbeResponse(results=results, failed=failed)
 
+    def _normalize_preflop_spot(self, spot: str) -> str:
+        alias_map = {
+            "first": "first_to_act",
+            "first_to_act": "first_to_act",
+            "open": "response_to_open",
+            "response_to_open": "response_to_open",
+            "response_to_open_3bet": "response_to_open_3bet",
+            "threebet": "response_to_open_3bet",
+            "3bet": "response_to_open_3bet",
+            "response_to_open_4bet": "response_to_open_4bet",
+            "fourbet": "response_to_open_4bet",
+            "4bet": "response_to_open_4bet",
+        }
+        key = (spot or "").strip().lower().replace("-", "_").replace(" ", "_")
+        return alias_map.get(key, key)
+
+    def _normalize_hand_key(self, hand: str) -> str:
+        key = (hand or "").strip()
+        if not key:
+            return ""
+        return key.replace(" ", "")
+
+    def get_preflop_spot(self, spot: str, hand: str) -> "SpotFrequencyResponse":
+        from .contracts import SpotFrequencyResponse
+
+        resolved_spot = self._normalize_preflop_spot(spot)
+        normalized_hand = self._normalize_hand_key(hand)
+        if not normalized_hand:
+            return SpotFrequencyResponse(
+                spot=resolved_spot,
+                hand=normalized_hand,
+                iteration=self.runtime.iteration,
+                frequencies={},
+                ready=False,
+                message="missing hand key",
+            )
+
+        if self._solver is None or self._game is None:
+            return SpotFrequencyResponse(
+                spot=resolved_spot,
+                hand=normalized_hand,
+                iteration=self.runtime.iteration,
+                frequencies={},
+                ready=False,
+                message="live solver has not started yet",
+            )
+
+        node_name = resolved_spot
+        node_data = None
+        current_ranges = getattr(self, "_current_ranges", {}) or {}
+        for node in current_ranges.get("nodes", []):
+            if node.get("name") == node_name or node.get("display_name") == node_name:
+                node_data = node
+                break
+
+        if node_data is None:
+            return SpotFrequencyResponse(
+                spot=resolved_spot,
+                hand=normalized_hand,
+                iteration=self.runtime.iteration,
+                frequencies={},
+                ready=False,
+                message=f"spot '{resolved_spot}' is not available in the current preflop runtime state",
+            )
+
+        hand_policy = next(
+            (
+                hand_entry
+                for hand_entry in (node_data.get("hands") or [])
+                if str(hand_entry.get("hand", "")).strip() == normalized_hand
+            ),
+            None,
+        )
+        if hand_policy is None:
+            return SpotFrequencyResponse(
+                spot=resolved_spot,
+                hand=normalized_hand,
+                iteration=self.runtime.iteration,
+                frequencies={},
+                ready=False,
+                message=f"hand '{normalized_hand}' not found for preflop spot '{resolved_spot}'",
+            )
+
+        policy = hand_policy.get("policy") or {}
+        frequencies = {
+            "fold": float(policy.get("fold", 0.0)),
+            "check_call": float(policy.get("check_call", policy.get("call", 0.0))),
+            "bet_raise": float(policy.get("bet_raise", policy.get("bet", 0.0))),
+        }
+        return SpotFrequencyResponse(
+            spot=resolved_spot,
+            hand=normalized_hand,
+            iteration=self.runtime.iteration,
+            frequencies=frequencies,
+            ready=True,
+            message="live preflop spot lookup from current in-memory policy",
+        )
+
 
 service = SolverService()

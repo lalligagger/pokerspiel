@@ -9,6 +9,7 @@ from .contracts import (
     ProbeRequest,
     ProbeResponse,
     SolverStatusResponse,
+    SpotFrequencyResponse,
 )
 from .service import SolverService
 
@@ -37,3 +38,13 @@ def request_probe(request: ProbeRequest) -> ProbeResponse:
 @router.post("/bulk-probe", response_model=BulkProbeResponse)
 def request_bulk_probe(request: BulkProbeRequest) -> BulkProbeResponse:
     return service.request_bulk_probe(request)
+
+
+@router.get("/preflop/{spot}/{hand}", response_model=SpotFrequencyResponse)
+def get_preflop_spot(spot: str, hand: str) -> SpotFrequencyResponse:
+    return service.get_preflop_spot(spot=spot, hand=hand)
+
+
+@router.get("/preflop/open", response_model=SpotFrequencyResponse)
+def get_preflop_open_spot(hand: str) -> SpotFrequencyResponse:
+    return service.get_preflop_spot(spot="open", hand=hand)
