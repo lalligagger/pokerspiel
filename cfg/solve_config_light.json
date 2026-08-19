@@ -1,0 +1,25 @@
+{
+  "name": "lightweight-local-or-gce",
+  "deploy": "local",
+  "mode": "hulh",
+  "solver": "outcome",
+  "preset": "hulh-preflop",
+  "iterations": 50000,
+  "checkpoint_every": 0,
+  "stability_checkpoint": 0,
+  "stability_threshold": 0.02,
+  "stop_patience": 2,
+  "min_iterations": 0,
+  "range_samples": 1000,
+  "range_last_n": 2000,
+  "report_mode": "summary",
+  "artifact_mode": "lightweight",
+  "checkpoint_history_limit": 0,
+  "output_json": "./overnight_runs/solve_light/report.json",
+  "notes": [
+    "Fast smoke test",
+    "Zero checkpointing",
+    "Range export only",
+    "No full snapshot artifacts"
+  ]
+}
