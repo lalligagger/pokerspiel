@@ -215,6 +215,34 @@ def test_solver_service_stays_live_after_min_iterations_when_stability_is_reache
     assert service.runtime.stable is True
 
 
+def test_preflop_spot_lookup_returns_single_hand_frequencies():
+    service = SolverService()
+    service.runtime.iteration = 12345
+    service._game = object()
+    service._solver = object()
+    service._current_ranges = {
+        "nodes": [
+            {
+                "name": "response_to_open",
+                "display_name": "response_to_open",
+                "hands": [
+                    {"hand": "TT", "policy": {"fold": 0.1, "check_call": 0.2, "bet_raise": 0.7}},
+                    {"hand": "AKs", "policy": {"fold": 0.05, "check_call": 0.25, "bet_raise": 0.7}},
+                ],
+            }
+        ]
+    }
+
+    response = service.get_preflop_spot("open", "TT")
+
+    assert response.spot == "response_to_open"
+    assert response.hand == "TT"
+    assert response.frequencies["fold"] == 0.1
+    assert response.frequencies["check_call"] == 0.2
+    assert response.frequencies["bet_raise"] == 0.7
+    assert response.ready is True
+
+
 def test_flatten_preflop_range_uses_actual_rank_set_for_short_deck():
     standard = [
         {"street": "preflop", "variant": "FixedLimitTexasHoldem", "hole_cards": ["ACE OF CLUBS (Ac)", "KING OF SPADES (Ks)"]},
