@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import re
 import threading
 from typing import Dict, Iterable, List, Optional
 
@@ -21,6 +22,10 @@ from .contracts import (
     BulkProbeResponse,
     HandPolicy,
     HealthStatus,
+    PostflopExactRequest,
+    PostflopExactResponse,
+    PostflopRangeRequest,
+    PostflopRangeResponse,
     ProbeRequest,
     ProbeResponse,
     SolverStatusResponse,
@@ -43,15 +48,21 @@ class SolverService:
         min_iterations: int = 1_000_000,
         probe_min_iteration: int = 0,
         range_samples: Optional[int] = None,
+        postflop_samples: Optional[int] = None,
     ):
         configured_solver_name = os.getenv("POKERSPIEL_SOLVER")
         if solver_name is None:
-            solver_name = configured_solver_name or "outcome"
+            solver_name = configured_solver_name or "external"
         solver_name = str(solver_name).lower()
 
         configured_range_samples = os.getenv("POKERSPIEL_RANGE_SAMPLES")
         if range_samples is None:
             range_samples = int(configured_range_samples) if configured_range_samples is not None else 1326
+
+        configured_postflop_samples = os.getenv("POKERSPIEL_POSTFLOP_SAMPLES")
+        if postflop_samples is None:
+            postflop_samples = int(configured_postflop_samples) if configured_postflop_samples is not None else 32
+
         self.solver_name = solver_name
         self.max_iterations = max_iterations
         self.checkpoint_every = checkpoint_every
@@ -60,6 +71,7 @@ class SolverService:
         self.min_iterations = min_iterations
         self.probe_min_iteration = probe_min_iteration
         self.range_samples = range_samples
+        self.postflop_samples = max(int(postflop_samples or 1), 1)
 
         self.lock = threading.RLock()
         self.runtime = SolverRuntimeState(state=SolverState.RUNNING)
@@ -341,6 +353,311 @@ class SolverService:
         if not key:
             return ""
         return key.replace(" ", "")
+
+    def _current_average_policy(self):
+        if self._solver is None:
+            return None
+        average_policy = getattr(self._solver, "average_policy", None)
+        if callable(average_policy):
+            return average_policy()
+        return self._solver
+
+    def _canonical_postflop_action_names(self, action_probabilities):
+        outputs = {}
+        for action, probability in (action_probabilities or []):
+            key = int(action)
+            if key == 0:
+                outputs["fold"] = float(probability)
+            elif key == 1:
+                outputs["check_call"] = float(probability)
+            elif key == 4:
+                outputs["bet_raise"] = float(probability)
+            else:
+                outputs[str(action)] = float(probability)
+        return outputs
+
+    def _canonicalize_card_token(self, token: str) -> Optional[str]:
+        text = str(token or "").strip().replace(" ", "").replace("|", "")
+        if not text:
+            return None
+        match = re.fullmatch(r"([2-9TJQKA])([cdhs])", text, flags=re.IGNORECASE)
+        if match is None:
+            return None
+        rank = match.group(1).upper()
+        suit = match.group(2).lower()
+        return f"{rank}{suit}"
+
+    def _canonicalize_hand_subset(self, hand: str) -> List[str]:
+        text = str(hand or "").strip()
+        if not text:
+            return []
+        if "[" in text or "(" in text or "," in text:
+            values = re.findall(r"[2-9TJQKA][cdhs]", text, flags=re.IGNORECASE)
+            return sorted({self._canonicalize_card_token(value) for value in values if self._canonicalize_card_token(value)})
+        values = re.findall(r"[2-9TJQKA][cdhs]", text, flags=re.IGNORECASE)
+        if len(values) >= 2:
+            return sorted({self._canonicalize_card_token(value) for value in values[:2] if self._canonicalize_card_token(value)})
+        return [text]
+
+    def _canonical_infoset_id(self, *, board, history, hole_cards, player=None, game_name="hulh") -> str:
+        canonical_board = sorted({self._canonicalize_card_token(card) for card in (board or []) if self._canonicalize_card_token(card)})
+        canonical_hole = sorted({self._canonicalize_card_token(card) for card in (hole_cards or []) if self._canonicalize_card_token(card)})
+        return (
+            f"game={game_name}|player={player}|board={canonical_board}|hole={canonical_hole}"
+            f"|history={list(history or [])}"
+        )
+
+    def _sample_postflop_states(self, *, board, history, hole_cards=None, player=None, samples=32):
+        if self._game is None:
+            return []
+
+        history = list(history or [])
+        hole_cards = list(hole_cards or [])
+        states = []
+        seen = set()
+        attempts = 0
+        max_attempts = max(samples * 20, 200)
+
+        while len(states) < max(samples, 1) and attempts < max_attempts:
+            attempts += 1
+            state = self._game.new_initial_state()
+            wrapped = getattr(state, "_wrapped_state", None)
+            if wrapped is None:
+                continue
+
+            if board:
+                board_cards = [str(card) for card in getattr(wrapped, "board_cards", []) or []]
+                if sorted(board_cards) != sorted(board):
+                    continue
+
+            if hole_cards:
+                actual_hole = []
+                try:
+                    actual_hole_values = getattr(wrapped, "hole_cards", []) or []
+                    if actual_hole_values:
+                        if player is not None and player < len(actual_hole_values):
+                            actual_hole = [str(card) for card in actual_hole_values[player]]
+                        else:
+                            actual_hole = [str(card) for card in actual_hole_values[0]]
+                except Exception:
+                    actual_hole = []
+                if actual_hole and sorted(actual_hole) != sorted(hole_cards):
+                    continue
+
+            resolved = state
+            for action in history:
+                legal = list(resolved.legal_actions())
+                if not legal:
+                    resolved = None
+                    break
+                normalized = str(action).lower()
+                if normalized in {"check", "call"}:
+                    chosen = 1 if 1 in legal else legal[0]
+                elif normalized in {"bet", "raise"}:
+                    chosen = 4 if 4 in legal else legal[0]
+                elif normalized == "fold":
+                    chosen = 0 if 0 in legal else legal[0]
+                else:
+                    try:
+                        chosen = int(action)
+                    except Exception:
+                        chosen = legal[0]
+                if chosen not in legal:
+                    chosen = legal[0]
+                resolved = resolved.child(chosen)
+                if resolved is None:
+                    break
+
+            if resolved is None:
+                continue
+
+            wrapped_resolved = getattr(resolved, "_wrapped_state", None)
+            signature = (
+                tuple(sorted(str(card) for card in getattr(wrapped_resolved, "board_cards", []) or [])),
+                tuple(sorted(str(card) for card in (getattr(wrapped_resolved, "hole_cards", []) or [])[0])) if getattr(wrapped_resolved, "hole_cards", None) else (),
+                tuple(history),
+            )
+            if signature in seen:
+                continue
+            seen.add(signature)
+            states.append(resolved)
+
+        return states
+
+    def _postflop_action_summary(self, state, policy):
+        if state is None or policy is None:
+            return None
+
+        wrapped = getattr(state, "_wrapped_state", None)
+        player = int(state.current_player()) if hasattr(state, "current_player") else 0
+        legal_actions = list(state.legal_actions())
+        raw_entries = policy.get_state_policy(state, player)
+        entries = [(int(action), float(probability)) for action, probability in raw_entries]
+        summary = {"player": player, "legal_actions": legal_actions, "entries": entries}
+        if wrapped is not None:
+            summary["board_cards"] = [str(card) for card in getattr(wrapped, "board_cards", []) or []]
+            hole_cards = getattr(wrapped, "hole_cards", []) or []
+            if hole_cards and player < len(hole_cards):
+                summary["hole_cards"] = [str(card) for card in hole_cards[player]]
+        return summary
+
+    def request_postflop_exact(self, request: PostflopExactRequest) -> PostflopExactResponse:
+        if self._solver is None or self._game is None:
+            return PostflopExactResponse(
+                iteration=self.runtime.iteration,
+                board=list(request.board or []),
+                history=list(request.history or []),
+                hole_cards=list(request.hole_cards or []),
+                player=request.player,
+                ready=False,
+                message="live solver has not started yet",
+            )
+
+        if request.min_iteration is not None and self.runtime.iteration < request.min_iteration:
+            return PostflopExactResponse(
+                iteration=self.runtime.iteration,
+                board=list(request.board or []),
+                history=list(request.history or []),
+                hole_cards=list(request.hole_cards or []),
+                player=request.player,
+                ready=False,
+                message=f"solver iteration {self.runtime.iteration} is below min_iteration {request.min_iteration}",
+            )
+
+        state_sample_budget = max(int(request.samples if request.samples is not None else self.postflop_samples), 1)
+        states = self._sample_postflop_states(
+            board=list(request.board or []),
+            history=list(request.history or []),
+            hole_cards=list(request.hole_cards or []),
+            player=request.player,
+            samples=state_sample_budget,
+        )
+        if not states:
+            return PostflopExactResponse(
+                iteration=self.runtime.iteration,
+                board=list(request.board or []),
+                history=list(request.history or []),
+                hole_cards=list(request.hole_cards or []),
+                player=request.player,
+                ready=False,
+                message="no matching postflop state could be sampled for the requested exact infoset",
+            )
+
+        summary = self._postflop_action_summary(states[0], self._current_average_policy())
+        if summary is None:
+            return PostflopExactResponse(
+                iteration=self.runtime.iteration,
+                board=list(request.board or []),
+                history=list(request.history or []),
+                hole_cards=list(request.hole_cards or []),
+                player=request.player,
+                ready=False,
+                message="no policy entries available for the requested exact postflop infoset",
+            )
+
+        probabilities = self._canonical_postflop_action_names(summary["entries"])
+        exact_infoset_key = self._canonical_infoset_id(
+            board=summary.get("board_cards") or request.board or [],
+            history=request.history or [],
+            hole_cards=summary.get("hole_cards") or request.hole_cards or [],
+            player=summary["player"],
+            game_name="hulh",
+        )
+        return PostflopExactResponse(
+            iteration=self.runtime.iteration,
+            board=list(summary.get("board_cards") or request.board or []),
+            history=list(request.history or []),
+            hole_cards=list(summary.get("hole_cards") or request.hole_cards or []),
+            player=summary["player"],
+            exact_infoset_key=exact_infoset_key,
+            action_probabilities=probabilities,
+            sample_count=len(states),
+            ready=True,
+            message="live exact postflop infoset policy from current in-memory solver policy",
+        )
+
+    def request_postflop_range(self, request: PostflopRangeRequest) -> PostflopRangeResponse:
+        if self._solver is None or self._game is None:
+            return PostflopRangeResponse(
+                iteration=self.runtime.iteration,
+                board=list(request.board or []),
+                history=list(request.history or []),
+                hands=list(request.hands or []),
+                player=request.player,
+                ready=False,
+                message="live solver has not started yet",
+            )
+
+        if request.min_iteration is not None and self.runtime.iteration < request.min_iteration:
+            return PostflopRangeResponse(
+                iteration=self.runtime.iteration,
+                board=list(request.board or []),
+                history=list(request.history or []),
+                hands=list(request.hands or []),
+                player=request.player,
+                ready=False,
+                message=f"solver iteration {self.runtime.iteration} is below min_iteration {request.min_iteration}",
+            )
+
+        if not request.hands:
+            return PostflopRangeResponse(
+                iteration=self.runtime.iteration,
+                board=list(request.board or []),
+                history=list(request.history or []),
+                hands=[],
+                player=request.player,
+                ready=False,
+                message="range estimate requires a non-empty hand subset",
+            )
+
+        totals = {"fold": 0.0, "check_call": 0.0, "bet_raise": 0.0}
+        processed_hands = 0
+        for hand in request.hands:
+            parsed = self._canonicalize_hand_subset(hand)
+            if not parsed:
+                continue
+            state_sample_budget = max(int(request.samples if request.samples is not None else self.postflop_samples), 1)
+            states = self._sample_postflop_states(
+                board=list(request.board or []),
+                history=list(request.history or []),
+                hole_cards=parsed,
+                player=request.player,
+                samples=state_sample_budget,
+            )
+            if not states:
+                continue
+            summary = self._postflop_action_summary(states[0], self._current_average_policy())
+            if summary is None:
+                continue
+            probabilities = self._canonical_postflop_action_names(summary["entries"])
+            for key in totals:
+                totals[key] += float(probabilities.get(key, 0.0))
+            processed_hands += 1
+
+        if processed_hands == 0:
+            return PostflopRangeResponse(
+                iteration=self.runtime.iteration,
+                board=list(request.board or []),
+                history=list(request.history or []),
+                hands=list(request.hands or []),
+                player=request.player,
+                ready=False,
+                message="no postflop states were available for any hand in the requested range subset",
+            )
+
+        normalized = {key: totals[key] / processed_hands for key in totals}
+        return PostflopRangeResponse(
+            iteration=self.runtime.iteration,
+            board=list(request.board or []),
+            history=list(request.history or []),
+            hands=list(request.hands or []),
+            player=request.player,
+            hand_count=processed_hands,
+            action_frequencies=normalized,
+            sample_count=processed_hands,
+            ready=True,
+            message="live postflop range estimate over the chosen hand subset",
+        )
 
     def get_preflop_spot(self, spot: str, hand: str) -> "SpotFrequencyResponse":
         from .contracts import SpotFrequencyResponse

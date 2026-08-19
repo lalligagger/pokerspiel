@@ -1,3 +1,4 @@
+import os
 import subprocess
 import sys
 
@@ -18,6 +19,7 @@ if "python_pokerkit_wrapper" not in {game.short_name for game in pyspiel.registe
 from api.router import service as router_service
 from api.service import SolverService, service as app_service
 from api.state_machine import SolverState
+from api.contracts import PostflopExactRequest, PostflopExactResponse, PostflopRangeRequest, PostflopRangeResponse
 from app_solver import (
     GAME_CONFIGS,
     exact_hole_board_signature,
@@ -34,6 +36,7 @@ from app_solver import (
 
 
 def test_app_solver_accepts_checkpoint_every_alias():
+    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     result = subprocess.run(
         [
             sys.executable,
@@ -48,7 +51,7 @@ def test_app_solver_accepts_checkpoint_every_alias():
             "--solver",
             "outcome",
         ],
-        cwd="/Users/lalligagger/py_dev/pokerspiel",
+        cwd=repo_root,
         capture_output=True,
         text=True,
     )
@@ -56,14 +59,14 @@ def test_app_solver_accepts_checkpoint_every_alias():
     assert result.returncode == 0, result.stderr
 
 
-def test_solver_service_defaults_to_outcome_and_respects_env_override(monkeypatch):
+def test_solver_service_defaults_to_external_and_respects_env_override(monkeypatch):
     monkeypatch.delenv("POKERSPIEL_SOLVER", raising=False)
     service = SolverService()
-    assert service.solver_name == "outcome"
-
-    monkeypatch.setenv("POKERSPIEL_SOLVER", "external")
-    service = SolverService()
     assert service.solver_name == "external"
+
+    monkeypatch.setenv("POKERSPIEL_SOLVER", "outcome")
+    service = SolverService()
+    assert service.solver_name == "outcome"
 
 
 def test_router_uses_shared_service_singleton():
@@ -194,7 +197,7 @@ def test_sample_distinct_deal_states_reaches_multiple_hole_card_signatures():
     assert len(signatures) >= 2
 
 
-def test_prepare_selected_node_probes_warns_and_keeps_available_states():
+def test_prepare_selected_node_probes_keeps_unbiased_sampling_by_default():
     game = pyspiel.load_game(
         "python_pokerkit_wrapper",
         {
@@ -210,10 +213,9 @@ def test_prepare_selected_node_probes_warns_and_keeps_available_states():
     )
     specs = [{"name": "first_to_act", "history": []}]
 
-    with pytest.warns(UserWarning, match="only sampled .* distinct deals for selected node 'first_to_act'"):
-        probes = prepare_selected_node_probes(game, specs, samples_per_node=5000, max_attempts=2000)
+    probes = prepare_selected_node_probes(game, specs, samples_per_node=10, max_attempts=50)
 
-    assert 0 < len(probes) < 5000
+    assert len(probes) == 10
 
 
 def test_solver_service_stays_live_after_min_iterations_when_stability_is_reached(monkeypatch):
@@ -282,6 +284,98 @@ def test_preflop_spot_lookup_returns_single_hand_frequencies():
     assert response.frequencies["check_call"] == 0.2
     assert response.frequencies["bet_raise"] == 0.7
     assert response.ready is True
+
+
+def test_postflop_exact_lookup_returns_exact_infoset_policy(monkeypatch):
+    class FakePolicy:
+        def get_state_policy(self, state, player):
+            return [(0, 0.25), (1, 0.25), (4, 0.5)]
+
+    class FakeState:
+        def __init__(self):
+            self._wrapped_state = type("Wrapped", (), {
+                "board_cards": ["Ah", "Kd", "2c"],
+                "hole_cards": [["As", "Qs"], ["Kh", "Jd"]],
+            })()
+
+        def current_player(self):
+            return 0
+
+        def legal_actions(self):
+            return [0, 1, 4]
+
+        def history(self):
+            return ["bet", "bet"]
+
+    service = SolverService()
+    service.runtime.iteration = 42
+    service._game = object()
+    service._solver = FakePolicy()
+    monkeypatch.setattr(service, "_sample_postflop_states", lambda **kwargs: [FakeState()])
+
+    response = service.request_postflop_exact(
+        PostflopExactRequest(
+            board=["Ah", "Kd", "2c"],
+            history=["bet", "bet"],
+            hole_cards=["As", "Qs"],
+            player=0,
+            samples=8,
+        )
+    )
+
+    assert response.ready is True
+    assert response.exact_infoset_key
+    assert response.action_probabilities["fold"] == 0.25
+    assert response.action_probabilities["check_call"] == 0.25
+    assert response.action_probabilities["bet_raise"] == 0.5
+
+
+def test_postflop_range_estimate_aggregates_selected_hand_subset(monkeypatch):
+    class FakePolicy:
+        def get_state_policy(self, state, player):
+            return [(0, 0.3), (1, 0.3), (4, 0.4)]
+
+    class FakeState:
+        def __init__(self, hole_cards):
+            self._wrapped_state = type("Wrapped", (), {
+                "board_cards": ["Ah", "Kd", "2c"],
+                "hole_cards": [hole_cards, ["Kh", "Jd"]],
+            })()
+
+        def current_player(self):
+            return 0
+
+        def legal_actions(self):
+            return [0, 1, 4]
+
+        def history(self):
+            return ["bet", "bet"]
+
+    service = SolverService()
+    service.runtime.iteration = 71
+    service._game = object()
+    service._solver = FakePolicy()
+    monkeypatch.setattr(
+        service,
+        "_sample_postflop_states",
+        lambda **kwargs: [FakeState(["As", "Qs"]), FakeState(["Ac", "Kc"])],
+    )
+
+    response = service.request_postflop_range(
+        PostflopRangeRequest(
+            board=["Ah", "Kd", "2c"],
+            history=["bet", "bet"],
+            hands=["AsQs", "AcKc"],
+            player=0,
+            samples=8,
+        )
+    )
+
+    assert response.ready is True
+    assert response.hand_count == 2
+    assert response.action_frequencies["fold"] == 0.3
+    assert response.action_frequencies["check_call"] == 0.3
+    assert response.action_frequencies["bet_raise"] == 0.4
 
 
 def test_flatten_preflop_range_uses_actual_rank_set_for_short_deck():

@@ -92,6 +92,7 @@ args = [
     "--iterations", str(config.get("iterations", 100)),
     "--preset", config.get("preset", "hulh-preflop"),
     "--range-samples", str(config.get("range_samples", 1000)),
+    "--postflop-samples", str(config.get("postflop_samples", 32)),
     "--stability-threshold", str(config.get("stability_threshold", 0.01)),
     "--stop-patience", str(config.get("stop_patience", 3)),
     "--min-iterations", str(config.get("min_iterations", 0)),

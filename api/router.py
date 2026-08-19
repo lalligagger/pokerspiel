@@ -6,6 +6,10 @@ from .contracts import (
     BulkProbeRequest,
     BulkProbeResponse,
     HealthStatus,
+    PostflopExactRequest,
+    PostflopExactResponse,
+    PostflopRangeRequest,
+    PostflopRangeResponse,
     ProbeRequest,
     ProbeResponse,
     SolverStatusResponse,
@@ -47,3 +51,19 @@ def get_preflop_spot(spot: str, hand: str) -> SpotFrequencyResponse:
 @router.get("/preflop/open", response_model=SpotFrequencyResponse)
 def get_preflop_open_spot(hand: str) -> SpotFrequencyResponse:
     return service.get_preflop_spot(spot="open", hand=hand)
+
+
+@router.post("/postflop/exact", response_model=PostflopExactResponse)
+def request_postflop_exact(request: PostflopExactRequest) -> PostflopExactResponse:
+    response = service.request_postflop_exact(request)
+    if not response.ready:
+        raise HTTPException(status_code=409, detail={"error": response.message or "postflop exact lookup not ready"})
+    return response
+
+
+@router.post("/postflop/range", response_model=PostflopRangeResponse)
+def request_postflop_range(request: PostflopRangeRequest) -> PostflopRangeResponse:
+    response = service.request_postflop_range(request)
+    if not response.ready:
+        raise HTTPException(status_code=409, detail={"error": response.message or "postflop range estimate not ready"})
+    return response
