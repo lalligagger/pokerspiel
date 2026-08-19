@@ -258,6 +258,22 @@ def test_solver_service_stays_live_after_min_iterations_when_stability_is_reache
     assert service.runtime.stable is True
 
 
+def test_postflop_exact_is_blocked_until_min_iterations_and_stability(monkeypatch):
+    service = SolverService(min_iterations=100, checkpoint_every=10, stop_patience=1)
+    service.runtime.iteration = 10
+    service._last_stability = {"passed": False, "avg_abs_delta": 0.25, "max_abs_delta": 0.6, "threshold": 0.01, "matched_nodes": 1}
+    service._game = object()
+    service._solver = object()
+    monkeypatch.setattr(service, "_sample_postflop_states", lambda **kwargs: [object()])
+
+    response = service.request_postflop_exact(
+        PostflopExactRequest(board=["Ah", "Kd", "2c"], history=["bet", "bet"], hole_cards=["As", "Qs"], samples=1)
+    )
+
+    assert response.ready is False
+    assert "min_iteration" in response.message.lower() or "stability" in response.message.lower()
+
+
 def test_preflop_spot_lookup_returns_single_hand_frequencies():
     service = SolverService()
     service.runtime.iteration = 12345
@@ -307,8 +323,10 @@ def test_postflop_exact_lookup_returns_exact_infoset_policy(monkeypatch):
         def history(self):
             return ["bet", "bet"]
 
-    service = SolverService()
+    service = SolverService(min_iterations=0)
     service.runtime.iteration = 42
+    service.runtime.stable = True
+    service._last_stability = {"passed": True, "avg_abs_delta": 0.0, "max_abs_delta": 0.0, "threshold": 0.01, "matched_nodes": 1}
     service._game = object()
     service._solver = FakePolicy()
     monkeypatch.setattr(service, "_sample_postflop_states", lambda **kwargs: [FakeState()])
@@ -351,8 +369,10 @@ def test_postflop_range_estimate_aggregates_selected_hand_subset(monkeypatch):
         def history(self):
             return ["bet", "bet"]
 
-    service = SolverService()
+    service = SolverService(min_iterations=0)
     service.runtime.iteration = 71
+    service.runtime.stable = True
+    service._last_stability = {"passed": True, "avg_abs_delta": 0.0, "max_abs_delta": 0.0, "threshold": 0.01, "matched_nodes": 1}
     service._game = object()
     service._solver = FakePolicy()
     monkeypatch.setattr(

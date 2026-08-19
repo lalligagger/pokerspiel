@@ -362,6 +362,29 @@ class SolverService:
             return average_policy()
         return self._solver
 
+    def _postflop_access_block_reason(self, *, request_min_iteration: Optional[int] = None) -> Optional[str]:
+        """Return a blocking reason when post-flop probes are not yet allowed."""
+        if self._solver is None or self._game is None:
+            return "live solver has not started yet"
+
+        effective_min_iteration = self.min_iterations
+        if request_min_iteration is not None:
+            effective_min_iteration = max(int(request_min_iteration), effective_min_iteration)
+
+        if effective_min_iteration is not None and self.runtime.iteration < int(effective_min_iteration):
+            return (
+                f"solver iteration {self.runtime.iteration} is below min_iteration "
+                f"{int(effective_min_iteration)}"
+            )
+
+        if self._last_stability is not None and not bool(self._last_stability.get("passed")):
+            return "postflop probes are blocked until stability criteria pass"
+
+        if not self.runtime.stable:
+            return "postflop probes are blocked until the solver reaches minimum iteration and stability"
+
+        return None
+
     def _canonical_postflop_action_names(self, action_probabilities):
         outputs = {}
         for action, probability in (action_probabilities or []):
@@ -502,7 +525,8 @@ class SolverService:
         return summary
 
     def request_postflop_exact(self, request: PostflopExactRequest) -> PostflopExactResponse:
-        if self._solver is None or self._game is None:
+        block_reason = self._postflop_access_block_reason(request_min_iteration=request.min_iteration)
+        if block_reason is not None:
             return PostflopExactResponse(
                 iteration=self.runtime.iteration,
                 board=list(request.board or []),
@@ -510,18 +534,7 @@ class SolverService:
                 hole_cards=list(request.hole_cards or []),
                 player=request.player,
                 ready=False,
-                message="live solver has not started yet",
-            )
-
-        if request.min_iteration is not None and self.runtime.iteration < request.min_iteration:
-            return PostflopExactResponse(
-                iteration=self.runtime.iteration,
-                board=list(request.board or []),
-                history=list(request.history or []),
-                hole_cards=list(request.hole_cards or []),
-                player=request.player,
-                ready=False,
-                message=f"solver iteration {self.runtime.iteration} is below min_iteration {request.min_iteration}",
+                message=block_reason,
             )
 
         state_sample_budget = max(int(request.samples if request.samples is not None else self.postflop_samples), 1)
@@ -577,7 +590,8 @@ class SolverService:
         )
 
     def request_postflop_range(self, request: PostflopRangeRequest) -> PostflopRangeResponse:
-        if self._solver is None or self._game is None:
+        block_reason = self._postflop_access_block_reason(request_min_iteration=request.min_iteration)
+        if block_reason is not None:
             return PostflopRangeResponse(
                 iteration=self.runtime.iteration,
                 board=list(request.board or []),
@@ -585,18 +599,7 @@ class SolverService:
                 hands=list(request.hands or []),
                 player=request.player,
                 ready=False,
-                message="live solver has not started yet",
-            )
-
-        if request.min_iteration is not None and self.runtime.iteration < request.min_iteration:
-            return PostflopRangeResponse(
-                iteration=self.runtime.iteration,
-                board=list(request.board or []),
-                history=list(request.history or []),
-                hands=list(request.hands or []),
-                player=request.player,
-                ready=False,
-                message=f"solver iteration {self.runtime.iteration} is below min_iteration {request.min_iteration}",
+                message=block_reason,
             )
 
         if not request.hands:
