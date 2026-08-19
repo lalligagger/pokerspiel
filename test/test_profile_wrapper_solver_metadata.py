@@ -1,3 +1,6 @@
+import subprocess
+import sys
+
 import pyspiel
 import pytest
 
@@ -27,6 +30,29 @@ from app_solver import (
     sample_distinct_deal_states,
     summarize_policy_profiles,
 )
+
+
+def test_app_solver_accepts_checkpoint_every_alias():
+    result = subprocess.run(
+        [
+            sys.executable,
+            "app_solver.py",
+            "hulh",
+            "--iterations",
+            "5",
+            "--checkpoint-every",
+            "2",
+            "--range-samples",
+            "1",
+            "--solver",
+            "outcome",
+        ],
+        cwd="/Users/lalligagger/py_dev/pokerspiel",
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
 
 
 def test_infer_state_context_uses_wrapped_pokerkit_state():

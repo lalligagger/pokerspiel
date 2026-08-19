@@ -1671,9 +1671,11 @@ def main():
     )
     parser.add_argument(
         "--stability-checkpoint",
+        "--checkpoint-every",
+        dest="stability_checkpoint",
         type=int,
         default=0,
-        help="evaluate policy stability every N iterations; 0 disables stability checkpoints",
+        help="evaluate policy stability every N iterations; 0 disables stability checkpoints; --checkpoint-every is kept as a compatibility alias",
     )
     parser.add_argument(
         "--solver",

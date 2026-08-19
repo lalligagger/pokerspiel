@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import threading
 from typing import Dict, Iterable, List, Optional
 
@@ -41,8 +42,11 @@ class SolverService:
         stop_patience: int = 3,
         min_iterations: int = 1_000_000,
         probe_min_iteration: int = 0,
-        range_samples: int = 1326,
+        range_samples: Optional[int] = None,
     ):
+        configured_range_samples = os.getenv("POKERSPIEL_RANGE_SAMPLES")
+        if range_samples is None:
+            range_samples = int(configured_range_samples) if configured_range_samples is not None else 1326
         self.solver_name = solver_name
         self.max_iterations = max_iterations
         self.checkpoint_every = checkpoint_every

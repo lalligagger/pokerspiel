@@ -35,7 +35,7 @@ args = [
     "python", "app_solver.py", config.get("mode", "hulh"),
     "--iterations", str(config.get("iterations", 100)),
     "--preset", config.get("preset", "hulh-preflop"),
-    "--samples", str(config.get("range_samples", 1000)),
+    "--range-samples", str(config.get("range_samples", 1000)),
     "--stability-threshold", str(config.get("stability_threshold", 0.01)),
     "--stop-patience", str(config.get("stop_patience", 3)),
     "--min-iterations", str(config.get("min_iterations", 0)),
@@ -46,10 +46,14 @@ args = [
     "--output-json", str(config.get("output_json", "./overnight_runs/runner/report.json")),
 ]
 
-if config.get("checkpoint_every") not in (None, 0):
-    args.extend(["--checkpoint-every", str(config["checkpoint_every"])])
-if config.get("stability_checkpoint") not in (None, 0):
-    args.extend(["--stability-checkpoint", str(config["stability_checkpoint"])])
+checkpoint_every = config.get("checkpoint_every")
+stability_checkpoint = config.get("stability_checkpoint")
+if checkpoint_every not in (None, 0):
+    if stability_checkpoint in (None, 0):
+        stability_checkpoint = checkpoint_every
+    elif int(stability_checkpoint) != int(checkpoint_every):
+        stability_checkpoint = checkpoint_every
+args.extend(["--stability-checkpoint", str(stability_checkpoint)]) if stability_checkpoint not in (None, 0) else None
 if config.get("checkpoint_history_limit") not in (None, 0):
     args.extend(["--checkpoint-history-limit", str(config["checkpoint_history_limit"])])
 
@@ -77,7 +81,7 @@ args = [
     "python", "app_solver.py", config.get("mode", "hulh"),
     "--iterations", str(config.get("iterations", 100)),
     "--preset", config.get("preset", "hulh-preflop"),
-    "--samples", str(config.get("range_samples", 1000)),
+    "--range-samples", str(config.get("range_samples", 1000)),
     "--stability-threshold", str(config.get("stability_threshold", 0.01)),
     "--stop-patience", str(config.get("stop_patience", 3)),
     "--min-iterations", str(config.get("min_iterations", 0)),
@@ -87,15 +91,23 @@ args = [
     "--range-last-n", str(config.get("range_last_n", 2000)),
     "--output-json", str(config.get("output_json", "./overnight_runs/runner/report.json")),
 ]
-if config.get("checkpoint_every") not in (None, 0):
-    args.extend(["--checkpoint-every", str(config["checkpoint_every"])])
-if config.get("stability_checkpoint") not in (None, 0):
-    args.extend(["--stability-checkpoint", str(config["stability_checkpoint"])])
+checkpoint_every = config.get("checkpoint_every")
+stability_checkpoint = config.get("stability_checkpoint")
+if checkpoint_every not in (None, 0):
+    if stability_checkpoint in (None, 0):
+        stability_checkpoint = checkpoint_every
+    elif int(stability_checkpoint) != int(checkpoint_every):
+        stability_checkpoint = checkpoint_every
+if stability_checkpoint not in (None, 0):
+    args.extend(["--stability-checkpoint", str(stability_checkpoint)])
 if config.get("checkpoint_history_limit") not in (None, 0):
     args.extend(["--checkpoint-history-limit", str(config["checkpoint_history_limit"])])
 print(' '.join(__import__('shlex').quote(x) for x in args))
 PY
 )"
+
+printf '==> resolved command for %s\n' "$DEPLOY_TARGET"
+printf '%s\n' "$JSON_OUT"
 
 if [[ "$DEPLOY_TARGET" == "local" ]]; then
   echo "==> local deploy"
@@ -106,28 +118,115 @@ fi
 
 if [[ "$DEPLOY_TARGET" == "gce" ]]; then
   echo "==> gce deploy"
-  PROJECT="${PROJECT:-pokerspiel}"
-  ZONE="${ZONE:-us-west1-b}"
-  INSTANCE="${INSTANCE:-instance-20260818-234442}"
 
-  gcloud compute ssh "$INSTANCE" \
-    --project="$PROJECT" \
-    --zone="$ZONE" \
-    --command="
-      set -eux
-      cd ~/pokerspiel || cd /home/\$USER/pokerspiel || true
-      if [ ! -d ~/pokerspiel ]; then
-        git clone https://github.com/lalligagger/pokerspiel ~/pokerspiel
+  PROJECT="${PROJECT:-$(python3 - <<'PY' "$CONFIG_PATH"
+import json, sys
+from pathlib import Path
+cfg = json.loads(Path(sys.argv[1]).read_text())
+print(cfg.get('project', 'pokerspiel'))
+PY
+)}"
+  ZONE="${ZONE:-$(python3 - <<'PY' "$CONFIG_PATH"
+import json, sys
+from pathlib import Path
+cfg = json.loads(Path(sys.argv[1]).read_text())
+print(cfg.get('zone', 'us-west1-b'))
+PY
+)}"
+
+  GCE_INSTANCES="$(python3 - <<'PY' "$CONFIG_PATH"
+import json, sys
+from pathlib import Path
+cfg = json.loads(Path(sys.argv[1]).read_text())
+instances = cfg.get('instances') or []
+if cfg.get('instance'):
+    instances = [cfg['instance']] + list(instances)
+if not instances:
+    instances = ['instance-20260818-234442']
+print('\n'.join(instances))
+PY
+)"
+  RANGE_SAMPLES_OVERRIDE="$(python3 - <<'PY' "$CONFIG_PATH"
+import json, sys
+from pathlib import Path
+cfg = json.loads(Path(sys.argv[1]).read_text())
+print(cfg.get('range_samples', 1326))
+PY
+)"
+
+  if [[ -n "${INSTANCE:-}" ]]; then
+    GCE_INSTANCES="$INSTANCE"
+  fi
+
+  deploy_failures=0
+  while IFS= read -r target_instance; do
+    [[ -z "$target_instance" ]] && continue
+    SSH_COMMAND=$(cat <<EOF
+set -eux
+sudo apt-get update
+sudo apt-get install -y git docker.io
+sudo systemctl enable --now docker
+sudo usermod -aG docker "\$USER"
+
+newgrp docker <<'REMOTE'
+set -eux
+cd "\$HOME"
+
+if [ ! -d pokerspiel ]; then
+  git clone https://github.com/lalligagger/pokerspiel pokerspiel
+fi
+
+cd pokerspiel
+git pull --ff-only || true
+
+docker build -t pokerspiel-live .
+
+docker rm -f pokerspiel-run >/dev/null 2>&1 || true
+
+docker run -d \
+  --name pokerspiel-run \
+  -p 8080:8080 \
+  -e "POKERSPIEL_RANGE_SAMPLES=$RANGE_SAMPLES_OVERRIDE" \
+  -v "\$HOME/pokerspiel:/app" \
+  -w /app \
+  pokerspiel-live \
+  sh -c 'uvicorn api.app:app --host 0.0.0.0 --port 8080 & eval "$1"' _ "$JSON_OUT"
+
+echo "Started detached API+solver container: pokerspiel-run"
+echo "Monitor with: docker logs -f pokerspiel-run"
+REMOTE
+EOF
+)
+
+    echo "==> deploying to gce instance: $target_instance"
+    EXTERNAL_IP="$(gcloud compute instances describe "$target_instance" \
+      --project="$PROJECT" \
+      --zone="$ZONE" \
+      --format='value(networkInterfaces[0].accessConfigs[0].natIP)' 2>/dev/null || true)"
+
+    if gcloud compute ssh "$target_instance" \
+      --project="$PROJECT" \
+      --zone="$ZONE" \
+      --command="$SSH_COMMAND"; then
+      echo "==> success on gce instance: $target_instance"
+      echo "==> local status: http://localhost:8080/status"
+      if [[ -n "$EXTERNAL_IP" ]]; then
+        echo "==> external status: http://$EXTERNAL_IP:8080/status"
+      else
+        echo "==> external status: unavailable (instance IP lookup failed)"
       fi
-      cd ~/pokerspiel
-      git pull --ff-only || true
-      docker build -t pokerspiel-live .
-      docker run --rm \
-        -v \$HOME/pokerspiel:/app \
-        -w /app \
-        pokerspiel-live \
-        $JSON_OUT
-    "
+    else
+      echo "==> failed on gce instance: $target_instance" >&2
+      deploy_failures=$((deploy_failures + 1))
+    fi
+  done <<< "$GCE_INSTANCES"
+
+  if [[ "$deploy_failures" -gt 0 ]]; then
+    echo "==> gce deploy summary: $deploy_failures failed out of $(printf '%s\n' "$GCE_INSTANCES" | sed '/^$/d' | wc -l | tr -d ' ' )" >&2
+    exit 1
+  fi
+
+  echo "==> gce deploy summary: all instances launched successfully"
   exit 0
 fi
 
