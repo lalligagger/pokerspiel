@@ -15,7 +15,8 @@ from range_export import (
 
 if "python_pokerkit_wrapper" not in {game.short_name for game in pyspiel.registered_games()}:
     pytest.skip("PokerKit OpenSpiel wrapper not registered in this environment", allow_module_level=True)
-from api.service import SolverService
+from api.router import service as router_service
+from api.service import SolverService, service as app_service
 from api.state_machine import SolverState
 from app_solver import (
     GAME_CONFIGS,
@@ -53,6 +54,20 @@ def test_app_solver_accepts_checkpoint_every_alias():
     )
 
     assert result.returncode == 0, result.stderr
+
+
+def test_solver_service_defaults_to_outcome_and_respects_env_override(monkeypatch):
+    monkeypatch.delenv("POKERSPIEL_SOLVER", raising=False)
+    service = SolverService()
+    assert service.solver_name == "outcome"
+
+    monkeypatch.setenv("POKERSPIEL_SOLVER", "external")
+    service = SolverService()
+    assert service.solver_name == "external"
+
+
+def test_router_uses_shared_service_singleton():
+    assert router_service is app_service
 
 
 def test_infer_state_context_uses_wrapped_pokerkit_state():

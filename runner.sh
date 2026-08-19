@@ -181,6 +181,7 @@ git pull --ff-only || true
 
 docker build -t pokerspiel-live .
 
+docker ps -aq --filter "publish=8080" | xargs -r docker rm -f >/dev/null 2>&1 || true
 docker rm -f pokerspiel-run >/dev/null 2>&1 || true
 
 docker run -d \
@@ -190,9 +191,9 @@ docker run -d \
   -v "\$HOME/pokerspiel:/app" \
   -w /app \
   pokerspiel-live \
-  sh -c 'uvicorn api.app:app --host 0.0.0.0 --port 8080 & eval "$1"' _ "$JSON_OUT"
+  uvicorn api.app:app --host 0.0.0.0 --port 8080
 
-echo "Started detached API+solver container: pokerspiel-run"
+echo "Started detached FastAPI container: pokerspiel-run"
 echo "Monitor with: docker logs -f pokerspiel-run"
 REMOTE
 EOF

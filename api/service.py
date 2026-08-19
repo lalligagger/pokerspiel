@@ -35,7 +35,7 @@ class SolverService:
     def __init__(
         self,
         *,
-        solver_name: str = "external",
+        solver_name: Optional[str] = None,
         max_iterations: int = 1_000_000,
         checkpoint_every: int = 4000,
         stability_threshold: float = 0.01,
@@ -44,6 +44,11 @@ class SolverService:
         probe_min_iteration: int = 0,
         range_samples: Optional[int] = None,
     ):
+        configured_solver_name = os.getenv("POKERSPIEL_SOLVER")
+        if solver_name is None:
+            solver_name = configured_solver_name or "outcome"
+        solver_name = str(solver_name).lower()
+
         configured_range_samples = os.getenv("POKERSPIEL_RANGE_SAMPLES")
         if range_samples is None:
             range_samples = int(configured_range_samples) if configured_range_samples is not None else 1326
@@ -122,15 +127,21 @@ class SolverService:
         self.runtime.ready_for_queries = True
         self.runtime.stable = False
         self._last_error = None
+        print("[solver-start] entering live solver thread", flush=True)
         try:
+            print("[solver-start] loading game", flush=True)
             self._game = pyspiel.load_game("python_pokerkit_wrapper", GAME_CONFIGS["hulh"])
+            print("[solver-start] creating solver", flush=True)
             self._solver = make_solver(self._game, self.solver_name)
+            print("[solver-start] resolving node specs", flush=True)
             self._selected_specs = resolve_node_specs("hulh-preflop", ())
+            print("[solver-start] preparing probes", flush=True)
             self._probes = prepare_selected_node_probes(
                 self._game,
                 self._selected_specs,
                 samples_per_node=self.range_samples,
             )
+            print(f"[solver-start] probes ready: {len(self._probes)}", flush=True)
 
             previous_ranges = None
             consecutive_stable = 0
@@ -141,8 +152,10 @@ class SolverService:
                     self.runtime.ready_for_queries = True
                     break
 
+                print(f"[solver-start] entering iteration {iteration}/{self.max_iterations}", flush=True)
                 self._solver.run_iteration()
                 self.runtime.iteration = iteration
+                print(f"[solver-start] completed iteration {iteration}", flush=True)
 
                 if iteration % self.checkpoint_every == 0:
                     policy = self._solver.average_policy()
@@ -194,6 +207,10 @@ class SolverService:
                 self.runtime.ready_for_queries = True
 
         except Exception as exc:  # pragma: no cover - runtime path
+            import traceback
+
+            print("[solver-start] ERROR in live solver thread", flush=True)
+            traceback.print_exc()
             self._last_error = str(exc)
             self.runtime.state = SolverState.ERROR
             self.runtime.ready_for_queries = False

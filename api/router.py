@@ -11,10 +11,9 @@ from .contracts import (
     SolverStatusResponse,
     SpotFrequencyResponse,
 )
-from .service import SolverService
+from .service import service
 
 router = APIRouter()
-service = SolverService()
 
 
 @router.get("/health", response_model=HealthStatus)
