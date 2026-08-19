@@ -7,8 +7,11 @@ INSTANCE_NAME="${INSTANCE_NAME:-instance-20260818-234442}"
 APP_PORT="${APP_PORT:-8080}"
 IMAGE_NAME="${IMAGE_NAME:-pokerspiel-live}"
 REPO_DIR="${REPO_DIR:-$HOME/pokerspiel}"
+BRANCH="${BRANCH:-postflop-redux}"
+REMOTE_NAME="${REMOTE_NAME:-origin}"
 
 echo "==> Launching app on GCE instance: $INSTANCE_NAME"
+echo "==> Target branch: $BRANCH"
 
 gcloud compute ssh "$INSTANCE_NAME" \
   --project="$PROJECT" \
@@ -26,11 +29,19 @@ set -eux
 cd "$HOME"
 
 if [ ! -d pokerspiel ]; then
-  git clone https://github.com/lalligagger/pokerspiel pokerspiel
+  git clone --branch "$BRANCH" --single-branch https://github.com/lalligagger/pokerspiel pokerspiel
 fi
 
 cd pokerspiel
-git pull --ff-only || true
+
+git fetch "$REMOTE_NAME" --prune
+if git rev-parse --verify "$BRANCH" >/dev/null 2>&1; then
+  git checkout "$BRANCH"
+else
+  git checkout -b "$BRANCH" "$REMOTE_NAME/$BRANCH"
+fi
+git reset --hard "$REMOTE_NAME/$BRANCH"
+git pull --ff-only "$REMOTE_NAME" "$BRANCH"
 
 docker build -t "$IMAGE_NAME" .
 
