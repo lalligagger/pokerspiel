@@ -3,79 +3,49 @@ set -euo pipefail
 
 PROJECT="${PROJECT:-pokerspiel}"
 ZONE="${ZONE:-us-west1-b}"
-INSTANCE="${INSTANCE:-instance-20260818-234442}"
-REMOTE_DIR="${REMOTE_DIR:-/home/\$USER/pokerspiel}"
+INSTANCE_NAME="${INSTANCE_NAME:-instance-20260818-234442}"
+MACHINE_TYPE="${MACHINE_TYPE:-e2-standard-2}"
 APP_PORT="${APP_PORT:-8080}"
-IMAGE_NAME="${IMAGE_NAME:-pokerspiel-live}"
 
 echo "==> Using project: $PROJECT"
 echo "==> Using zone: $ZONE"
-echo "==> Using instance: $INSTANCE"
+echo "==> Using instance: $INSTANCE_NAME"
 
-# Create VM if it does not exist
-if ! gcloud compute instances describe "$INSTANCE" --project "$PROJECT" --zone "$ZONE" >/dev/null 2>&1; then
-  echo "==> Creating VM: $INSTANCE"
-  gcloud compute instances create "$INSTANCE" \
+INSTANCE_ID="$(gcloud compute instances describe "$INSTANCE_NAME" \
+  --project="$PROJECT" \
+  --zone="$ZONE" \
+  --format='value(id)' 2>/dev/null || true)"
+
+if [[ -z "$INSTANCE_ID" ]]; then
+  echo "==> Creating VM: $INSTANCE_NAME"
+  gcloud compute instances create "$INSTANCE_NAME" \
     --project="$PROJECT" \
     --zone="$ZONE" \
-    --machine-type=e2-standard-2 \
+    --machine-type="$MACHINE_TYPE" \
     --image-family=ubuntu-2204-lts \
     --image-project=ubuntu-os-cloud \
     --boot-disk-size=50GB \
-    --tags=http-server,https-server
+    --tags=allow-pokerspiel-app
+
+  INSTANCE_ID="$(gcloud compute instances describe "$INSTANCE_NAME" \
+    --project="$PROJECT" \
+    --zone="$ZONE" \
+    --format='value(id)')"
+else
+  echo "==> VM already exists: $INSTANCE_NAME (instance id: $INSTANCE_ID)"
 fi
 
-# Firewall rule for the app
-gcloud compute firewall-rules create allow-pokerspiel-app \
-  --project="$PROJECT" \
-  --allow=tcp:"$APP_PORT" \
-  --source-ranges=0.0.0.0/0 \
-  --target-tags=http-server,https-server \
-  --direction=INGRESS \
-  2>/dev/null || true
-
-# SSH into the VM and install Docker + repo + app
-gcloud compute ssh "$INSTANCE" \
+EXTERNAL_IP="$(gcloud compute instances describe "$INSTANCE_NAME" \
   --project="$PROJECT" \
   --zone="$ZONE" \
-  --command="
-    set -eux
-
-    sudo apt-get update
-    sudo apt-get install -y docker.io git
-
-    sudo systemctl enable --now docker
-    sudo usermod -aG docker \$USER
-    newgrp docker <<'REMOTE'
-set -eux
-cd \$HOME
-
-if [ ! -d pokerspiel ]; then
-  git clone https://github.com/lalligagger/pokerspiel pokerspiel
-fi
-
-cd pokerspiel
-git pull --ff-only || true
-
-docker build -t $IMAGE_NAME .
-
-docker stop $IMAGE_NAME >/dev/null 2>&1 || true
-docker rm $IMAGE_NAME >/dev/null 2>&1 || true
-
-docker run -d \
-  --name $IMAGE_NAME \
-  --restart unless-stopped \
-  -p $APP_PORT:$APP_PORT \
-  -v \$HOME/pokerspiel:/app \
-  $IMAGE_NAME \
-  uvicorn api.app:app --host 0.0.0.0 --port $APP_PORT
-
-echo 'Container started'
-echo 'Check with: curl http://127.0.0.1:$APP_PORT/status'
-REMOTE
-  "
+  --format='value(networkInterfaces[0].accessConfigs[0].natIP)')"
 
 echo
-IP=$(gcloud compute instances describe "$INSTANCE" --project "$PROJECT" --zone "$ZONE" --format='value(networkInterfaces[0].accessConfigs[0].natIP)')
-echo "==> App should be live on:"
-echo "http://${IP}:$APP_PORT/status"
+printf 'INSTANCE_NAME=%s\n' "$INSTANCE_NAME"
+printf 'INSTANCE_ID=%s\n' "$INSTANCE_ID"
+printf 'EXTERNAL_IP=%s\n' "$EXTERNAL_IP"
+printf 'STATUS_URL=http://%s:%s/status\n' "$EXTERNAL_IP" "$APP_PORT"
+printf 'DOCS_URL=http://%s:%s/docs\n' "$EXTERNAL_IP" "$APP_PORT"
+
+echo
+echo "==> VM ready. Next step: ./deploy/1_deploy_gce_only.sh"

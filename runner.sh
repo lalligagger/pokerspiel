@@ -2,15 +2,23 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONFIG_PATH="${1:-$ROOT_DIR/solve_config_light.json}"
+CANONICAL_CONFIG_PATH="$ROOT_DIR/cfg/solve_config_light.json"
+LEGACY_CONFIG_PATH="$ROOT_DIR/solve_config_light.json"
+CONFIG_PATH="${1:-$CANONICAL_CONFIG_PATH}"
 DEPLOY_TARGET="${2:-local}"
+
+# Only the runner/CLI uses JSON profiles. The live FastAPI app does not read
+# these config files directly; it owns its runtime state in memory.
+if [[ ! -f "$CONFIG_PATH" && -f "$LEGACY_CONFIG_PATH" ]]; then
+  CONFIG_PATH="$LEGACY_CONFIG_PATH"
+fi
 
 if [[ ! -f "$CONFIG_PATH" ]]; then
   echo "Config file not found: $CONFIG_PATH" >&2
   exit 1
 fi
 
-python3 - <<'PY' "$CONFIG_PATH" "$DEPLOY_TARGET"
+python3 - "$CONFIG_PATH" "$DEPLOY_TARGET" <<'PY'
 import json
 import os
 import sys
@@ -30,7 +38,9 @@ if config.get("deploy") not in {None, deploy_target}:
         f"Config deploy target '{config.get('deploy')}' does not match requested target '{deploy_target}'"
     )
 
-# Merge six config-driven flags used by the solver CLI.
+# Merge the config-driven solver CLI flags. The env-backed values that should
+# be materialized at process startup live under `solver_env` and are generated
+# at runtime by this runner.
 args = [
     "python", "app_solver.py", config.get("mode", "hulh"),
     "--iterations", str(config.get("iterations", 100)),
@@ -61,7 +71,7 @@ if config.get("checkpoint_history_limit") not in (None, 0):
 print(json.dumps({"deploy": deploy_target, "config": config, "argv": args}, separators=(",", ":")))
 PY
 
-JSON_OUT="$(python3 - <<'PY' "$CONFIG_PATH" "$DEPLOY_TARGET"
+JSON_OUT="$(python3 - "$CONFIG_PATH" "$DEPLOY_TARGET" <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -106,27 +116,61 @@ print(' '.join(__import__('shlex').quote(x) for x in args))
 PY
 )"
 
+SOLVER_ENV_EXPORTS="$(python3 - "$CONFIG_PATH" <<'PY'
+import json, shlex, sys
+from pathlib import Path
+
+config_path = Path(sys.argv[1])
+config = json.loads(config_path.read_text(encoding='utf-8'))
+env_map = config.get('solver_env') or config.get('solver_overrides') or {}
+if not isinstance(env_map, dict):
+    env_map = {}
+exports = []
+for key, value in env_map.items():
+    if value is None:
+        continue
+    if isinstance(value, (dict, list)):
+        value = json.dumps(value, separators=(',', ':'))
+    exports.append(f"{key}={shlex.quote(str(value))}")
+print(' '.join(exports))
+PY
+)"
+
 printf '==> resolved command for %s\n' "$DEPLOY_TARGET"
 printf '%s\n' "$JSON_OUT"
+if [[ -n "$SOLVER_ENV_EXPORTS" ]]; then
+  SOLVER_ENV_COUNT="$(python3 - "$CONFIG_PATH" <<'PY'
+import json, sys
+from pathlib import Path
+config = json.loads(Path(sys.argv[1]).read_text(encoding='utf-8'))
+print(len((config.get('solver_env') or config.get('solver_overrides') or {})))
+PY
+)"
+  printf '==> exporting %s env values\n' "$SOLVER_ENV_COUNT"
+fi
 
 if [[ "$DEPLOY_TARGET" == "local" ]]; then
   echo "==> local deploy"
   cd "$ROOT_DIR"
-  eval "docker compose run --rm pokerkit-open-spiel $JSON_OUT"
+  if [[ -n "$SOLVER_ENV_EXPORTS" ]]; then
+    eval "export $SOLVER_ENV_EXPORTS; docker compose run --rm pokerkit-open-spiel $JSON_OUT"
+  else
+    eval "docker compose run --rm pokerkit-open-spiel $JSON_OUT"
+  fi
   exit 0
 fi
 
 if [[ "$DEPLOY_TARGET" == "gce" ]]; then
   echo "==> gce deploy"
 
-  PROJECT="${PROJECT:-$(python3 - <<'PY' "$CONFIG_PATH"
+  PROJECT="${PROJECT:-$(python3 - "$CONFIG_PATH" <<'PY'
 import json, sys
 from pathlib import Path
 cfg = json.loads(Path(sys.argv[1]).read_text())
 print(cfg.get('project', 'pokerspiel'))
 PY
 )}"
-  ZONE="${ZONE:-$(python3 - <<'PY' "$CONFIG_PATH"
+  ZONE="${ZONE:-$(python3 - "$CONFIG_PATH" <<'PY'
 import json, sys
 from pathlib import Path
 cfg = json.loads(Path(sys.argv[1]).read_text())
@@ -134,7 +178,7 @@ print(cfg.get('zone', 'us-west1-b'))
 PY
 )}"
 
-  GCE_INSTANCES="$(python3 - <<'PY' "$CONFIG_PATH"
+  GCE_INSTANCES="$(python3 - "$CONFIG_PATH" <<'PY'
 import json, sys
 from pathlib import Path
 cfg = json.loads(Path(sys.argv[1]).read_text())
@@ -146,7 +190,7 @@ if not instances:
 print('\n'.join(instances))
 PY
 )"
-  RANGE_SAMPLES_OVERRIDE="$(python3 - <<'PY' "$CONFIG_PATH"
+  RANGE_SAMPLES_OVERRIDE="$(python3 - "$CONFIG_PATH" <<'PY'
 import json, sys
 from pathlib import Path
 cfg = json.loads(Path(sys.argv[1]).read_text())
@@ -157,6 +201,24 @@ PY
   if [[ -n "${INSTANCE:-}" ]]; then
     GCE_INSTANCES="$INSTANCE"
   fi
+
+  SOLVER_ENV_DOCKER_ARGS="$(python3 - "$CONFIG_PATH" <<'PY'
+import json, shlex, sys
+from pathlib import Path
+config = json.loads(Path(sys.argv[1]).read_text(encoding='utf-8'))
+env_map = config.get('solver_env') or config.get('solver_overrides') or {}
+if not isinstance(env_map, dict):
+    env_map = {}
+args = []
+for key, value in env_map.items():
+    if value is None:
+        continue
+    if isinstance(value, (dict, list)):
+        value = json.dumps(value, separators=(',', ':'))
+    args.append(f"-e {key}={shlex.quote(str(value))}")
+print(' '.join(args))
+PY
+)"
 
   deploy_failures=0
   while IFS= read -r target_instance; do
@@ -187,6 +249,7 @@ docker rm -f pokerspiel-run >/dev/null 2>&1 || true
 docker run -d \
   --name pokerspiel-run \
   -p 8080:8080 \
+  $SOLVER_ENV_DOCKER_ARGS \
   -e "POKERSPIEL_RANGE_SAMPLES=$RANGE_SAMPLES_OVERRIDE" \
   -v "\$HOME/pokerspiel:/app" \
   -w /app \

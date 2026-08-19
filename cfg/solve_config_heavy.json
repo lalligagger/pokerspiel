@@ -15,10 +15,20 @@
   "artifact_mode": "standard",
   "checkpoint_history_limit": 1,
   "output_json": "./app/data/solve_heavy/report.json",
+  "solver_env": {
+    "POKERSPIEL_SOLVER": "outcome",
+    "POKERSPIEL_PRESET": "hulh-preflop",
+    "POKERSPIEL_RANGE_SAMPLES": 200,
+    "POKERSPIEL_STABILITY_THRESHOLD": 0.01,
+    "POKERSPIEL_STOP_PATIENCE": 3,
+    "POKERSPIEL_MIN_ITERATIONS": 1000,
+    "POKERSPIEL_OUTPUT_JSON": "./app/data/solve_heavy/report.json"
+  },
   "notes": [
     "Full artifact run",
     "Only final checkpoint written",
     "Range export included",
-    "Most expensive configuration"
+    "Most expensive configuration",
+    "Values under solver_env are materialized as generated environment variables at launch time"
   ]
 }

@@ -17,11 +17,21 @@
   "artifact_mode": "lightweight",
   "checkpoint_history_limit": 0,
   "output_json": "./app/data/solve_light/report.json",
+  "solver_env": {
+    "POKERSPIEL_SOLVER": "outcome",
+    "POKERSPIEL_PRESET": "hulh-preflop",
+    "POKERSPIEL_RANGE_SAMPLES": 250,
+    "POKERSPIEL_STABILITY_THRESHOLD": 0.02,
+    "POKERSPIEL_STOP_PATIENCE": 2,
+    "POKERSPIEL_MIN_ITERATIONS": 0,
+    "POKERSPIEL_OUTPUT_JSON": "./app/data/solve_light/report.json"
+  },
   "notes": [
     "Fast smoke test",
     "Zero checkpointing",
     "Range export only",
     "No full snapshot artifacts",
-    "Good multi-instance validation profile"
+    "Good multi-instance validation profile",
+    "Values under solver_env are materialized as generated environment variables at launch time"
   ]
 }

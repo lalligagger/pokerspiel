@@ -1,104 +1,135 @@
-# pokerkit-openspiel
+# pokerspiel
 
-## HULH infoset definition
+A lightweight HULH poker solver and API wrapper built around a long-lived OpenSpiel/PokerKit runtime.
 
-In heads-up limit hold’em, an infoset is the full set of game states that a player cannot distinguish because their private cards are hidden and the player only sees the public information available at that point.
+The current architecture is intentionally simple:
 
-For a real acting player in HULH, the relevant infoset is not just “the current street.” It is the combination of:
+- one app process owns the live solver thread
+- the solver continues iterating in memory
+- API endpoints expose health, selected-node status, probing, and preflop lookups
+- runner profiles decide how a run is launched for local or GCE execution
 
-- player identity and acting position
-- hidden hole cards for that player
-- public board cards on the current street
-- current pot and bet-to-call context
-- action history on the current hand
-- the street and betting round we are in
-- any legal action family available at the node
+## What this repo is for
 
-Concretely, an infoset for player i at a decision point is:
+This repo is meant to support a practical solver workflow rather than only a one-off CLI benchmark.
 
-- street: preflop, flop, turn, or river
-- current player: i
-- private holding: the exact two-card hole combination for i
-- board state: public cards on board so far
-- pot context: current pot size, contribution to call, outstanding bet sizes
-- action history: all prior actions made on this hand, including checks, calls, bets, raises, and folds
-- legal actions: the action set available from PokerKit at that node, after any wrapper filtering or abstraction
+The main goals are:
 
-So the infoset is effectively:
+- run a long-lived solver process
+- inspect the active policy in-flight
+- export selected-node range snapshots and stability checkpoints
+- expose read-only API access to the solver state
+- switch between local and remote deployment with a small config profile
 
-- I = (player, hole_cards, board, pot_context, history, street, legal_actions)
+## Architecture
 
-This is the state that must be treated as one information set during learning: the player cannot tell apart histories that have the same public state and same hidden cards, and the solver must choose a strategy over this set.
+### Runtime model
 
-A simple example is a preflop infoset:
+The runtime is organized around a single service object that owns the live solver and the current in-memory policy state. The API layer reads from that shared state rather than creating a second solver instance.
 
-- player = 1
-- hole cards = {Ac, Kd}
-- board = {}
-- pot context = 3 (big blind + small blind contribution in the standard toy setup)
-- history = []
-- street = preflop
-- legal actions = {fold, call/check, bet/raise}
+This avoids the common failure mode where:
 
-This is one infoset for player 1. A different private holding such as {As, 7s} or a different action history such as a previous raise would belong to a different infoset, even if the public board is the same.
+- app startup creates one solver
+- status endpoints read another object
+- the API looks healthy but the solver is not actually the same runtime being tracked
 
-The same principle applies on later streets. For example, on the flop, the infoset includes the current player, public flop cards, pot size, current bet sizes, the action sequence so far, and whether the player is facing a bet, a raise, or a check.
+The implementation is centered in:
 
-The key point is that regret minimization operates over infosets, not over exact game-tree nodes. The solver learns a strategy for each infoset, and the strategy is shared across all identical hidden-card/public-history scenarios that the player cannot distinguish.
+- `api/app.py`: FastAPI app lifecycle
+- `api/service.py`: singleton-backed live solver adapter
+- `api/router.py`: read-only endpoints
+- `app_solver.py`: core solver, selected-node logic, checkpointing, artifacts
+- `runner.sh`: profile-driven launcher for local vs GCE runs
 
-## From infosets to regret minimization
+### Solver status semantics
 
-CFR and MCCFR learn by maintaining regret values for actions at each infoset. At a given infoset, the algorithm compares the utility of each available action against the current strategy mix and accumulates the difference.
+The live `/status` endpoint is a convergence signal, not a full-game exploitability metric.
 
-If a player would have done better by taking action a instead of following the current policy, that positive regret is added to the regret for a. Over time, the strategy is updated toward actions that have historically been better.
+It is based on selected-node policy drift across checkpoints:
 
-The intuition is straightforward:
+- compare action frequencies and hand policy deltas for the active node set
+- aggregate recent movement into max delta and average delta
+- expose those values as the live stability signal
 
-- each infoset has a set of legal actions
-- each action has an expected value under the current strategy profile
-- the regret for taking a different action is the improvement that would have occurred relative to the currently played action
-- the average strategy gradually shifts toward actions with positive cumulative regret
+This is a useful operational metric for “is the policy still moving materially?” but it is not the same as a full-game exploitability calculation.
 
-Note on terminology: expected value is the standard poker concept for the average value of an action under a distribution over opponent actions and chance; regret is the difference between the value of the action you took and the value of the best action you could have taken at that infoset. So regret is not a separate poker concept in opposition to EV; it is a running measure of how much better an alternative action would have been than the current one. In other words, regret is the “value gap” between the chosen action and the best available action, while expected value is the baseline value we are comparing against.
+## Current default model
 
-This is exactly why regret minimization is a natural fit for imperfect-information poker: the game is not a simple single-agent optimization problem, because the player does not know the opponent’s private cards, but the solver can still update policies on the right information sets.
+The default solver setup is still a full preflop node family for HULH. That means the active selected-node set is broad enough to support queryable preflop range views and policy stability tracking across the main preflop action families.
 
-## MCCFR and its variants in HULH
+This is a good default for now because it keeps the public API useful and the live solver state interpretable.
 
-MCCFR is a sampled version of CFR. Instead of traversing the entire game tree at every iteration, MCCFR samples only part of the game tree or a subset of action branches according to a sampling scheme. This makes it much more practical for large poker games.
+## Config and launch model
 
-For HULH, the usual pattern is:
+The repo uses JSON profiles as the launch layer, and the runner converts those profiles into the concrete solver invocation.
 
-- use the exact game rules from a PokerKit-backed wrapper
-- represent each decision as an infoset keyed by the relevant hidden/public information
-- keep per-infoset regrets and average strategy tables
-- sample trajectories through the game tree
-- update regrets only along the sampled path(s)
-- accumulate average strategy over time
+The config files live in:
 
-Different MCCFR variants differ in what is sampled:
+- `cfg/solve_config_light.json`
+- `cfg/solve_config_heavy.json`
 
-- external sampling: sample opponent and chance actions, update the player’s own action set along the sampled trajectory
-- outcome sampling: sample a terminal outcome or an action path and update only the sampled branch
-- full CFR: traverse the whole tree and update all actions
+The runner reads those profiles and resolves local vs remote execution.
 
-In practice, for HULH, the wrapper-based OpenSpiel flow uses the real game object, keeps the PokerKit legal action space intact, and then samples states and policies at valid actor nodes. The solver does not need a custom recursive poker solver; it uses the real OpenSpiel MCCFR machinery on the actual game representation, while the reporting and filtering layer compresses the extracted policy into meaningful human-readable infosets and ranges.
+A config file is divided into a few conceptual sections:
 
-The high-level story is:
+- run metadata: name, deploy target, project, zone
+- solver settings: model, preset, iterations, stopping rules
+- reporting settings: output path, range export behavior, artifact mode
+- `solver_env`: values that should be materialized as environment variables when the run is launched
 
-1. the state is represented as a real HULH game tree with imperfect information
-2. the relevant infoset encodes hidden cards, public board, action history, and pot context
-3. regret minimization updates that infoset-level policy over time
-4. MCCFR samples the tree to make the updates tractable
-5. the final average strategy approximates the equilibrium strategy profile for the HULH game
+The important rule is:
 
-This is the core solver model currently being used in the wrapper-based HULH flow.
+- JSON config files are for launch presets and run setup
+- the live app runtime owns its own in-memory state
+- the API does not read config JSON files directly at runtime
 
----
+## Local quick start
 
+Run a local solver profile:
 
-new "lightweight" run for preflop ranges
+```bash
+bash runner.sh ./cfg/solve_config_light.json local
 ```
+
+This resolves the config and launches the selected solver command through Docker compose.
+
+## GCE quick start
+
+> [!IMPORTANT]
+> The GCE flow requires a Google Cloud account and the relevant GCP services enabled for VM creation and firewall configuration. Local-only runs do not require GCP.
+
+Run the same profile against the configured GCE path:
+
+```bash
+bash runner.sh ./cfg/solve_config_light.json gce
+```
+
+The deploy scripts under `deploy/` handle the VM and Docker startup flow, and the runner can be used as the main orchestration point.
+
+## API endpoints
+
+The live service exposes read-only endpoints such as:
+
+- `/health`
+- `/status`
+- `/probe`
+- `/bulk-probe`
+- `/preflop/{spot}/{hand}`
+
+These are designed to answer operational questions like:
+
+- is the solver still running?
+- how far has it moved since the last checkpoint?
+- what is the current policy for a given selected node or hand?
+- what is the current preflop range summary for a selected spot?
+
+## Running the solver directly
+
+The core solver entry point is still the CLI form in `app_solver.py`.
+
+Example slim run for a lightweight range report:
+
+```bash
 docker compose run pokerkit-open-spiel \
   python app_solver.py hulh \
   --iterations 400000 \
@@ -114,3 +145,28 @@ docker compose run pokerkit-open-spiel \
   --range-last-n 2000 \
   --output-json /app/overnight_runs/hulh_400k_lightweight/report.json
 ```
+
+## Current scope and limits
+
+This project is intentionally focused on a practical, observable solver workflow.
+
+Current limits include:
+
+- selected-node policy drift is used as the live stability signal
+- full exploitability is not the live runtime metric
+- preflop is the most mature benchmark surface today
+- post-flop node selection and deeper benchmark framing are still active design work
+
+That is an intentional boundary: the system is built to be useful and inspectable now, without pretending to be a full equilibrium solver framework overnight.
+
+## Summary
+
+This repo is a practical HULH solver runtime with:
+
+- a long-lived solver process
+- selected-node stability tracking
+- preflop policy and range reporting
+- local/GCE launch orchestration
+- a read-only API layer for operational inspection
+
+The goal is to keep the engine stable and observable while still being flexible enough to expand into more sophisticated benchmark and reference strategies later.
