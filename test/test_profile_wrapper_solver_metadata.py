@@ -1,3 +1,4 @@
+import os
 import subprocess
 import sys
 
@@ -34,6 +35,7 @@ from app_solver import (
 
 
 def test_app_solver_accepts_checkpoint_every_alias():
+    repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     result = subprocess.run(
         [
             sys.executable,
@@ -48,7 +50,7 @@ def test_app_solver_accepts_checkpoint_every_alias():
             "--solver",
             "outcome",
         ],
-        cwd="/Users/lalligagger/py_dev/pokerspiel",
+        cwd=repo_root,
         capture_output=True,
         text=True,
     )
@@ -56,14 +58,14 @@ def test_app_solver_accepts_checkpoint_every_alias():
     assert result.returncode == 0, result.stderr
 
 
-def test_solver_service_defaults_to_outcome_and_respects_env_override(monkeypatch):
+def test_solver_service_defaults_to_external_and_respects_env_override(monkeypatch):
     monkeypatch.delenv("POKERSPIEL_SOLVER", raising=False)
     service = SolverService()
-    assert service.solver_name == "outcome"
-
-    monkeypatch.setenv("POKERSPIEL_SOLVER", "external")
-    service = SolverService()
     assert service.solver_name == "external"
+
+    monkeypatch.setenv("POKERSPIEL_SOLVER", "outcome")
+    service = SolverService()
+    assert service.solver_name == "outcome"
 
 
 def test_router_uses_shared_service_singleton():

@@ -46,7 +46,7 @@ class SolverService:
     ):
         configured_solver_name = os.getenv("POKERSPIEL_SOLVER")
         if solver_name is None:
-            solver_name = configured_solver_name or "outcome"
+            solver_name = configured_solver_name or "external"
         solver_name = str(solver_name).lower()
 
         configured_range_samples = os.getenv("POKERSPIEL_RANGE_SAMPLES")
