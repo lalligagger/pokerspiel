@@ -9,6 +9,7 @@ IMAGE_NAME="${IMAGE_NAME:-pokerspiel-live}"
 REPO_DIR="${REPO_DIR:-$HOME/pokerspiel}"
 BRANCH="${BRANCH:-postflop-redux}"
 REMOTE_NAME="${REMOTE_NAME:-origin}"
+MIN_ITERATIONS="${MIN_ITERATIONS:-1000}"
 
 echo "==> Launching app on GCE instance: $INSTANCE_NAME"
 echo "==> Target branch: $BRANCH"
@@ -23,7 +24,8 @@ BRANCH="${BRANCH:-postflop-redux}"
 REMOTE_NAME="${REMOTE_NAME:-origin}"
 IMAGE_NAME="${IMAGE_NAME:-pokerspiel-live}"
 APP_PORT="${APP_PORT:-8080}"
-export BRANCH REMOTE_NAME IMAGE_NAME APP_PORT
+MIN_ITERATIONS="${MIN_ITERATIONS:-1000}"
+export BRANCH REMOTE_NAME IMAGE_NAME APP_PORT MIN_ITERATIONS
 
 sudo apt-get update
 sudo apt-get install -y git docker.io
@@ -68,6 +70,7 @@ docker run -d \
   --restart unless-stopped \
   -p "$APP_PORT:$APP_PORT" \
   -e POKERSPIEL_RANGE_SAMPLES=250 \
+  -e POKERSPIEL_MIN_ITERATIONS="$MIN_ITERATIONS" \
   -v "$HOME/pokerspiel:/app" \
   -w /app \
   "$IMAGE_NAME" \

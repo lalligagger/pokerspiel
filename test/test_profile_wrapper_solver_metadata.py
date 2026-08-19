@@ -69,6 +69,12 @@ def test_solver_service_defaults_to_external_and_respects_env_override(monkeypat
     assert service.solver_name == "outcome"
 
 
+def test_solver_service_respects_min_iterations_env_override(monkeypatch):
+    monkeypatch.setenv("POKERSPIEL_MIN_ITERATIONS", "1000")
+    service = SolverService()
+    assert service.min_iterations == 1000
+
+
 def test_router_uses_shared_service_singleton():
     assert router_service is app_service
 

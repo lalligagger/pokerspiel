@@ -63,6 +63,10 @@ class SolverService:
         if postflop_samples is None:
             postflop_samples = int(configured_postflop_samples) if configured_postflop_samples is not None else 32
 
+        configured_min_iterations = os.getenv("POKERSPIEL_MIN_ITERATIONS")
+        if configured_min_iterations is not None:
+            min_iterations = int(configured_min_iterations)
+
         self.solver_name = solver_name
         self.max_iterations = max_iterations
         self.checkpoint_every = checkpoint_every

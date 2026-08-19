@@ -15,6 +15,7 @@
   "output_json": "./app/data/solve_light/report.json",
   "solver_env": {
     "POKERSPIEL_SOLVER": "external",
-    "POKERSPIEL_RANGE_SAMPLES": 250
+    "POKERSPIEL_RANGE_SAMPLES": 250,
+    "POKERSPIEL_MIN_ITERATIONS": 1000
   }
 }
