@@ -3,18 +3,18 @@
   "solver": "external",
   "preset": "hulh-preflop",
   "iterations": 100000,
-  "checkpoint_every": 4000,
+  "checkpoint_every": 1000,
   "stability_threshold": 0.01,
   "stop_patience": 3,
-  "min_iterations": 0,
-  "range_samples": 2500,
-  "range_last_n": 5000,
+  "min_iterations": 10000,
+  "range_samples": 250,
+  "range_last_n": 50,
   "report_mode": "summary",
   "artifact_mode": "lightweight",
   "checkpoint_history_limit": 2,
   "output_json": "./app/data/solve_light/report.json",
   "solver_env": {
     "POKERSPIEL_SOLVER": "external",
-    "POKERSPIEL_RANGE_SAMPLES": 2500
+    "POKERSPIEL_RANGE_SAMPLES": 250
   }
 }

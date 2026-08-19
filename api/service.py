@@ -74,7 +74,7 @@ class SolverService:
         self.postflop_samples = max(int(postflop_samples or 1), 1)
 
         self.lock = threading.RLock()
-        self.runtime = SolverRuntimeState(state=SolverState.RUNNING)
+        self.runtime = SolverRuntimeState(state=SolverState.TRAINING)
         self._thread: Optional[threading.Thread] = None
         self._stop_event = threading.Event()
         self._game = None
@@ -135,8 +135,8 @@ class SolverService:
         )
 
     def _run_live_solver(self) -> None:
-        self.runtime.state = SolverState.RUNNING
-        self.runtime.ready_for_queries = True
+        self.runtime.state = SolverState.TRAINING
+        self.runtime.ready_for_queries = False
         self.runtime.stable = False
         self._last_error = None
         print("[solver-start] entering live solver thread", flush=True)
@@ -147,13 +147,6 @@ class SolverService:
             self._solver = make_solver(self._game, self.solver_name)
             print("[solver-start] resolving node specs", flush=True)
             self._selected_specs = resolve_node_specs("hulh-preflop", ())
-            print("[solver-start] preparing probes", flush=True)
-            self._probes = prepare_selected_node_probes(
-                self._game,
-                self._selected_specs,
-                samples_per_node=self.range_samples,
-            )
-            print(f"[solver-start] probes ready: {len(self._probes)}", flush=True)
 
             previous_ranges = None
             consecutive_stable = 0
@@ -161,7 +154,7 @@ class SolverService:
             for iteration in range(1, self.max_iterations + 1):
                 if self._stop_event.is_set():
                     self.runtime.state = SolverState.PAUSED
-                    self.runtime.ready_for_queries = True
+                    self.runtime.ready_for_queries = False
                     break
 
                 print(f"[solver-start] entering iteration {iteration}/{self.max_iterations}", flush=True)
@@ -169,7 +162,18 @@ class SolverService:
                 self.runtime.iteration = iteration
                 print(f"[solver-start] completed iteration {iteration}", flush=True)
 
-                if iteration % self.checkpoint_every == 0:
+                if iteration >= self.min_iterations:
+                    if self.runtime.state == SolverState.TRAINING:
+                        self.runtime.state = SolverState.SCORING
+                    if not self._probes and self.checkpoint_every:
+                        print("[solver-start] preparing scoring probes at min iteration", flush=True)
+                        self._probes = prepare_selected_node_probes(
+                            self._game,
+                            self._selected_specs,
+                            samples_per_node=self.range_samples,
+                        )
+
+                if self.checkpoint_every and iteration >= self.min_iterations and iteration % self.checkpoint_every == 0:
                     policy = self._solver.average_policy()
                     checkpoint_records = snapshot_probe_states(policy, self._probes)
                     for record in checkpoint_records:
@@ -194,7 +198,7 @@ class SolverService:
 
                     if iteration >= self.min_iterations and consecutive_stable >= self.stop_patience:
                         self.runtime.stable = True
-                        self.runtime.state = SolverState.QUERYABLE
+                        self.runtime.state = SolverState.AVAILABLE
                         self.runtime.ready_for_queries = True
                         self.runtime.latest_stable_snapshot = {
                             "iteration": iteration,
@@ -203,19 +207,22 @@ class SolverService:
 
             if self._stop_event.is_set():
                 self.runtime.state = SolverState.PAUSED
-                self.runtime.ready_for_queries = True
+                self.runtime.ready_for_queries = False
             elif self.runtime.iteration >= self.max_iterations:
                 self.runtime.state = SolverState.STOPPED
-                self.runtime.ready_for_queries = True
-            elif self.runtime.state not in {SolverState.QUERYABLE, SolverState.STABLE, SolverState.RUNNING, SolverState.PAUSED}:
-                self.runtime.state = SolverState.RUNNING
-                self.runtime.ready_for_queries = True
+                self.runtime.ready_for_queries = False
+            elif self.runtime.state == SolverState.TRAINING:
+                self.runtime.state = SolverState.TRAINING
+                self.runtime.ready_for_queries = False
+            elif self.runtime.state == SolverState.SCORING and not self.runtime.stable:
+                self.runtime.state = SolverState.SCORING
+                self.runtime.ready_for_queries = False
 
             if self._solver is not None:
                 self.runtime.current_average_policy = self._solver.average_policy()
 
-            if self.runtime.stable and self.runtime.state != SolverState.STOPPED:
-                self.runtime.state = SolverState.STABLE
+            if self.runtime.stable and self.runtime.state not in {SolverState.STOPPED, SolverState.PAUSED}:
+                self.runtime.state = SolverState.AVAILABLE
                 self.runtime.ready_for_queries = True
 
         except Exception as exc:  # pragma: no cover - runtime path
@@ -241,6 +248,23 @@ class SolverService:
                     stability=self._stability_summary(),
                     ready=False,
                     message="live solver has not started yet",
+                )
+
+            if self.runtime.state not in {SolverState.AVAILABLE, SolverState.QUERYABLE, SolverState.STABLE}:
+                return ProbeResponse(
+                    iteration=self.runtime.iteration,
+                    node=request.node,
+                    display_name=request.node,
+                    history=request.history,
+                    sample_count=0,
+                    action_frequencies={},
+                    hands=[],
+                    stability=self._stability_summary(),
+                    ready=False,
+                    message=(
+                        f"solver is in phase '{self.runtime.state.value if self.runtime.state else 'unknown'}'; "
+                        "preflop probes are unavailable until min_iterations and stability are both satisfied"
+                    ),
                 )
 
             effective_min_iteration = request.min_iteration if request.min_iteration is not None else self.probe_min_iteration
@@ -370,6 +394,12 @@ class SolverService:
         effective_min_iteration = self.min_iterations
         if request_min_iteration is not None:
             effective_min_iteration = max(int(request_min_iteration), effective_min_iteration)
+
+        if self.runtime.state not in {SolverState.AVAILABLE, SolverState.QUERYABLE, SolverState.STABLE}:
+            return (
+                f"solver is in phase '{self.runtime.state.value if self.runtime.state else 'unknown'}'; "
+                "postflop probes are unavailable until min_iterations and stability are both satisfied"
+            )
 
         if effective_min_iteration is not None and self.runtime.iteration < int(effective_min_iteration):
             return (
@@ -662,6 +692,98 @@ class SolverService:
             message="live postflop range estimate over the chosen hand subset",
         )
 
+    def get_preflop_range(self, spot: str) -> "PreflopRangeResponse":
+        from .contracts import PreflopRangeResponse
+
+        resolved_spot = self._normalize_preflop_spot(spot)
+        if self._solver is None or self._game is None:
+            return PreflopRangeResponse(
+                spot=resolved_spot,
+                iteration=self.runtime.iteration,
+                ready=False,
+                message="live solver has not started yet",
+            )
+
+        if self.runtime.state not in {SolverState.AVAILABLE, SolverState.QUERYABLE, SolverState.STABLE}:
+            return PreflopRangeResponse(
+                spot=resolved_spot,
+                iteration=self.runtime.iteration,
+                ready=False,
+                message=(
+                    f"solver is in phase '{self.runtime.state.value if self.runtime.state else 'unknown'}'; "
+                    "preflop range data is unavailable until min_iterations and stability are both satisfied"
+                ),
+            )
+
+        current_ranges = getattr(self, "_current_ranges", {}) or {}
+        node_data = None
+        for node in current_ranges.get("nodes", []):
+            if node.get("name") == resolved_spot or node.get("display_name") == resolved_spot:
+                node_data = node
+                break
+
+        if node_data is not None and (node_data.get("hands") or []):
+            hands = []
+            for hand_entry in node_data.get("hands", []):
+                if not hand_entry.get("hand"):
+                    continue
+                policy = hand_entry.get("policy") or {}
+                hands.append(
+                    HandPolicy(
+                        hand=str(hand_entry.get("hand")),
+                        policy={str(action): float(prob) for action, prob in policy.items()},
+                    )
+                )
+            return PreflopRangeResponse(
+                spot=resolved_spot,
+                iteration=self.runtime.iteration,
+                hands=hands,
+                hand_count=len(hands),
+                ready=True,
+                message="live preflop range from current in-memory policy",
+            )
+
+        selected_spec = None
+        for spec in getattr(self, "_selected_specs", []) or []:
+            if spec.get("name") == resolved_spot or spec.get("display_name") == resolved_spot:
+                selected_spec = spec
+                break
+
+        probe = self.request_probe(
+            ProbeRequest(
+                node=resolved_spot,
+                history=list((selected_spec or {}).get("history") or []),
+                samples=max(int(self.range_samples), 1),
+                min_iteration=0,
+                include_stability=False,
+                include_hands=True,
+            )
+        )
+        if not probe.ready:
+            return PreflopRangeResponse(
+                spot=resolved_spot,
+                iteration=self.runtime.iteration,
+                ready=False,
+                message=probe.message or f"preflop range for spot '{resolved_spot}' is not available",
+            )
+
+        hands = [
+            HandPolicy(
+                hand=str(hand.hand),
+                policy={str(action): float(prob) for action, prob in (getattr(hand, "policy", {}) or {}).items()},
+            )
+            for hand in (probe.hands or [])
+            if getattr(hand, "hand", None)
+        ]
+        return PreflopRangeResponse(
+            spot=resolved_spot,
+            iteration=self.runtime.iteration,
+            hands=hands,
+            hand_count=len(hands),
+            ready=True,
+            message="live preflop range from current in-memory policy",
+        )
+
     def get_preflop_spot(self, spot: str, hand: str) -> "SpotFrequencyResponse":
         from .contracts import SpotFrequencyResponse
 
@@ -687,6 +809,19 @@ class SolverService:
                 message="live solver has not started yet",
             )
 
+        if self.runtime.state not in {SolverState.AVAILABLE, SolverState.QUERYABLE, SolverState.STABLE}:
+            return SpotFrequencyResponse(
+                spot=resolved_spot,
+                hand=normalized_hand,
+                iteration=self.runtime.iteration,
+                frequencies={},
+                ready=False,
+                message=(
+                    f"solver is in phase '{self.runtime.state.value if self.runtime.state else 'unknown'}'; "
+                    "preflop data is unavailable until min_iterations and stability are both satisfied"
+                ),
+            )
+
         node_name = resolved_spot
         node_data = None
         current_ranges = getattr(self, "_current_ranges", {}) or {}
@@ -695,24 +830,49 @@ class SolverService:
                 node_data = node
                 break
 
-        if node_data is None:
-            return SpotFrequencyResponse(
-                spot=resolved_spot,
-                hand=normalized_hand,
-                iteration=self.runtime.iteration,
-                frequencies={},
-                ready=False,
-                message=f"spot '{resolved_spot}' is not available in the current preflop runtime state",
+        selected_spec = None
+        for spec in getattr(self, "_selected_specs", []) or []:
+            if spec.get("name") == node_name or spec.get("display_name") == node_name:
+                selected_spec = spec
+                break
+
+        hand_policy = None
+        if node_data is not None:
+            hand_policy = next(
+                (
+                    hand_entry
+                    for hand_entry in (node_data.get("hands") or [])
+                    if str(hand_entry.get("hand", "")).strip() == normalized_hand
+                ),
+                None,
             )
 
-        hand_policy = next(
-            (
-                hand_entry
-                for hand_entry in (node_data.get("hands") or [])
-                if str(hand_entry.get("hand", "")).strip() == normalized_hand
-            ),
-            None,
-        )
+        if hand_policy is None:
+            probe = self.request_probe(
+                ProbeRequest(
+                    node=node_name,
+                    history=list((selected_spec or {}).get("history") or []),
+                    samples=max(int(self.range_samples), 1),
+                    min_iteration=0,
+                    include_stability=False,
+                    include_hands=True,
+                )
+            )
+            if probe.ready:
+                def _hand_key(hand_entry):
+                    if isinstance(hand_entry, dict):
+                        return str(hand_entry.get("hand", "")).strip()
+                    return str(getattr(hand_entry, "hand", "")).strip()
+
+                hand_policy = next(
+                    (
+                        hand_entry
+                        for hand_entry in (probe.hands or [])
+                        if _hand_key(hand_entry) == normalized_hand
+                    ),
+                    None,
+                )
+
         if hand_policy is None:
             return SpotFrequencyResponse(
                 spot=resolved_spot,
@@ -720,10 +880,18 @@ class SolverService:
                 iteration=self.runtime.iteration,
                 frequencies={},
                 ready=False,
-                message=f"hand '{normalized_hand}' not found for preflop spot '{resolved_spot}'",
+                message=(
+                    f"spot '{resolved_spot}' is not available in the current preflop runtime state"
+                    if node_data is None
+                    else f"hand '{normalized_hand}' not found for preflop spot '{resolved_spot}'"
+                ),
             )
 
-        policy = hand_policy.get("policy") or {}
+        if isinstance(hand_policy, dict):
+            policy = hand_policy.get("policy") or {}
+        else:
+            policy = getattr(hand_policy, "policy", {}) or {}
+
         frequencies = {
             "fold": float(policy.get("fold", 0.0)),
             "check_call": float(policy.get("check_call", policy.get("call", 0.0))),

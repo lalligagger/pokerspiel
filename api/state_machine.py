@@ -6,6 +6,9 @@ from typing import Any, Dict, Optional
 
 
 class SolverState(str, Enum):
+    TRAINING = "training"
+    SCORING = "scoring"
+    AVAILABLE = "available"
     RUNNING = "running"
     STABLE = "stable"
     QUERYABLE = "queryable"

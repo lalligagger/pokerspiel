@@ -10,6 +10,7 @@ from .contracts import (
     PostflopExactResponse,
     PostflopRangeRequest,
     PostflopRangeResponse,
+    PreflopRangeResponse,
     ProbeRequest,
     ProbeResponse,
     SolverStatusResponse,
@@ -51,6 +52,11 @@ def get_preflop_spot(spot: str, hand: str) -> SpotFrequencyResponse:
 @router.get("/preflop/open", response_model=SpotFrequencyResponse)
 def get_preflop_open_spot(hand: str) -> SpotFrequencyResponse:
     return service.get_preflop_spot(spot="open", hand=hand)
+
+
+@router.get("/preflop/{spot}/range", response_model=PreflopRangeResponse)
+def get_preflop_range(spot: str) -> PreflopRangeResponse:
+    return service.get_preflop_range(spot=spot)
 
 
 @router.post("/postflop/exact", response_model=PostflopExactResponse)

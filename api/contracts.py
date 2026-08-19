@@ -63,6 +63,18 @@ class SpotFrequencyResponse:
 
 
 @dataclass
+class PreflopRangeResponse:
+    """Full canonical preflop range for a spot based on the current in-memory policy."""
+
+    spot: str
+    iteration: int
+    hands: List[HandPolicy] = field(default_factory=list)
+    hand_count: int = 0
+    ready: bool = True
+    message: Optional[str] = None
+
+
+@dataclass
 class PostflopExactRequest:
     """Exact infoset lookup for a fixed board, betting history, and hole cards."""
 
