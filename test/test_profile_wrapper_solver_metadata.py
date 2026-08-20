@@ -2,6 +2,7 @@ import os
 import subprocess
 import sys
 
+import numpy as np
 import pyspiel
 import pytest
 
@@ -22,6 +23,9 @@ from api.state_machine import SolverState
 from api.contracts import PostflopExactRequest, PostflopExactResponse, PostflopRangeRequest, PostflopRangeResponse
 from app_solver import (
     GAME_CONFIGS,
+    FlatMCCFRTables,
+    FlatStateIndex,
+    encode_state_key,
     exact_hole_board_signature,
     filter_recent_iteration_records,
     format_hulh_history_label,
@@ -33,6 +37,48 @@ from app_solver import (
     sample_distinct_deal_states,
     summarize_policy_profiles,
 )
+
+
+def test_flat_state_index_and_tables_use_integer_ids_and_memmap(tmp_path):
+    base = tmp_path / "solver"
+    state_index = FlatStateIndex(str(base), max_states=8)
+    tables = FlatMCCFRTables(str(base), max_states=8, max_actions=3)
+
+    key_a = encode_state_key(history=(1, 4), bucket=7)
+    key_b = encode_state_key(history=(1, 4), bucket=7)
+    key_c = encode_state_key(history=(0, 1), bucket=4)
+
+    assert state_index.lookup_or_insert(key_a) == 0
+    assert state_index.lookup_or_insert(key_b) == 0
+    assert state_index.lookup_or_insert(key_c) == 1
+    assert tables.regret.shape == (8, 3)
+    assert tables.regret.dtype == np.float32
+    tables.regret[0, 0] = 1.25
+    assert tables.regret[0, 0] == pytest.approx(1.25)
+
+
+def test_service_status_and_probe_compatibility_with_flat_runtime(tmp_path):
+    service = SolverService(min_iterations=0, checkpoint_every=1, range_samples=1)
+    service.runtime.iteration = 5
+    service.runtime.ready_for_queries = True
+    service.runtime.stable = True
+    service.runtime.state = SolverState.AVAILABLE
+    service._selected_specs = [{"name": "first_to_act", "display_name": "first_to_act", "history": []}]
+    service._flat_state_index = FlatStateIndex(str(tmp_path / "flat_status"), max_states=8)
+    service._flat_tables = FlatMCCFRTables(str(tmp_path / "flat_status"), max_states=8, max_actions=3)
+    service._flat_state_index.lookup_or_insert(encode_state_key([], bucket=7))
+    service._flat_tables.avg_strategy[0, 0] = 0.1
+    service._flat_tables.avg_strategy[0, 1] = 0.3
+    service._flat_tables.avg_strategy[0, 2] = 0.6
+    service._flat_tables.visits[0] = 1.0
+
+    status = service.status()
+    assert status.selected_node_summary[0]["node_name"] == "first_to_act"
+    assert status.ready_for_queries is True
+
+    probe = service.request_probe(type("Req", (), {"node": "first_to_act", "history": [], "samples": 1, "min_iteration": 0, "include_stability": True, "include_hands": True, "action_filter": None})())
+    assert probe.ready is True
+    assert probe.action_frequencies["bet_raise"] == pytest.approx(0.6)
 
 
 def test_app_solver_accepts_checkpoint_every_alias():

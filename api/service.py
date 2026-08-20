@@ -1,16 +1,24 @@
 from __future__ import annotations
 
+import hashlib
 import os
 import re
+import tempfile
 import threading
 from typing import Dict, Iterable, List, Optional
 
+import numpy as np
 import pyspiel
 
 from app_solver import (
     GAME_CONFIGS,
+    FlatMCCFRTables,
+    FlatStateIndex,
     aggregate_selected_node_ranges,
     build_selected_node_summary,
+    canonical_action_family,
+    encode_state_key,
+    exact_hole_board_signature,
     make_solver,
     prepare_selected_node_probes,
     resolve_node_specs,
@@ -101,6 +109,77 @@ class SolverService:
         self._current_ranges = {"nodes": []}
         self._last_stability: Optional[Dict[str, object]] = None
         self._last_error: Optional[str] = None
+        self._flat_state_index: Optional[FlatStateIndex] = None
+        self._flat_tables: Optional[FlatMCCFRTables] = None
+
+    def _init_flat_kernel(self) -> None:
+        if self._flat_state_index is not None and self._flat_tables is not None:
+            return
+
+        memmap_dir = os.getenv("POKERSPIEL_MEMMAP_DIR") or os.path.join(tempfile.gettempdir(), "pokerspiel_live_solver")
+        os.makedirs(memmap_dir, exist_ok=True)
+
+        max_states = max(4096, min(self.max_iterations * 8, 2_000_000))
+        state_path = os.path.join(memmap_dir, "state")
+        tables_path = os.path.join(memmap_dir, "solver")
+        self._flat_state_index = FlatStateIndex(state_path, max_states=max_states)
+        self._flat_tables = FlatMCCFRTables(tables_path, max_states=max_states, max_actions=3)
+
+    def _state_bucket_for_state(self, state, history=None) -> int:
+        if state is None:
+            return 0
+
+        signature = exact_hole_board_signature(state)
+        token = signature or "unknown|"
+        digest = hashlib.blake2b(token.encode("utf-8"), digest_size=8).digest()
+        return int.from_bytes(digest, byteorder="little", signed=False) & 0xFFFFFFFF
+
+    def _flat_action_code(self, action) -> Optional[int]:
+        family = canonical_action_family(int(action))
+        if family == "fold":
+            return 0
+        if family == "check_call":
+            return 1
+        if family == "bet_raise":
+            return 2
+        return None
+
+    def _record_flat_policy_state(self, state, history, policy) -> Optional[int]:
+        if self._flat_state_index is None or self._flat_tables is None:
+            self._init_flat_kernel()
+        if state is None:
+            return None
+
+        state_key = encode_state_key(history or [], bucket=self._state_bucket_for_state(state, history))
+        state_id = self._flat_state_index.lookup_or_insert(state_key)
+
+        try:
+            player = int(state.current_player())
+            legal = set(int(action) for action in state.legal_actions())
+            raw_policy = policy.get_state_policy(state, player)
+        except Exception:
+            return state_id
+
+        for action, probability in raw_policy:
+            compact_action = self._flat_action_code(action)
+            if compact_action is None or int(action) not in legal:
+                continue
+            self._flat_tables.strategy[state_id, compact_action] = float(probability)
+            self._flat_tables.avg_strategy[state_id, compact_action] += float(probability)
+            self._flat_tables.visits[state_id] += 1.0
+
+        return state_id
+
+    def _register_probe_state(self, probe: Dict[str, object]) -> Optional[int]:
+        if self._flat_state_index is None or self._flat_tables is None:
+            self._init_flat_kernel()
+
+        state = probe.get("state")
+        if state is None:
+            return None
+
+        history = list(probe.get("history") or [])
+        return self._record_flat_policy_state(state, history, self._solver.average_policy())
 
     def start(self) -> None:
         if self._thread is not None and self._thread.is_alive():
@@ -125,8 +204,75 @@ class SolverService:
             message=self._last_error or "solver is running; read-only probe APIs are enabled",
         )
 
+    def _history_code_for_spec(self, history: Iterable[str]) -> int:
+        action_code = 0
+        for depth, action in enumerate(history or []):
+            normalized = str(action).strip().lower()
+            if normalized in {"fold"}:
+                compact = 0
+            elif normalized in {"check", "call"}:
+                compact = 1
+            elif normalized in {"bet", "raise"}:
+                compact = 2
+            else:
+                compact = int(action) % 4
+            action_code |= int(compact) << (2 * depth)
+        return action_code
+
+    def _flat_action_frequencies_for_history(self, history: Iterable[str]) -> Optional[Dict[str, float]]:
+        if self._flat_state_index is None or self._flat_tables is None:
+            return None
+
+        keys = self._flat_state_index.state_keys[: self._flat_state_index.state_count]
+        target_history_code = self._history_code_for_spec(history)
+        matches = [
+            idx for idx, key in enumerate(keys) if (int(key) >> 32) == target_history_code
+        ]
+        if not matches:
+            return None
+
+        action_frequencies = {
+            "fold": 0.0,
+            "check_call": 0.0,
+            "bet_raise": 0.0,
+        }
+        sample_count = 0
+        for idx in matches:
+            action_frequencies["fold"] += float(self._flat_tables.avg_strategy[idx, 0])
+            action_frequencies["check_call"] += float(self._flat_tables.avg_strategy[idx, 1])
+            action_frequencies["bet_raise"] += float(self._flat_tables.avg_strategy[idx, 2])
+            sample_count += int(self._flat_tables.visits[idx])
+
+        return {
+            "action_frequencies": action_frequencies,
+            "sample_count": sample_count,
+        }
+
+    def _selected_summary_from_flat_kernel(self) -> List[Dict[str, object]]:
+        if self._flat_state_index is None or self._flat_tables is None:
+            return []
+
+        summary_rows = []
+        for spec in self._selected_specs:
+            history = list(spec.get("history") or [])
+            flat_summary = self._flat_action_frequencies_for_history(history)
+            if flat_summary is None:
+                continue
+
+            row = {
+                "node_name": spec.get("name"),
+                "display_name": spec.get("display_name") or spec.get("name"),
+                "history": history,
+                "sample_count": flat_summary["sample_count"],
+                "action_frequencies": flat_summary["action_frequencies"],
+            }
+            summary_rows.append(row)
+        return summary_rows
+
     def status(self) -> SolverStatusResponse:
         selected_summary = build_selected_node_summary(self._current_ranges)
+        if not selected_summary:
+            selected_summary = self._selected_summary_from_flat_kernel()
         return SolverStatusResponse(
             solver=self.solver_name,
             iteration=self.runtime.iteration,
@@ -191,8 +337,15 @@ class SolverService:
                             self._selected_specs,
                             samples_per_node=self.range_samples,
                         )
+                        for probe in self._probes:
+                            self._register_probe_state(probe)
 
                 if self.checkpoint_every and iteration >= self.min_iterations and iteration % self.checkpoint_every == 0:
+                    self._init_flat_kernel()
+                    for probe in self._probes:
+                        self._register_probe_state(probe)
+                    if self._solver is not None:
+                        self.runtime.current_average_policy = self._solver.average_policy()
                     policy = self._solver.average_policy()
                     checkpoint_records = snapshot_probe_states(policy, self._probes)
                     for record in checkpoint_records:
@@ -255,7 +408,12 @@ class SolverService:
 
     def request_probe(self, request: ProbeRequest) -> ProbeResponse:
         with self.lock:
-            if self._solver is None or self._game is None:
+            flat_ready = (
+                self._flat_state_index is not None
+                and self._flat_tables is not None
+                and self._flat_state_index.state_count > 0
+            )
+            if (self._solver is None or self._game is None) and not flat_ready:
                 return ProbeResponse(
                     iteration=self.runtime.iteration,
                     node=request.node,
@@ -269,7 +427,7 @@ class SolverService:
                     message="live solver has not started yet",
                 )
 
-            if self.runtime.state not in {SolverState.AVAILABLE, SolverState.QUERYABLE, SolverState.STABLE}:
+            if self.runtime.state not in {SolverState.AVAILABLE, SolverState.QUERYABLE, SolverState.STABLE} and not flat_ready:
                 return ProbeResponse(
                     iteration=self.runtime.iteration,
                     node=request.node,
@@ -325,10 +483,70 @@ class SolverService:
                     message=f"unknown selected node '{request.node}'",
                 )
 
+            flat_ready = (
+                self._flat_state_index is not None
+                and self._flat_tables is not None
+                and self._flat_state_index.state_count > 0
+            )
+
+            def flat_probe_response_for_history(history: Iterable[str], *, message: str) -> ProbeResponse:
+                summary = self._flat_action_frequencies_for_history(history)
+                if summary is None:
+                    return ProbeResponse(
+                        iteration=self.runtime.iteration,
+                        node=request.node,
+                        display_name=resolved.get("display_name") or request.node,
+                        history=list(history),
+                        sample_count=0,
+                        action_frequencies={},
+                        hands=[],
+                        stability=self._stability_summary(),
+                        ready=False,
+                        message=f"no probe records available for node '{request.node}'",
+                    )
+                return ProbeResponse(
+                    iteration=self.runtime.iteration,
+                    node=request.node,
+                    display_name=resolved.get("display_name") or request.node,
+                    history=list(history),
+                    sample_count=summary["sample_count"],
+                    action_frequencies=summary["action_frequencies"],
+                    hands=[],
+                    stability=self._stability_summary(),
+                    ready=True,
+                    message=message,
+                )
+
+            if self._game is None or self._solver is None:
+                if flat_ready:
+                    history = list(resolved.get("history") or [])
+                    return flat_probe_response_for_history(
+                        history,
+                        message="live selected-node snapshot from flat memmap-backed state table",
+                    )
+                return ProbeResponse(
+                    iteration=self.runtime.iteration,
+                    node=request.node,
+                    display_name=resolved.get("display_name") or request.node,
+                    history=list(resolved.get("history") or []),
+                    sample_count=0,
+                    action_frequencies={},
+                    hands=[],
+                    stability=self._stability_summary(),
+                    ready=False,
+                    message=f"no probe records available for node '{request.node}'",
+                )
+
             sample_count = max(int(request.samples or self.range_samples), 1)
             probes = prepare_selected_node_probes(self._game, [resolved], samples_per_node=sample_count)
             records = snapshot_probe_states(self._solver.average_policy(), probes)
             if not records:
+                if flat_ready:
+                    history = list(resolved.get("history") or [])
+                    return flat_probe_response_for_history(
+                        history,
+                        message="live selected-node snapshot from flat memmap-backed state table",
+                    )
                 return ProbeResponse(
                     iteration=self.runtime.iteration,
                     node=request.node,

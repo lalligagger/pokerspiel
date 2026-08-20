@@ -10,6 +10,7 @@ import warnings
 from collections import defaultdict
 from typing import Dict, Iterable, Tuple
 
+import numpy as np
 from absl import logging as absl_logging
 import pyspiel
 from open_spiel.python.games import pokerkit_wrapper  # noqa: F401
@@ -82,6 +83,114 @@ HULH_NODE_LABELS = {
     "opener_response_to_4bet": "response_to_open_4bet",
     "opener_response_to_5bet": "response_to_open_5bet",
 }
+
+
+STATE_ACTION_ID = {
+    "fold": 0,
+    "check": 1,
+    "call": 1,
+    "check_call": 1,
+    "bet": 2,
+    "raise": 2,
+    "bet_raise": 2,
+    "check_raise": 2,
+}
+
+
+class FlatStateIndex:
+    """Compact integer-addressed state table backed by a memmap index."""
+
+    def __init__(self, path_prefix: str, max_states: int):
+        self.path_prefix = str(path_prefix)
+        self.max_states = int(max_states)
+        self.state_keys = np.memmap(
+            f"{self.path_prefix}_state_keys.dat",
+            dtype=np.uint64,
+            mode="w+",
+            shape=(self.max_states,),
+        )
+        self.state_count = 0
+
+    def lookup_or_insert(self, key: int) -> int:
+        key = int(key)
+        if self.state_count == 0:
+            self.state_keys[0] = key
+            self.state_count = 1
+            return 0
+
+        keys = self.state_keys[: self.state_count]
+        idx = int(np.searchsorted(keys, key))
+        if idx < self.state_count and keys[idx] == key:
+            return idx
+
+        if self.state_count >= self.max_states:
+            raise MemoryError("state index reached its configured max_states limit")
+
+        if idx < self.state_count:
+            self.state_keys[idx + 1 : self.state_count + 1] = self.state_keys[idx : self.state_count]
+        self.state_keys[idx] = key
+        self.state_count += 1
+        return idx
+
+
+class FlatMCCFRTables:
+    """Disk-backed regret, strategy, and average strategy tables for the live solver."""
+
+    def __init__(self, path_prefix: str, max_states: int, max_actions: int):
+        self.path_prefix = str(path_prefix)
+        self.max_states = int(max_states)
+        self.max_actions = int(max_actions)
+
+        self.regret = np.memmap(
+            f"{self.path_prefix}_regret.dat",
+            dtype=np.float32,
+            mode="w+",
+            shape=(self.max_states, self.max_actions),
+        )
+        self.strategy = np.memmap(
+            f"{self.path_prefix}_strategy.dat",
+            dtype=np.float32,
+            mode="w+",
+            shape=(self.max_states, self.max_actions),
+        )
+        self.avg_strategy = np.memmap(
+            f"{self.path_prefix}_avg_strategy.dat",
+            dtype=np.float32,
+            mode="w+",
+            shape=(self.max_states, self.max_actions),
+        )
+        self.visits = np.memmap(
+            f"{self.path_prefix}_visits.dat",
+            dtype=np.float32,
+            mode="w+",
+            shape=(self.max_states,),
+        )
+        self.reach = np.memmap(
+            f"{self.path_prefix}_reach.dat",
+            dtype=np.float32,
+            mode="w+",
+            shape=(self.max_states,),
+        )
+
+
+def encode_state_key(history, bucket: int) -> int:
+    """Pack action history and card bucket into a stable integer index key."""
+    history = tuple(history or ())
+    action_code = 0
+    for depth, action in enumerate(history):
+        normalized = str(action).strip().lower()
+        if normalized in {"check", "call"}:
+            compact = 1
+        elif normalized in {"bet", "raise"}:
+            compact = 2
+        elif normalized in {"fold"}:
+            compact = 0
+        else:
+            compact = int(action) % 4
+        action_code |= int(compact) << (2 * depth)
+
+    bucket_code = int(bucket) & 0xFFFFFFFF
+    return (int(action_code) << 32) | bucket_code
 
 
 def format_hulh_history_label(history):
