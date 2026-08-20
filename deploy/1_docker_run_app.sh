@@ -27,6 +27,7 @@ env_map = {
     'POKERSPIEL_RANGE_SAMPLES': cfg.get('range_samples'),
     'POKERSPIEL_POSTFLOP_SAMPLES': cfg.get('postflop_samples'),
     'POKERSPIEL_STABILITY_THRESHOLD': cfg.get('stability_threshold'),
+    'POKERSPIEL_STOP_THRESHOLD': cfg.get('stop_threshold', 0.85),
     'POKERSPIEL_STOP_PATIENCE': cfg.get('stop_patience'),
     'POKERSPIEL_MIN_ITERATIONS': cfg.get('min_iterations'),
     'POKERSPIEL_CHECKPOINT_EVERY': cfg.get('checkpoint_every') if cfg.get('checkpoint_every') is not None else cfg.get('stability_checkpoint'),
@@ -80,18 +81,20 @@ newgrp docker <<'REMOTE_BLOCK'
 set -eux
 cd "\$HOME"
 
-if [ ! -d pokerspiel ]; then
-  git clone --branch "\$BRANCH" --single-branch https://github.com/lalligagger/pokerspiel pokerspiel
+REPO_DIR="\${REPO_DIR:-\$HOME/pokerspiel}"
+
+# Force-reset any stale repo state from prior deployments / solver runs while keeping the VM and IP intact.
+sudo find "\$HOME" -maxdepth 2 -name "pokerspiel*" -exec rm -rf {} +
+sudo find /tmp -maxdepth 2 -iname "pokerspiel*" -exec rm -rf {} +
+if [ -d "\$REPO_DIR" ]; then
+  sudo rm -rf "\$REPO_DIR"
 fi
 
-cd pokerspiel
+git clone https://github.com/lalligagger/pokerspiel.git "\$REPO_DIR"
+cd "\$REPO_DIR"
 
 git fetch "\$REMOTE_NAME" --prune
-if git rev-parse --verify "\$BRANCH" >/dev/null 2>&1; then
-  git checkout "\$BRANCH"
-else
-  git checkout -b "\$BRANCH" "\$REMOTE_NAME/\$BRANCH"
-fi
+git checkout -B "\$BRANCH" "\$REMOTE_NAME/\$BRANCH"
 git reset --hard "\$REMOTE_NAME/\$BRANCH"
 git pull --ff-only "\$REMOTE_NAME" "\$BRANCH"
 

@@ -1242,6 +1242,7 @@ def compact_checkpoint_payload(payload):
         "checkpoint_every": payload.get("checkpoint_every"),
         "selected_node_summary": build_selected_node_summary(payload.get("range_policies") or {}),
         "stability": payload.get("stability"),
+        "telemetry": payload.get("telemetry"),
     }
 
 
@@ -1319,6 +1320,42 @@ def max_rss_mb():
         rss_mb = float(max_rss) / 1024.0
 
     return {"max_rss_mb": rss_mb, "unit": "MiB", "available": True}
+
+
+def directory_size_bytes(path: str | None) -> int:
+    if not path or not os.path.isdir(path):
+        return 0
+    total = 0
+    for root, _, files in os.walk(path):
+        for name in files:
+            candidate = os.path.join(root, name)
+            try:
+                total += os.path.getsize(candidate)
+            except OSError:
+                continue
+    return total
+
+
+def runtime_telemetry_snapshot(output_json_path: str | None = None) -> Dict[str, object]:
+    rss = max_rss_mb()
+    rss_mb = rss.get("max_rss_mb")
+
+    memmap_dir = os.getenv("POKERSPIEL_MEMMAP_DIR") or os.path.join(tempfile.gettempdir(), "pokerspiel_live_solver")
+    disk_bytes = directory_size_bytes(memmap_dir)
+    output_dir = os.path.dirname(output_json_path) if output_json_path else None
+    output_bytes = directory_size_bytes(output_dir) if output_dir else 0
+    disk_bytes_total = disk_bytes + output_bytes
+
+    return {
+        "rss_mb": rss_mb,
+        "rss_unit": rss.get("unit"),
+        "rss_available": bool(rss.get("available")),
+        "memmap_dir": memmap_dir,
+        "memmap_bytes": disk_bytes,
+        "output_dir_bytes": output_bytes,
+        "disk_bytes": disk_bytes_total,
+        "disk_mb": disk_bytes_total / (1024.0 * 1024.0),
+    }
 
 
 def filter_recent_iteration_records(records, last_n_iterations: int | None):
@@ -1450,6 +1487,7 @@ def profile_variant(
     node_preset: str = None,
     node_selectors=(),
     stability_threshold: float = 0.01,
+    stop_threshold: float = 0.85,
     stop_patience: int = 3,
     min_iterations: int = 1_000_000,
     range_last_n: int | None = None,
@@ -1480,6 +1518,8 @@ def profile_variant(
         raise ValueError("heartbeat_seconds cannot be negative")
     if stability_threshold <= 0:
         raise ValueError("stability_threshold must be greater than zero")
+    if stop_threshold <= 0:
+        raise ValueError("stop_threshold must be greater than zero")
     if stop_patience <= 0:
         raise ValueError("stop_patience must be greater than zero")
     if min_iterations < 0:
@@ -1569,6 +1609,7 @@ def profile_variant(
                 "records": checkpoint_records,
                 "range_policies": checkpoint_ranges,
                 "stability": checkpoint_summary,
+                "telemetry": runtime_telemetry_snapshot(output_json_path),
             }
             checkpoint_history.append(checkpoint_payload)
             if checkpoint_history_limit is not None:
@@ -1711,6 +1752,7 @@ def profile_variant(
         "checkpoint_history": checkpoint_history,
         "policy_profile_summary": summary,
         "stop_policy": {
+            "stop_threshold": stop_threshold,
             "recommendation": (
                 "stop"
                 if stop_policy_state["consecutive_stable_checkpoints"] >= stop_patience
@@ -1838,6 +1880,12 @@ def main():
         help="max action-frequency delta for a stable checkpoint (default: 0.01)",
     )
     parser.add_argument(
+        "--stop-threshold",
+        type=float,
+        default=0.85,
+        help="safety stop threshold for the long-run guardrail; separate from the checkpoint stability threshold (default: 0.85)",
+    )
+    parser.add_argument(
         "--stop-patience",
         type=int,
         default=3,
@@ -1901,6 +1949,7 @@ def main():
         node_preset=args.preset,
         node_selectors=args.node,
         stability_threshold=args.stability_threshold,
+        stop_threshold=args.stop_threshold,
         stop_patience=args.stop_patience,
         min_iterations=args.min_iterations,
         range_last_n=args.range_last_n,

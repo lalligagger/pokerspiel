@@ -34,6 +34,7 @@ from app_solver import (
     prepare_selected_node_probes,
     profile_variant,
     resolve_node_specs,
+    runtime_telemetry_snapshot,
     sample_distinct_deal_states,
     summarize_policy_profiles,
 )
@@ -79,6 +80,16 @@ def test_service_status_and_probe_compatibility_with_flat_runtime(tmp_path):
     probe = service.request_probe(type("Req", (), {"node": "first_to_act", "history": [], "samples": 1, "min_iteration": 0, "include_stability": True, "include_hands": True, "action_filter": None})())
     assert probe.ready is True
     assert probe.action_frequencies["bet_raise"] == pytest.approx(0.6)
+
+
+def test_runtime_telemetry_snapshot_collects_memory_and_disk_usage(tmp_path):
+    snapshot = runtime_telemetry_snapshot(str(tmp_path / "report.json"))
+
+    assert "rss_mb" in snapshot
+    assert "disk_bytes" in snapshot
+    assert "memmap_bytes" in snapshot
+    assert isinstance(snapshot["disk_bytes"], (int, float))
+    assert snapshot["rss_available"] in {True, False}
 
 
 def test_app_solver_accepts_checkpoint_every_alias():

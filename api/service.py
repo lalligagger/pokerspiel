@@ -53,6 +53,7 @@ class SolverService:
         max_iterations: int = 1_000_000,
         checkpoint_every: int = 4000,
         stability_threshold: float = 0.01,
+        stop_threshold: float = 0.85,
         stop_patience: int = 3,
         min_iterations: int = 1_000_000,
         probe_min_iteration: int = 0,
@@ -84,6 +85,10 @@ class SolverService:
         if configured_stability_threshold is not None:
             stability_threshold = float(configured_stability_threshold)
 
+        configured_stop_threshold = os.getenv("POKERSPIEL_STOP_THRESHOLD")
+        if configured_stop_threshold is not None:
+            stop_threshold = float(configured_stop_threshold)
+
         configured_stop_patience = os.getenv("POKERSPIEL_STOP_PATIENCE")
         if configured_stop_patience is not None:
             stop_patience = int(configured_stop_patience)
@@ -92,6 +97,7 @@ class SolverService:
         self.max_iterations = max_iterations
         self.checkpoint_every = checkpoint_every
         self.stability_threshold = stability_threshold
+        self.stop_threshold = stop_threshold
         self.stop_patience = stop_patience
         self.min_iterations = min_iterations
         self.probe_min_iteration = probe_min_iteration
@@ -190,9 +196,19 @@ class SolverService:
         self._thread.start()
 
     def stop(self) -> None:
+        """Gracefully stop training without discarding the solver object or cached policy state.
+
+        The loop exits on the next safe iteration boundary, but the live service keeps its
+        in-memory ranges and last stability snapshot available for API inspection.
+        """
         self._stop_event.set()
-        self.runtime.state = SolverState.STOPPED
-        self.runtime.ready_for_queries = False
+        self.runtime.state = SolverState.PAUSED
+        self.runtime.ready_for_queries = bool(
+            self._current_ranges.get("nodes")
+            or self._preflop_range_cache
+            or (self._last_stability is not None)
+        )
+        self.runtime.stable = bool(self._last_stability and self._last_stability.get("passed"))
 
     def health(self) -> HealthStatus:
         status = self.runtime.state.value if self.runtime.state else "running"
@@ -361,9 +377,21 @@ class SolverService:
             for iteration in range(1, self.max_iterations + 1):
                 if self._stop_event.is_set():
                     self.runtime.state = SolverState.PAUSED
-                    self.runtime.ready_for_queries = False
+                    self.runtime.ready_for_queries = bool(
+                        self._current_ranges.get("nodes")
+                        or self._preflop_range_cache
+                        or (self._last_stability is not None)
+                    )
+                    self.runtime.stable = bool(self._last_stability and self._last_stability.get("passed"))
+                    print("[solver-start] graceful stop requested; exiting training loop", flush=True)
                     break
 
+                self.runtime.ready_for_queries = bool(
+                    self._current_ranges.get("nodes")
+                    or self._preflop_range_cache
+                    or (self._last_stability is not None)
+                )
+                self.runtime.stable = bool(self._last_stability and self._last_stability.get("passed"))
                 print(f"[solver-start] entering iteration {iteration}/{self.max_iterations}", flush=True)
                 self._solver.run_iteration()
                 self.runtime.iteration = iteration
@@ -421,7 +449,12 @@ class SolverService:
 
             if self._stop_event.is_set():
                 self.runtime.state = SolverState.PAUSED
-                self.runtime.ready_for_queries = False
+                self.runtime.ready_for_queries = bool(
+                    self._current_ranges.get("nodes")
+                    or self._preflop_range_cache
+                    or (self._last_stability is not None)
+                )
+                self.runtime.stable = bool(self._last_stability and self._last_stability.get("passed"))
             elif self.runtime.iteration >= self.max_iterations:
                 self.runtime.state = SolverState.STOPPED
                 self.runtime.ready_for_queries = False
