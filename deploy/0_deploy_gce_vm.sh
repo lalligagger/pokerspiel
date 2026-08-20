@@ -26,7 +26,7 @@ if [[ -z "$INSTANCE_ID" ]]; then
     --machine-type="$MACHINE_TYPE" \
     --image-family=ubuntu-2204-lts \
     --image-project=ubuntu-os-cloud \
-    --boot-disk-size=50GB \
+    --boot-disk-size=100GB \
     --tags=allow-pokerspiel-app
 
   INSTANCE_ID="$(gcloud compute instances describe "$INSTANCE_NAME" \

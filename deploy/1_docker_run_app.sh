@@ -12,7 +12,7 @@ REMOTE_NAME="${REMOTE_NAME:-origin}"
 CONFIG_PATH="${CONFIG_PATH:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/cfg/solve_config_light.json}"
 
 DOCKER_ENV_ARGS="$(python3 - "$CONFIG_PATH" <<'PY'
-import json, shlex, sys
+import json, sys
 from pathlib import Path
 cfg = json.loads(Path(sys.argv[1]).read_text(encoding='utf-8'))
 env_map = {
@@ -30,7 +30,7 @@ parts = []
 for key, value in env_map.items():
     if value is None:
         continue
-    parts.append(f"-e {key}={shlex.quote(str(value))}")
+    parts.append(f"-e {key}={value}")
 print(' '.join(parts))
 PY
 )"
@@ -38,10 +38,25 @@ PY
 echo "==> Launching app on GCE instance: $INSTANCE_NAME"
 echo "==> Target branch: $BRANCH"
 
-gcloud compute ssh "$INSTANCE_NAME" \
-  --project="$PROJECT" \
-  --zone="$ZONE" \
-  --command='
+ssh_ready=0
+for attempt in $(seq 1 20); do
+  if gcloud compute ssh "$INSTANCE_NAME" \
+    --project="$PROJECT" \
+    --zone="$ZONE" \
+    --command='true' >/dev/null 2>&1; then
+    ssh_ready=1
+    break
+  fi
+  echo "==> Waiting for SSH on $INSTANCE_NAME (attempt $attempt/20)..."
+  sleep 10
+done
+
+if [[ "$ssh_ready" != "1" ]]; then
+  echo "SSH did not become available for $INSTANCE_NAME" >&2
+  exit 1
+fi
+
+remote_script=$(cat <<REMOTE
 set -eux
 
 BRANCH="${BRANCH:-postflop-redux}"
@@ -53,55 +68,61 @@ export BRANCH REMOTE_NAME IMAGE_NAME APP_PORT
 sudo apt-get update
 sudo apt-get install -y git docker.io
 sudo systemctl enable --now docker
-sudo usermod -aG docker "$USER"
+sudo usermod -aG docker "\$USER"
 
-newgrp docker <<'"'"'REMOTE'"'"'
+newgrp docker <<'REMOTE_BLOCK'
 set -eux
-cd "$HOME"
+cd "\$HOME"
 
 if [ ! -d pokerspiel ]; then
-  git clone --branch "$BRANCH" --single-branch https://github.com/lalligagger/pokerspiel pokerspiel
+  git clone --branch "\$BRANCH" --single-branch https://github.com/lalligagger/pokerspiel pokerspiel
 fi
 
 cd pokerspiel
 
-git fetch "$REMOTE_NAME" --prune
-if git rev-parse --verify "$BRANCH" >/dev/null 2>&1; then
-  git checkout "$BRANCH"
+git fetch "\$REMOTE_NAME" --prune
+if git rev-parse --verify "\$BRANCH" >/dev/null 2>&1; then
+  git checkout "\$BRANCH"
 else
-  git checkout -b "$BRANCH" "$REMOTE_NAME/$BRANCH"
+  git checkout -b "\$BRANCH" "\$REMOTE_NAME/\$BRANCH"
 fi
-git reset --hard "$REMOTE_NAME/$BRANCH"
-git pull --ff-only "$REMOTE_NAME" "$BRANCH"
+git reset --hard "\$REMOTE_NAME/\$BRANCH"
+git pull --ff-only "\$REMOTE_NAME" "\$BRANCH"
 
-docker build -t "$IMAGE_NAME" .
+docker build -t "\$IMAGE_NAME" .
 
-docker rm -f "$IMAGE_NAME" >/dev/null 2>&1 || true
+docker rm -f "\$IMAGE_NAME" >/dev/null 2>&1 || true
 
 # Remove any other container already publishing this port so the app can restart cleanly.
-docker ps --filter "publish=${APP_PORT}" -q | while read -r cid; do
-  [ -n "$cid" ] && docker rm -f "$cid" >/dev/null 2>&1 || true
+docker ps --filter "publish=\${APP_PORT}" -q | while read -r cid; do
+  [ -n "\$cid" ] && docker rm -f "\$cid" >/dev/null 2>&1 || true
 done
 
-if ss -lnt 2>/dev/null | grep -Eq "(:|\[::\]):${APP_PORT} "; then
-  echo "Port ${APP_PORT} is occupied by another process. Stop it or set APP_PORT to a free port." >&2
+if ss -lnt 2>/dev/null | grep -Eq "(:|\[::\]):\${APP_PORT} "; then
+  echo "Port \${APP_PORT} is occupied by another process. Stop it or set APP_PORT to a free port." >&2
   exit 1
 fi
 
 docker run -d \
-  --name "$IMAGE_NAME" \
+  --name "\$IMAGE_NAME" \
   --restart unless-stopped \
-  -p "$APP_PORT:$APP_PORT" \
-  $DOCKER_ENV_ARGS \
-  -v "$HOME/pokerspiel:/app" \
+  -p "\$APP_PORT:\$APP_PORT" \
+  ${DOCKER_ENV_ARGS} \
+  -v "\$HOME/pokerspiel:/app" \
   -w /app \
-  "$IMAGE_NAME" \
-  uvicorn api.app:app --host 0.0.0.0 --port "$APP_PORT"
+  "\$IMAGE_NAME" \
+  uvicorn api.app:app --host 0.0.0.0 --port "\$APP_PORT"
 
-echo "==> container started on localhost:$APP_PORT"
-echo "==> check: curl http://127.0.0.1:$APP_PORT/status"
+echo "==> container started on localhost:\$APP_PORT"
+echo "==> check: curl http://127.0.0.1:\$APP_PORT/status"
+REMOTE_BLOCK
 REMOTE
-'
+)
+
+gcloud compute ssh "$INSTANCE_NAME" \
+  --project="$PROJECT" \
+  --zone="$ZONE" \
+  --command="$remote_script"
 
 EXTERNAL_IP="$(gcloud compute instances describe "$INSTANCE_NAME" \
   --project="$PROJECT" \
