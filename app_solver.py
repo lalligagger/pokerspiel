@@ -73,8 +73,13 @@ HULH_ACTION_SEQUENCE_TO_HISTORY = {
 HULH_NODE_LABELS = {
     "first_to_act": "first_to_act",
     "response_to_limp": "response_to_limp",
+    "respond_to_limp": "response_to_limp",
     "response_to_open": "response_to_open",
+    "respond_to_open": "response_to_open",
     "response_to_limp_raise": "response_to_limp_raise",
+    "respond_to_limp_raise": "response_to_limp_raise",
+    "response_to_limp_reraise": "response_to_limp_reraise",
+    "respond_to_limp_reraise": "response_to_limp_reraise",
     "response_to_open_3bet": "response_to_open_3bet",
     "response_to_open_4bet": "response_to_open_4bet",
     "response_to_open_5bet": "response_to_open_5bet",
@@ -101,7 +106,13 @@ def format_hulh_history_label(history):
         return "response_to_open"
     if normalized == ["call", "bet"]:
         return "response_to_limp_raise"
+    if normalized == ["call", "raise"]:
+        return "response_to_limp_raise"
+    if normalized == ["call", "raise", "raise"]:
+        return "response_to_limp_reraise"
     if normalized == ["bet", "bet"]:
+        return "response_to_open_3bet"
+    if normalized == ["raise", "raise"]:
         return "response_to_open_3bet"
     if normalized == ["bet", "bet", "fold"]:
         return "response_to_open_3bet_fold"
@@ -109,7 +120,11 @@ def format_hulh_history_label(history):
         return "response_to_open_3bet_call"
     if normalized == ["bet", "bet", "raise"]:
         return "response_to_open_4bet"
+    if normalized == ["raise", "raise", "raise"]:
+        return "response_to_open_4bet"
     if normalized == ["bet", "bet", "raise", "raise"]:
+        return "response_to_open_5bet"
+    if normalized == ["raise", "raise", "raise", "raise"]:
         return "response_to_open_5bet"
     if normalized == ["bet", "bet", "raise", "fold"]:
         return "response_to_open_4bet_fold"
@@ -131,6 +146,12 @@ NODE_PRESETS = {
         {"name": "response_to_open_3bet", "history": ["bet", "bet"]},
         {"name": "response_to_open_4bet", "history": ["bet", "bet", "raise"]},
         {"name": "response_to_open_5bet", "history": ["bet", "bet", "raise", "raise"]},
+    ],
+    "hulh-preflop-lw": [
+        {"name": "first_to_act", "history": []},
+        {"name": "response_to_limp", "history": ["call"]},
+        {"name": "response_to_open", "history": ["bet"]},
+        {"name": "response_to_limp_reraise", "history": ["call", "raise", "raise"]},
     ],
     "root": [{"name": "first_to_act", "history": []}],
 }

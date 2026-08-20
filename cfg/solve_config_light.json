@@ -1,7 +1,7 @@
 {
   "mode": "hulh",
   "solver": "external",
-  "preset": "hulh-preflop",
+  "preset": "hulh-preflop-lw",
   "iterations": 1000000,
   "checkpoint_every": 10000,
   "stability_threshold": 0.9,

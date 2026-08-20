@@ -248,12 +248,57 @@ def render_html(spots: List[str], default_spot: str, interval_seconds: int) -> s
         background: white;
       }}
       .status {{ font-size: 12px; color: #5c6c80; }}
-      #plot {{ width: 900px; height: 900px; margin: 12px auto; }}
-      #node-table-wrap {{ width: 900px; margin: 0 auto 24px auto; }}
+      .panel {{
+        width: 1000px;
+        margin: 16px auto 0 auto;
+        border: 1px solid #d9dde3;
+        border-radius: 10px;
+        background: #fff;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+      }}
+      .panel-header {{
+        background: #f7f9fc;
+        border-bottom: 1px solid #d9dde3;
+        padding: 10px 14px;
+        font-size: 13px;
+        font-weight: 700;
+      }}
+      .panel-body {{
+        padding: 12px 14px 14px 14px;
+      }}
+      .metrics-grid {{
+        display: grid;
+        grid-template-columns: repeat(5, minmax(90px, 1fr));
+        gap: 10px;
+        margin-bottom: 14px;
+      }}
+      .metric {{
+        border: 1px solid #d9dde3;
+        background: #f9fbff;
+        border-radius: 8px;
+        padding: 8px 10px;
+      }}
+      .metric-label {{
+        font-size: 10px;
+        color: #58667a;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }}
+      .metric-value {{
+        margin-top: 5px;
+        font-size: 18px;
+        font-weight: 700;
+      }}
+      .metric-value.good {{ color: #166534; }}
+      .metric-value.warn {{ color: #92400e; }}
+      .metric-value.bad {{ color: #9f1239; }}
+      #stability-plot {{ width: 100%; height: 260px; }}
+      #plot {{ width: 1000px; height: 900px; margin: 16px auto 0 auto; }}
+      #node-table-wrap {{ width: 1000px; margin: 0 auto 24px auto; }}
       #node-table {{ border-collapse: collapse; width: 100%; font-size: 12px; }}
       #node-table th, #node-table td {{ border: 1px solid #d9dde3; padding: 6px 8px; text-align: left; }}
       #node-table th {{ background: #f3f6fa; }}
-      #error {{ width: 900px; margin: 0 auto 16px auto; font-size: 12px; color: #9f1239; }}
+      #error {{ width: 1000px; margin: 0 auto 16px auto; font-size: 12px; color: #9f1239; }}
     </style>
   </head>
   <body>
@@ -262,6 +307,36 @@ def render_html(spots: List[str], default_spot: str, interval_seconds: int) -> s
       <select id="spot-select"></select>
       <span id="status" class="status"></span>
     </div>
+
+    <div class="panel">
+      <div class="panel-header">Solver stability monitor</div>
+      <div class="panel-body">
+        <div class="metrics-grid">
+          <div class="metric">
+            <div class="metric-label">Status</div>
+            <div id="metric-status" class="metric-value">—</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Iteration</div>
+            <div id="metric-iteration" class="metric-value">—</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Max Δ</div>
+            <div id="metric-max-delta" class="metric-value">—</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Avg Δ</div>
+            <div id="metric-avg-delta" class="metric-value">—</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Threshold</div>
+            <div id="metric-threshold" class="metric-value">—</div>
+          </div>
+        </div>
+        <div id="stability-plot"></div>
+      </div>
+    </div>
+
     <div id="plot"></div>
     <div id="node-table-wrap">
       <h3 style="margin: 0 0 8px 0; font-size: 14px;">Observed preflop nodes</h3>
@@ -276,10 +351,16 @@ def render_html(spots: List[str], default_spot: str, interval_seconds: int) -> s
       const spots = {spots_json};
       const defaultSpot = {default_spot_json};
       const refreshMs = {max(1, int(interval_seconds))} * 1000;
+      const stabilityHistory = [];
 
       const spotSelect = document.getElementById('spot-select');
       const statusEl = document.getElementById('status');
       const errorEl = document.getElementById('error');
+      const metricStatusEl = document.getElementById('metric-status');
+      const metricIterationEl = document.getElementById('metric-iteration');
+      const metricMaxDeltaEl = document.getElementById('metric-max-delta');
+      const metricAvgDeltaEl = document.getElementById('metric-avg-delta');
+      const metricThresholdEl = document.getElementById('metric-threshold');
 
       for (const spot of spots) {{
         const opt = document.createElement('option');
@@ -287,6 +368,103 @@ def render_html(spots: List[str], default_spot: str, interval_seconds: int) -> s
         opt.textContent = spot;
         if (spot === defaultSpot) opt.selected = true;
         spotSelect.appendChild(opt);
+      }}
+
+      function formatMetricNumber(value, digits = 4) {{
+        if (value === null || value === undefined || Number.isNaN(Number(value))) return '—';
+        return Number(value).toFixed(digits);
+      }}
+
+      function applyMetricStatusClass(node, passed) {{
+        node.classList.remove('good', 'warn', 'bad');
+        if (passed === true) node.classList.add('good');
+        else if (passed === false) node.classList.add('warn');
+      }}
+
+      function updateStabilityMetrics(status) {{
+        const stability = status && status.stability ? status.stability : null;
+        const passed = !!(stability && stability.passed);
+        const iteration = status && status.iteration !== undefined ? Number(status.iteration) : null;
+        const maxDelta = stability && stability.max_abs_delta !== undefined ? Number(stability.max_abs_delta) : null;
+        const avgDelta = stability && stability.avg_abs_delta !== undefined ? Number(stability.avg_abs_delta) : null;
+        const threshold = stability && stability.threshold !== undefined ? Number(stability.threshold) : null;
+        const matched = stability && stability.matched_nodes !== undefined ? Number(stability.matched_nodes) : null;
+
+        metricStatusEl.textContent = passed ? 'stable' : 'warming';
+        metricStatusEl.classList.remove('good', 'warn', 'bad');
+        metricStatusEl.classList.add(passed ? 'good' : 'warn');
+        metricIterationEl.textContent = iteration === null ? '—' : String(iteration);
+        metricMaxDeltaEl.textContent = maxDelta === null ? '—' : formatMetricNumber(maxDelta, 4);
+        metricAvgDeltaEl.textContent = avgDelta === null ? '—' : formatMetricNumber(avgDelta, 4);
+        metricThresholdEl.textContent = threshold === null ? '—' : formatMetricNumber(threshold, 3);
+
+        if (stability) {{
+          const point = {{
+            time: Date.now(),
+            iteration: iteration,
+            max: maxDelta,
+            avg: avgDelta,
+            threshold: threshold,
+            passed: passed,
+            matched: matched,
+          }};
+          stabilityHistory.push(point);
+          if (stabilityHistory.length > 80) stabilityHistory.shift();
+          drawStabilityChart();
+        }}
+      }}
+
+      function drawStabilityChart() {{
+        if (!stabilityHistory.length) {{
+          Plotly.purge('stability-plot');
+          return;
+        }}
+
+        const x = stabilityHistory.map(p => p.iteration !== null ? p.iteration : 0);
+        const maxSeries = stabilityHistory.map(p => p.max === null ? null : p.max);
+        const avgSeries = stabilityHistory.map(p => p.avg === null ? null : p.avg);
+        const thresholdSeries = stabilityHistory.map(p => p.threshold === null ? null : p.threshold);
+
+        const traces = [
+          {{
+            type: 'scatter',
+            mode: 'lines+markers',
+            name: 'max Δ',
+            x: x,
+            y: maxSeries,
+            line: {{ color: '#2563eb', width: 2 }},
+            marker: {{ size: 6 }},
+          }},
+          {{
+            type: 'scatter',
+            mode: 'lines',
+            name: 'avg Δ',
+            x: x,
+            y: avgSeries,
+            line: {{ color: '#16a34a', width: 2, dash: 'dot' }},
+            marker: {{ size: 5 }},
+          }},
+          {{
+            type: 'scatter',
+            mode: 'lines',
+            name: 'threshold',
+            x: x,
+            y: thresholdSeries,
+            line: {{ color: '#a16207', width: 1.5, dash: 'dash' }},
+            marker: {{ size: 4 }},
+          }}
+        ];
+
+        const layout = {{
+          margin: {{ l: 42, r: 16, t: 20, b: 40 }},
+          paper_bgcolor: 'white',
+          plot_bgcolor: '#f9fbff',
+          showlegend: true,
+          xaxis: {{ title: 'iteration', tickfont: {{ size: 11 }} }},
+          yaxis: {{ title: 'delta', tickfont: {{ size: 11 }}, rangemode: 'tozero' }},
+        }};
+
+        Plotly.newPlot('stability-plot', traces, layout, {{ responsive: true, displayModeBar: false }});
       }}
 
       function category(i, j, ranks) {{
@@ -436,7 +614,7 @@ def render_html(spots: List[str], default_spot: str, interval_seconds: int) -> s
 
         const layout = {{
           title: `${{payload.spot}} action split`,
-          width: 900,
+          width: 1000,
           height: 900,
           margin: {{ l: 40, r: 20, t: 60, b: 40 }},
           plot_bgcolor: 'white',
@@ -483,6 +661,7 @@ def render_html(spots: List[str], default_spot: str, interval_seconds: int) -> s
             ? payload.status.selected_node_summary
             : [];
           renderNodeTable(summaryRows);
+          updateStabilityMetrics(payload.status || {{}});
           const iter = payload.status && payload.status.iteration !== undefined ? payload.status.iteration : 'n/a';
           const ready = payload.status && payload.status.ready_for_queries !== undefined ? payload.status.ready_for_queries : false;
           statusEl.textContent = `iteration=${{iter}} ready=${{ready}} fetched=${{new Date(payload.fetched_at * 1000).toLocaleTimeString()}}`;
@@ -497,6 +676,11 @@ def render_html(spots: List[str], default_spot: str, interval_seconds: int) -> s
         refreshSpot();
       }});
 
+      window.addEventListener('resize', () => {{
+        if (stabilityHistory.length) Plotly.Plots.resize('stability-plot');
+      }});
+
+      drawStabilityChart();
       refreshSpot();
       setInterval(refreshSpot, refreshMs);
     </script>
