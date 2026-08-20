@@ -7,7 +7,6 @@
   "iterations": 10000,
   "stability_checkpoint": 1000,
   "stability_threshold": 0.85,
-  "stop_threshold": 0.85,
   "memory_threshold": 0.85,
   "sampling_policy": {
     "preflop": "exact_only",
@@ -15,9 +14,6 @@
   },
   "stop_patience": 3,
   "min_iterations": 1000,
-  "range_samples": 200,
-  "postflop_samples": 32,
-  "range_last_n": 20,
   "report_mode": "all",
   "artifact_mode": "standard",
   "checkpoint_history_limit": 1,

@@ -428,13 +428,9 @@ class SolverService:
         self.runtime.ready_for_queries = False
         self.runtime.stable = False
         self._last_error = None
-        print("[solver-start] entering live solver thread", flush=True)
         try:
-            print("[solver-start] loading game", flush=True)
             self._game = pyspiel.load_game("python_pokerkit_wrapper", GAME_CONFIGS["hulh"])
-            print("[solver-start] creating solver", flush=True)
             self._solver = make_solver(self._game, self.solver_name)
-            print("[solver-start] resolving node specs", flush=True)
             self._selected_specs = resolve_node_specs("hulh-preflop", ())
 
             previous_ranges = None
@@ -449,7 +445,6 @@ class SolverService:
                         or (self._last_stability is not None)
                     )
                     self.runtime.stable = bool(self._last_stability and self._last_stability.get("passed"))
-                    print("[solver-start] graceful stop requested; exiting training loop", flush=True)
                     break
 
                 self.runtime.ready_for_queries = bool(
@@ -458,16 +453,15 @@ class SolverService:
                     or (self._last_stability is not None)
                 )
                 self.runtime.stable = bool(self._last_stability and self._last_stability.get("passed"))
-                print(f"[solver-start] entering iteration {iteration}/{self.max_iterations}", flush=True)
                 self._solver.run_iteration()
                 self.runtime.iteration = iteration
-                print(f"[solver-start] completed iteration {iteration}", flush=True)
+                if iteration % max(100, int(self.checkpoint_every or 100)) == 0:
+                    self.runtime.last_probe_at = iteration
 
                 if iteration >= self.min_iterations:
                     if self.runtime.state == SolverState.TRAINING:
                         self.runtime.state = SolverState.SCORING
                     if not self._probes and self.checkpoint_every:
-                        print("[solver-start] preparing scoring probes at min iteration", flush=True)
                         self._probes = prepare_selected_node_probes(
                             self._game,
                             self._selected_specs,
