@@ -9,7 +9,31 @@ IMAGE_NAME="${IMAGE_NAME:-pokerspiel-live}"
 REPO_DIR="${REPO_DIR:-$HOME/pokerspiel}"
 BRANCH="${BRANCH:-postflop-redux}"
 REMOTE_NAME="${REMOTE_NAME:-origin}"
-MIN_ITERATIONS="${MIN_ITERATIONS:-1000}"
+CONFIG_PATH="${CONFIG_PATH:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/cfg/solve_config_light.json}"
+
+DOCKER_ENV_ARGS="$(python3 - "$CONFIG_PATH" <<'PY'
+import json, shlex, sys
+from pathlib import Path
+cfg = json.loads(Path(sys.argv[1]).read_text(encoding='utf-8'))
+env_map = {
+    'POKERSPIEL_SOLVER': cfg.get('solver'),
+    'POKERSPIEL_PRESET': cfg.get('preset'),
+    'POKERSPIEL_RANGE_SAMPLES': cfg.get('range_samples'),
+    'POKERSPIEL_POSTFLOP_SAMPLES': cfg.get('postflop_samples'),
+    'POKERSPIEL_STABILITY_THRESHOLD': cfg.get('stability_threshold'),
+    'POKERSPIEL_STOP_PATIENCE': cfg.get('stop_patience'),
+    'POKERSPIEL_MIN_ITERATIONS': cfg.get('min_iterations'),
+    'POKERSPIEL_CHECKPOINT_EVERY': cfg.get('checkpoint_every') if cfg.get('checkpoint_every') is not None else cfg.get('stability_checkpoint'),
+    'POKERSPIEL_OUTPUT_JSON': cfg.get('output_json'),
+}
+parts = []
+for key, value in env_map.items():
+    if value is None:
+        continue
+    parts.append(f"-e {key}={shlex.quote(str(value))}")
+print(' '.join(parts))
+PY
+)"
 
 echo "==> Launching app on GCE instance: $INSTANCE_NAME"
 echo "==> Target branch: $BRANCH"
@@ -24,8 +48,7 @@ BRANCH="${BRANCH:-postflop-redux}"
 REMOTE_NAME="${REMOTE_NAME:-origin}"
 IMAGE_NAME="${IMAGE_NAME:-pokerspiel-live}"
 APP_PORT="${APP_PORT:-8080}"
-MIN_ITERATIONS="${MIN_ITERATIONS:-1000}"
-export BRANCH REMOTE_NAME IMAGE_NAME APP_PORT MIN_ITERATIONS
+export BRANCH REMOTE_NAME IMAGE_NAME APP_PORT
 
 sudo apt-get update
 sudo apt-get install -y git docker.io
@@ -69,8 +92,7 @@ docker run -d \
   --name "$IMAGE_NAME" \
   --restart unless-stopped \
   -p "$APP_PORT:$APP_PORT" \
-  -e POKERSPIEL_RANGE_SAMPLES=250 \
-  -e POKERSPIEL_MIN_ITERATIONS="$MIN_ITERATIONS" \
+  $DOCKER_ENV_ARGS \
   -v "$HOME/pokerspiel:/app" \
   -w /app \
   "$IMAGE_NAME" \

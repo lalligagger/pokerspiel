@@ -12,13 +12,5 @@
   "report_mode": "summary",
   "artifact_mode": "lightweight",
   "checkpoint_history_limit": 2,
-  "output_json": "./app/data/solve_light/report.json",
-  "solver_env": {
-    "POKERSPIEL_SOLVER": "external",
-    "POKERSPIEL_RANGE_SAMPLES": 250,
-    "POKERSPIEL_MIN_ITERATIONS": 100,
-    "POKERSPIEL_CHECKPOINT_EVERY": 100,
-    "POKERSPIEL_STABILITY_THRESHOLD": 0.5,
-    "POKERSPIEL_STOP_PATIENCE": 3
-  }
+  "output_json": "./app/data/solve_light/report.json"
 }
