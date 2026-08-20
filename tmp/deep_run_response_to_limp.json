@@ -1,0 +1,2917 @@
+{
+  "data_source": "probe_fallback",
+  "hand_classes": [
+    "AA",
+    "AKs",
+    "AQs",
+    "AJs",
+    "ATs",
+    "A9s",
+    "A8s",
+    "A7s",
+    "A6s",
+    "A5s",
+    "A4s",
+    "A3s",
+    "A2s",
+    "AKo",
+    "KK",
+    "KQs",
+    "KJs",
+    "KTs",
+    "K9s",
+    "K8s",
+    "K7s",
+    "K6s",
+    "K5s",
+    "K4s",
+    "K3s",
+    "K2s",
+    "AQo",
+    "KQo",
+    "QQ",
+    "QJs",
+    "QTs",
+    "Q9s",
+    "Q8s",
+    "Q7s",
+    "Q6s",
+    "Q5s",
+    "Q4s",
+    "Q3s",
+    "Q2s",
+    "AJo",
+    "KJo",
+    "QJo",
+    "JJ",
+    "JTs",
+    "J9s",
+    "J8s",
+    "J7s",
+    "J6s",
+    "J5s",
+    "J4s",
+    "J3s",
+    "J2s",
+    "ATo",
+    "KTo",
+    "QTo",
+    "JTo",
+    "TT",
+    "T9s",
+    "T8s",
+    "T7s",
+    "T6s",
+    "T5s",
+    "T4s",
+    "T3s",
+    "T2s",
+    "A9o",
+    "K9o",
+    "Q9o",
+    "J9o",
+    "T9o",
+    "99",
+    "98s",
+    "97s",
+    "96s",
+    "95s",
+    "94s",
+    "93s",
+    "92s",
+    "A8o",
+    "K8o",
+    "Q8o",
+    "J8o",
+    "T8o",
+    "98o",
+    "88",
+    "87s",
+    "86s",
+    "85s",
+    "84s",
+    "83s",
+    "82s",
+    "A7o",
+    "K7o",
+    "Q7o",
+    "J7o",
+    "T7o",
+    "97o",
+    "87o",
+    "77",
+    "76s",
+    "75s",
+    "74s",
+    "73s",
+    "72s",
+    "A6o",
+    "K6o",
+    "Q6o",
+    "J6o",
+    "T6o",
+    "96o",
+    "86o",
+    "76o",
+    "66",
+    "65s",
+    "64s",
+    "63s",
+    "62s",
+    "A5o",
+    "K5o",
+    "Q5o",
+    "J5o",
+    "T5o",
+    "95o",
+    "85o",
+    "75o",
+    "65o",
+    "55",
+    "54s",
+    "53s",
+    "52s",
+    "A4o",
+    "K4o",
+    "Q4o",
+    "J4o",
+    "T4o",
+    "94o",
+    "84o",
+    "74o",
+    "64o",
+    "54o",
+    "44",
+    "43s",
+    "42s",
+    "A3o",
+    "K3o",
+    "Q3o",
+    "J3o",
+    "T3o",
+    "93o",
+    "83o",
+    "73o",
+    "63o",
+    "53o",
+    "43o",
+    "33",
+    "32s",
+    "A2o",
+    "K2o",
+    "Q2o",
+    "J2o",
+    "T2o",
+    "92o",
+    "82o",
+    "72o",
+    "62o",
+    "52o",
+    "42o",
+    "32o",
+    "22"
+  ],
+  "hand_count": 165,
+  "matrices": {
+    "C": [
+      [
+        0.4291763159211243,
+        0.5937403896370096,
+        0.2697452622571682,
+        0.5648184680620739,
+        0.3844072492917398,
+        0.24655311030508742,
+        0.0,
+        0.3997495554301231,
+        0.2700994554248064,
+        0.579585146166685,
+        0.6542547932807691,
+        0.6340142867427723,
+        0.2756006063082335
+      ],
+      [
+        0.33731080624877613,
+        0.5786085360134975,
+        0.6474790527874007,
+        0.8968251938789622,
+        0.31048305439823437,
+        0.4650564927093355,
+        0.4783974915171464,
+        0.3615321177529822,
+        0.15217394328922232,
+        0.5738588634135159,
+        0.6093139682802082,
+        0.37227518728724496,
+        0.6032513509504686
+      ],
+      [
+        0.4036299538513361,
+        0.6087710302173184,
+        0.5519745504397751,
+        0.6748360630642523,
+        0.5756141815649338,
+        0.6872288588902208,
+        0.28325240206555463,
+        0.7526867639307584,
+        0.8206366511268649,
+        0.2945832304359019,
+        0.5787421385480004,
+        0.6021360775258465,
+        0.6515637987512802
+      ],
+      [
+        0.37326577103416714,
+        0.5998353063435139,
+        0.7050554837444171,
+        0.4368775504852611,
+        0.22398053815496932,
+        0.4263210564004576,
+        0.2669080062191234,
+        0.37450241689685004,
+        0.3130098889081087,
+        0.39860579894873444,
+        0.7518563598004153,
+        0.5152714241066126,
+        0.6109303301541562
+      ],
+      [
+        0.6586597991791607,
+        0.5092298989053687,
+        0.4179212241785614,
+        0.5685856123779411,
+        0.45006974980792247,
+        0.533758621596916,
+        0.0,
+        0.3799119670818125,
+        0.3631623944193494,
+        0.0,
+        0.0,
+        0.5855607712362457,
+        0.7884301069417209
+      ],
+      [
+        0.6734361978907895,
+        0.4289309417417419,
+        0.5838081354433559,
+        0.4747170131850179,
+        0.3675766165475567,
+        0.5147786751382407,
+        0.49906912105224804,
+        0.7885711435393165,
+        0.415326308706893,
+        0.6465007036945541,
+        0.4077461826472546,
+        0.39353500010993336,
+        0.6037528598412264
+      ],
+      [
+        0.5192219341012081,
+        0.4909987883973199,
+        0.5062509243162328,
+        0.6252287382923624,
+        0.5640685085526003,
+        0.6421430651303677,
+        0.5152757205484835,
+        0.6022325496117734,
+        0.15298248492230523,
+        0.4122781195093382,
+        0.5994088757552105,
+        0.42104780619717375,
+        0.6790010371557926
+      ],
+      [
+        0.43200920620596167,
+        0.5040905988695097,
+        0.36619676498759635,
+        0.3002992342415803,
+        0.37057761664580857,
+        0.4292735543526366,
+        0.47546599807437345,
+        0.7158345545165801,
+        0.6067750368869016,
+        0.41012641079334133,
+        0.8135312485234116,
+        0.6725070765434747,
+        0.3315160588082757
+      ],
+      [
+        0.43753540528005713,
+        0.4217725868314817,
+        0.4280065851753334,
+        0.4243626717339198,
+        0.3895303050388538,
+        0.620713826111597,
+        0.2584295172028347,
+        0.5855009726052086,
+        0.48998197929831677,
+        0.6321801486387977,
+        0.2580921910210216,
+        0.5866602899493657,
+        0.4415676674125876
+      ],
+      [
+        0.6731774069178268,
+        0.4655917115484715,
+        0.5120385136952164,
+        0.46325265791281134,
+        0.6457244467695838,
+        0.5245467535943712,
+        0.4048990160573941,
+        0.5499724268429548,
+        0.6420923468275154,
+        0.5205649369996026,
+        0.5419177716283036,
+        0.6517011815001434,
+        0.5774399724508581
+      ],
+      [
+        0.512218244174055,
+        0.729994767108275,
+        0.6018508675360378,
+        0.3846690828036638,
+        0.5261756556031792,
+        0.5017809357944509,
+        0.528291801417574,
+        0.4848609390278486,
+        0.38323635968987696,
+        0.6537640675580868,
+        0.49699261124021743,
+        0.5012655550384858,
+        0.5129852917176403
+      ],
+      [
+        0.5204589446579291,
+        0.5045571686220247,
+        0.658553331348385,
+        0.1830205661655825,
+        0.29212717079165795,
+        0.2792728211347189,
+        0.5173554823568217,
+        0.574461234429721,
+        0.47845690583954203,
+        0.6272865792260982,
+        0.38704250866061424,
+        0.5691966955484984,
+        0.17037313432013684
+      ],
+      [
+        0.5667221502429549,
+        0.5895136208925852,
+        0.4324982007461851,
+        0.47851542304799516,
+        0.5051903449710001,
+        0.33551686076840875,
+        0.5308482957972654,
+        0.4317874677551588,
+        0.44271486885302275,
+        0.5087240506184892,
+        0.6989759217292162,
+        0.4310303257615449,
+        0.6377175284214337
+      ]
+    ],
+    "F": [
+      [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    ],
+    "R": [
+      [
+        0.5708236840788757,
+        0.4062596103629903,
+        0.7302547377428317,
+        0.43518153193792614,
+        0.6155927507082601,
+        0.7534468896949126,
+        0.0,
+        0.600250444569877,
+        0.7299005445751936,
+        0.42041485383331495,
+        0.345745206719231,
+        0.36598571325722773,
+        0.7243993936917664
+      ],
+      [
+        0.6626891937512239,
+        0.42139146398650246,
+        0.3525209472125992,
+        0.10317480612103777,
+        0.6895169456017657,
+        0.5349435072906644,
+        0.5216025084828536,
+        0.6384678822470178,
+        0.8478260567107776,
+        0.426141136586484,
+        0.3906860317197917,
+        0.6277248127127549,
+        0.39674864904953133
+      ],
+      [
+        0.5963700461486638,
+        0.39122896978268146,
+        0.44802544956022494,
+        0.32516393693574774,
+        0.4243858184350661,
+        0.3127711411097791,
+        0.7167475979344452,
+        0.2473132360692415,
+        0.17936334887313507,
+        0.7054167695640982,
+        0.42125786145199956,
+        0.3978639224741536,
+        0.34843620124871966
+      ],
+      [
+        0.6267342289658328,
+        0.4001646936564862,
+        0.29494451625558293,
+        0.5631224495147389,
+        0.7760194618450307,
+        0.5736789435995423,
+        0.7330919937808765,
+        0.6254975831031498,
+        0.6869901110918913,
+        0.6013942010512656,
+        0.24814364019958463,
+        0.4847285758933874,
+        0.38906966984584385
+      ],
+      [
+        0.34134020082083927,
+        0.49077010109463115,
+        0.5820787758214384,
+        0.43141438762205875,
+        0.5499302501920775,
+        0.46624137840308394,
+        0.0,
+        0.6200880329181875,
+        0.6368376055806507,
+        0.0,
+        0.0,
+        0.4144392287637542,
+        0.21156989305827903
+      ],
+      [
+        0.32656380210921043,
+        0.5710690582582579,
+        0.4161918645566441,
+        0.525282986814982,
+        0.6324233834524432,
+        0.4852213248617593,
+        0.500930878947752,
+        0.2114288564606835,
+        0.584673691293107,
+        0.35349929630544574,
+        0.5922538173527455,
+        0.6064649998900666,
+        0.39624714015877355
+      ],
+      [
+        0.480778065898792,
+        0.5090012116026802,
+        0.49374907568376725,
+        0.3747712617076376,
+        0.43593149144739973,
+        0.35785693486963227,
+        0.4847242794515165,
+        0.39776745038822653,
+        0.8470175150776947,
+        0.5877218804906618,
+        0.40059112424478965,
+        0.5789521938028263,
+        0.32099896284420715
+      ],
+      [
+        0.5679907937940384,
+        0.49590940113049037,
+        0.6338032350124037,
+        0.6997007657584197,
+        0.6294223833541913,
+        0.5707264456473633,
+        0.5245340019256265,
+        0.28416544548341993,
+        0.3932249631130984,
+        0.5898735892066587,
+        0.18646875147658828,
+        0.3274929234565251,
+        0.6684839411917243
+      ],
+      [
+        0.5624645947199428,
+        0.5782274131685182,
+        0.5719934148246667,
+        0.5756373282660803,
+        0.6104696949611462,
+        0.3792861738884031,
+        0.7415704827971652,
+        0.4144990273947915,
+        0.5100180207016832,
+        0.3678198513612023,
+        0.7419078089789785,
+        0.4133397100506343,
+        0.5584323325874123
+      ],
+      [
+        0.32682259308217315,
+        0.5344082884515285,
+        0.4879614863047837,
+        0.5367473420871887,
+        0.35427555323041615,
+        0.4754532464056287,
+        0.5951009839426056,
+        0.45002757315704517,
+        0.3579076531724846,
+        0.47943506300039745,
+        0.4580822283716965,
+        0.34829881849985656,
+        0.42256002754914196
+      ],
+      [
+        0.48778175582594496,
+        0.27000523289172496,
+        0.39814913246396216,
+        0.615330917196336,
+        0.47382434439682075,
+        0.49821906420554923,
+        0.47170819858242596,
+        0.5151390609721515,
+        0.616763640310123,
+        0.346235932441913,
+        0.5030073887597826,
+        0.4987344449615142,
+        0.48701470828235977
+      ],
+      [
+        0.4795410553420709,
+        0.4954428313779752,
+        0.3414466686516151,
+        0.8169794338344174,
+        0.707872829208342,
+        0.720727178865281,
+        0.4826445176431782,
+        0.42553876557027903,
+        0.521543094160458,
+        0.3727134207739017,
+        0.6129574913393857,
+        0.43080330445150156,
+        0.8296268656798631
+      ],
+      [
+        0.43327784975704503,
+        0.4104863791074147,
+        0.5675017992538149,
+        0.5214845769520047,
+        0.49480965502899976,
+        0.6644831392315912,
+        0.4691517042027345,
+        0.5682125322448411,
+        0.5572851311469773,
+        0.49127594938151065,
+        0.3010240782707838,
+        0.5689696742384551,
+        0.3622824715785663
+      ]
+    ]
+  },
+  "ready_count": 165,
+  "rows": [
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.3622824715785663,
+        "check_call": 0.6377175284214337,
+        "fold": 0.0
+      },
+      "hand": "22",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5689696742384551,
+        "check_call": 0.4310303257615449,
+        "fold": 0.0
+      },
+      "hand": "32o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.8296268656798631,
+        "check_call": 0.17037313432013684,
+        "fold": 0.0
+      },
+      "hand": "32s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.43080330445150156,
+        "check_call": 0.5691966955484984,
+        "fold": 0.0
+      },
+      "hand": "33",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.3010240782707838,
+        "check_call": 0.6989759217292162,
+        "fold": 0.0
+      },
+      "hand": "42o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.48701470828235977,
+        "check_call": 0.5129852917176403,
+        "fold": 0.0
+      },
+      "hand": "42s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.6129574913393857,
+        "check_call": 0.38704250866061424,
+        "fold": 0.0
+      },
+      "hand": "43o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4987344449615142,
+        "check_call": 0.5012655550384858,
+        "fold": 0.0
+      },
+      "hand": "43s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5030073887597826,
+        "check_call": 0.49699261124021743,
+        "fold": 0.0
+      },
+      "hand": "44",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.49127594938151065,
+        "check_call": 0.5087240506184892,
+        "fold": 0.0
+      },
+      "hand": "52o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.42256002754914196,
+        "check_call": 0.5774399724508581,
+        "fold": 0.0
+      },
+      "hand": "52s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.3727134207739017,
+        "check_call": 0.6272865792260982,
+        "fold": 0.0
+      },
+      "hand": "53o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.34829881849985656,
+        "check_call": 0.6517011815001434,
+        "fold": 0.0
+      },
+      "hand": "53s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.346235932441913,
+        "check_call": 0.6537640675580868,
+        "fold": 0.0
+      },
+      "hand": "54o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4580822283716965,
+        "check_call": 0.5419177716283036,
+        "fold": 0.0
+      },
+      "hand": "54s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.47943506300039745,
+        "check_call": 0.5205649369996026,
+        "fold": 0.0
+      },
+      "hand": "55",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5572851311469773,
+        "check_call": 0.44271486885302275,
+        "fold": 0.0
+      },
+      "hand": "62o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5584323325874123,
+        "check_call": 0.4415676674125876,
+        "fold": 0.0
+      },
+      "hand": "62s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.521543094160458,
+        "check_call": 0.47845690583954203,
+        "fold": 0.0
+      },
+      "hand": "63o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4133397100506343,
+        "check_call": 0.5866602899493657,
+        "fold": 0.0
+      },
+      "hand": "63s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.616763640310123,
+        "check_call": 0.38323635968987696,
+        "fold": 0.0
+      },
+      "hand": "64o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.7419078089789785,
+        "check_call": 0.2580921910210216,
+        "fold": 0.0
+      },
+      "hand": "64s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.3579076531724846,
+        "check_call": 0.6420923468275154,
+        "fold": 0.0
+      },
+      "hand": "65o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.3678198513612023,
+        "check_call": 0.6321801486387977,
+        "fold": 0.0
+      },
+      "hand": "65s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5100180207016832,
+        "check_call": 0.48998197929831677,
+        "fold": 0.0
+      },
+      "hand": "66",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5682125322448411,
+        "check_call": 0.4317874677551588,
+        "fold": 0.0
+      },
+      "hand": "72o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.6684839411917243,
+        "check_call": 0.3315160588082757,
+        "fold": 0.0
+      },
+      "hand": "72s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.42553876557027903,
+        "check_call": 0.574461234429721,
+        "fold": 0.0
+      },
+      "hand": "73o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.3274929234565251,
+        "check_call": 0.6725070765434747,
+        "fold": 0.0
+      },
+      "hand": "73s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5151390609721515,
+        "check_call": 0.4848609390278486,
+        "fold": 0.0
+      },
+      "hand": "74o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.18646875147658828,
+        "check_call": 0.8135312485234116,
+        "fold": 0.0
+      },
+      "hand": "74s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.45002757315704517,
+        "check_call": 0.5499724268429548,
+        "fold": 0.0
+      },
+      "hand": "75o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5898735892066587,
+        "check_call": 0.41012641079334133,
+        "fold": 0.0
+      },
+      "hand": "75s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4144990273947915,
+        "check_call": 0.5855009726052086,
+        "fold": 0.0
+      },
+      "hand": "76o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.3932249631130984,
+        "check_call": 0.6067750368869016,
+        "fold": 0.0
+      },
+      "hand": "76s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.28416544548341993,
+        "check_call": 0.7158345545165801,
+        "fold": 0.0
+      },
+      "hand": "77",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4691517042027345,
+        "check_call": 0.5308482957972654,
+        "fold": 0.0
+      },
+      "hand": "82o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.32099896284420715,
+        "check_call": 0.6790010371557926,
+        "fold": 0.0
+      },
+      "hand": "82s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4826445176431782,
+        "check_call": 0.5173554823568217,
+        "fold": 0.0
+      },
+      "hand": "83o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5789521938028263,
+        "check_call": 0.42104780619717375,
+        "fold": 0.0
+      },
+      "hand": "83s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.47170819858242596,
+        "check_call": 0.528291801417574,
+        "fold": 0.0
+      },
+      "hand": "84o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.40059112424478965,
+        "check_call": 0.5994088757552105,
+        "fold": 0.0
+      },
+      "hand": "84s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5951009839426056,
+        "check_call": 0.4048990160573941,
+        "fold": 0.0
+      },
+      "hand": "85o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5877218804906618,
+        "check_call": 0.4122781195093382,
+        "fold": 0.0
+      },
+      "hand": "85s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.7415704827971652,
+        "check_call": 0.2584295172028347,
+        "fold": 0.0
+      },
+      "hand": "86o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.8470175150776947,
+        "check_call": 0.15298248492230523,
+        "fold": 0.0
+      },
+      "hand": "86s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5245340019256265,
+        "check_call": 0.47546599807437345,
+        "fold": 0.0
+      },
+      "hand": "87o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.39776745038822653,
+        "check_call": 0.6022325496117734,
+        "fold": 0.0
+      },
+      "hand": "87s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4847242794515165,
+        "check_call": 0.5152757205484835,
+        "fold": 0.0
+      },
+      "hand": "88",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.6644831392315912,
+        "check_call": 0.33551686076840875,
+        "fold": 0.0
+      },
+      "hand": "92o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.39624714015877355,
+        "check_call": 0.6037528598412264,
+        "fold": 0.0
+      },
+      "hand": "92s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.720727178865281,
+        "check_call": 0.2792728211347189,
+        "fold": 0.0
+      },
+      "hand": "93o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.6064649998900666,
+        "check_call": 0.39353500010993336,
+        "fold": 0.0
+      },
+      "hand": "93s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.49821906420554923,
+        "check_call": 0.5017809357944509,
+        "fold": 0.0
+      },
+      "hand": "94o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5922538173527455,
+        "check_call": 0.4077461826472546,
+        "fold": 0.0
+      },
+      "hand": "94s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4754532464056287,
+        "check_call": 0.5245467535943712,
+        "fold": 0.0
+      },
+      "hand": "95o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.35349929630544574,
+        "check_call": 0.6465007036945541,
+        "fold": 0.0
+      },
+      "hand": "95s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.3792861738884031,
+        "check_call": 0.620713826111597,
+        "fold": 0.0
+      },
+      "hand": "96o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.584673691293107,
+        "check_call": 0.415326308706893,
+        "fold": 0.0
+      },
+      "hand": "96s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5707264456473633,
+        "check_call": 0.4292735543526366,
+        "fold": 0.0
+      },
+      "hand": "97o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.2114288564606835,
+        "check_call": 0.7885711435393165,
+        "fold": 0.0
+      },
+      "hand": "97s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.35785693486963227,
+        "check_call": 0.6421430651303677,
+        "fold": 0.0
+      },
+      "hand": "98o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.500930878947752,
+        "check_call": 0.49906912105224804,
+        "fold": 0.0
+      },
+      "hand": "98s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4852213248617593,
+        "check_call": 0.5147786751382407,
+        "fold": 0.0
+      },
+      "hand": "99",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.43327784975704503,
+        "check_call": 0.5667221502429549,
+        "fold": 0.0
+      },
+      "hand": "A2o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.7243993936917664,
+        "check_call": 0.2756006063082335,
+        "fold": 0.0
+      },
+      "hand": "A2s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4795410553420709,
+        "check_call": 0.5204589446579291,
+        "fold": 0.0
+      },
+      "hand": "A3o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.36598571325722773,
+        "check_call": 0.6340142867427723,
+        "fold": 0.0
+      },
+      "hand": "A3s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.48778175582594496,
+        "check_call": 0.512218244174055,
+        "fold": 0.0
+      },
+      "hand": "A4o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.345745206719231,
+        "check_call": 0.6542547932807691,
+        "fold": 0.0
+      },
+      "hand": "A4s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.32682259308217315,
+        "check_call": 0.6731774069178268,
+        "fold": 0.0
+      },
+      "hand": "A5o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.42041485383331495,
+        "check_call": 0.579585146166685,
+        "fold": 0.0
+      },
+      "hand": "A5s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5624645947199428,
+        "check_call": 0.43753540528005713,
+        "fold": 0.0
+      },
+      "hand": "A6o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.7299005445751936,
+        "check_call": 0.2700994554248064,
+        "fold": 0.0
+      },
+      "hand": "A6s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5679907937940384,
+        "check_call": 0.43200920620596167,
+        "fold": 0.0
+      },
+      "hand": "A7o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.600250444569877,
+        "check_call": 0.3997495554301231,
+        "fold": 0.0
+      },
+      "hand": "A7s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.480778065898792,
+        "check_call": 0.5192219341012081,
+        "fold": 0.0
+      },
+      "hand": "A8o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.32656380210921043,
+        "check_call": 0.6734361978907895,
+        "fold": 0.0
+      },
+      "hand": "A9o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.7534468896949126,
+        "check_call": 0.24655311030508742,
+        "fold": 0.0
+      },
+      "hand": "A9s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5708236840788757,
+        "check_call": 0.4291763159211243,
+        "fold": 0.0
+      },
+      "hand": "AA",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.6267342289658328,
+        "check_call": 0.37326577103416714,
+        "fold": 0.0
+      },
+      "hand": "AJo",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.43518153193792614,
+        "check_call": 0.5648184680620739,
+        "fold": 0.0
+      },
+      "hand": "AJs",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.6626891937512239,
+        "check_call": 0.33731080624877613,
+        "fold": 0.0
+      },
+      "hand": "AKo",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4062596103629903,
+        "check_call": 0.5937403896370096,
+        "fold": 0.0
+      },
+      "hand": "AKs",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5963700461486638,
+        "check_call": 0.4036299538513361,
+        "fold": 0.0
+      },
+      "hand": "AQo",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.7302547377428317,
+        "check_call": 0.2697452622571682,
+        "fold": 0.0
+      },
+      "hand": "AQs",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.34134020082083927,
+        "check_call": 0.6586597991791607,
+        "fold": 0.0
+      },
+      "hand": "ATo",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.6155927507082601,
+        "check_call": 0.3844072492917398,
+        "fold": 0.0
+      },
+      "hand": "ATs",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5214845769520047,
+        "check_call": 0.47851542304799516,
+        "fold": 0.0
+      },
+      "hand": "J2o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.38906966984584385,
+        "check_call": 0.6109303301541562,
+        "fold": 0.0
+      },
+      "hand": "J2s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.8169794338344174,
+        "check_call": 0.1830205661655825,
+        "fold": 0.0
+      },
+      "hand": "J3o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4847285758933874,
+        "check_call": 0.5152714241066126,
+        "fold": 0.0
+      },
+      "hand": "J3s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.615330917196336,
+        "check_call": 0.3846690828036638,
+        "fold": 0.0
+      },
+      "hand": "J4o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.24814364019958463,
+        "check_call": 0.7518563598004153,
+        "fold": 0.0
+      },
+      "hand": "J4s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5367473420871887,
+        "check_call": 0.46325265791281134,
+        "fold": 0.0
+      },
+      "hand": "J5o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.6013942010512656,
+        "check_call": 0.39860579894873444,
+        "fold": 0.0
+      },
+      "hand": "J5s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5756373282660803,
+        "check_call": 0.4243626717339198,
+        "fold": 0.0
+      },
+      "hand": "J6o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.6869901110918913,
+        "check_call": 0.3130098889081087,
+        "fold": 0.0
+      },
+      "hand": "J6s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.6997007657584197,
+        "check_call": 0.3002992342415803,
+        "fold": 0.0
+      },
+      "hand": "J7o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.6254975831031498,
+        "check_call": 0.37450241689685004,
+        "fold": 0.0
+      },
+      "hand": "J7s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.3747712617076376,
+        "check_call": 0.6252287382923624,
+        "fold": 0.0
+      },
+      "hand": "J8o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.7330919937808765,
+        "check_call": 0.2669080062191234,
+        "fold": 0.0
+      },
+      "hand": "J8s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.525282986814982,
+        "check_call": 0.4747170131850179,
+        "fold": 0.0
+      },
+      "hand": "J9o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5736789435995423,
+        "check_call": 0.4263210564004576,
+        "fold": 0.0
+      },
+      "hand": "J9s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5631224495147389,
+        "check_call": 0.4368775504852611,
+        "fold": 0.0
+      },
+      "hand": "JJ",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.43141438762205875,
+        "check_call": 0.5685856123779411,
+        "fold": 0.0
+      },
+      "hand": "JTo",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.7760194618450307,
+        "check_call": 0.22398053815496932,
+        "fold": 0.0
+      },
+      "hand": "JTs",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4104863791074147,
+        "check_call": 0.5895136208925852,
+        "fold": 0.0
+      },
+      "hand": "K2o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.39674864904953133,
+        "check_call": 0.6032513509504686,
+        "fold": 0.0
+      },
+      "hand": "K2s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4954428313779752,
+        "check_call": 0.5045571686220247,
+        "fold": 0.0
+      },
+      "hand": "K3o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.6277248127127549,
+        "check_call": 0.37227518728724496,
+        "fold": 0.0
+      },
+      "hand": "K3s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.27000523289172496,
+        "check_call": 0.729994767108275,
+        "fold": 0.0
+      },
+      "hand": "K4o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.3906860317197917,
+        "check_call": 0.6093139682802082,
+        "fold": 0.0
+      },
+      "hand": "K4s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5344082884515285,
+        "check_call": 0.4655917115484715,
+        "fold": 0.0
+      },
+      "hand": "K5o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.426141136586484,
+        "check_call": 0.5738588634135159,
+        "fold": 0.0
+      },
+      "hand": "K5s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5782274131685182,
+        "check_call": 0.4217725868314817,
+        "fold": 0.0
+      },
+      "hand": "K6o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.8478260567107776,
+        "check_call": 0.15217394328922232,
+        "fold": 0.0
+      },
+      "hand": "K6s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.49590940113049037,
+        "check_call": 0.5040905988695097,
+        "fold": 0.0
+      },
+      "hand": "K7o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.6384678822470178,
+        "check_call": 0.3615321177529822,
+        "fold": 0.0
+      },
+      "hand": "K7s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5090012116026802,
+        "check_call": 0.4909987883973199,
+        "fold": 0.0
+      },
+      "hand": "K8o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5216025084828536,
+        "check_call": 0.4783974915171464,
+        "fold": 0.0
+      },
+      "hand": "K8s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5710690582582579,
+        "check_call": 0.4289309417417419,
+        "fold": 0.0
+      },
+      "hand": "K9o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5349435072906644,
+        "check_call": 0.4650564927093355,
+        "fold": 0.0
+      },
+      "hand": "K9s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4001646936564862,
+        "check_call": 0.5998353063435139,
+        "fold": 0.0
+      },
+      "hand": "KJo",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.10317480612103777,
+        "check_call": 0.8968251938789622,
+        "fold": 0.0
+      },
+      "hand": "KJs",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.42139146398650246,
+        "check_call": 0.5786085360134975,
+        "fold": 0.0
+      },
+      "hand": "KK",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.39122896978268146,
+        "check_call": 0.6087710302173184,
+        "fold": 0.0
+      },
+      "hand": "KQo",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.3525209472125992,
+        "check_call": 0.6474790527874007,
+        "fold": 0.0
+      },
+      "hand": "KQs",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.49077010109463115,
+        "check_call": 0.5092298989053687,
+        "fold": 0.0
+      },
+      "hand": "KTo",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.6895169456017657,
+        "check_call": 0.31048305439823437,
+        "fold": 0.0
+      },
+      "hand": "KTs",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5675017992538149,
+        "check_call": 0.4324982007461851,
+        "fold": 0.0
+      },
+      "hand": "Q2o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.34843620124871966,
+        "check_call": 0.6515637987512802,
+        "fold": 0.0
+      },
+      "hand": "Q2s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.3414466686516151,
+        "check_call": 0.658553331348385,
+        "fold": 0.0
+      },
+      "hand": "Q3o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.3978639224741536,
+        "check_call": 0.6021360775258465,
+        "fold": 0.0
+      },
+      "hand": "Q3s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.39814913246396216,
+        "check_call": 0.6018508675360378,
+        "fold": 0.0
+      },
+      "hand": "Q4o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.42125786145199956,
+        "check_call": 0.5787421385480004,
+        "fold": 0.0
+      },
+      "hand": "Q4s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4879614863047837,
+        "check_call": 0.5120385136952164,
+        "fold": 0.0
+      },
+      "hand": "Q5o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.7054167695640982,
+        "check_call": 0.2945832304359019,
+        "fold": 0.0
+      },
+      "hand": "Q5s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5719934148246667,
+        "check_call": 0.4280065851753334,
+        "fold": 0.0
+      },
+      "hand": "Q6o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.17936334887313507,
+        "check_call": 0.8206366511268649,
+        "fold": 0.0
+      },
+      "hand": "Q6s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.6338032350124037,
+        "check_call": 0.36619676498759635,
+        "fold": 0.0
+      },
+      "hand": "Q7o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.2473132360692415,
+        "check_call": 0.7526867639307584,
+        "fold": 0.0
+      },
+      "hand": "Q7s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.49374907568376725,
+        "check_call": 0.5062509243162328,
+        "fold": 0.0
+      },
+      "hand": "Q8o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.7167475979344452,
+        "check_call": 0.28325240206555463,
+        "fold": 0.0
+      },
+      "hand": "Q8s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4161918645566441,
+        "check_call": 0.5838081354433559,
+        "fold": 0.0
+      },
+      "hand": "Q9o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.3127711411097791,
+        "check_call": 0.6872288588902208,
+        "fold": 0.0
+      },
+      "hand": "Q9s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.29494451625558293,
+        "check_call": 0.7050554837444171,
+        "fold": 0.0
+      },
+      "hand": "QJo",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.32516393693574774,
+        "check_call": 0.6748360630642523,
+        "fold": 0.0
+      },
+      "hand": "QJs",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.44802544956022494,
+        "check_call": 0.5519745504397751,
+        "fold": 0.0
+      },
+      "hand": "QQ",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5820787758214384,
+        "check_call": 0.4179212241785614,
+        "fold": 0.0
+      },
+      "hand": "QTo",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4243858184350661,
+        "check_call": 0.5756141815649338,
+        "fold": 0.0
+      },
+      "hand": "QTs",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.49480965502899976,
+        "check_call": 0.5051903449710001,
+        "fold": 0.0
+      },
+      "hand": "T2o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.21156989305827903,
+        "check_call": 0.7884301069417209,
+        "fold": 0.0
+      },
+      "hand": "T2s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.707872829208342,
+        "check_call": 0.29212717079165795,
+        "fold": 0.0
+      },
+      "hand": "T3o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4144392287637542,
+        "check_call": 0.5855607712362457,
+        "fold": 0.0
+      },
+      "hand": "T3s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.47382434439682075,
+        "check_call": 0.5261756556031792,
+        "fold": 0.0
+      },
+      "hand": "T4o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.35427555323041615,
+        "check_call": 0.6457244467695838,
+        "fold": 0.0
+      },
+      "hand": "T5o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.6104696949611462,
+        "check_call": 0.3895303050388538,
+        "fold": 0.0
+      },
+      "hand": "T6o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.6368376055806507,
+        "check_call": 0.3631623944193494,
+        "fold": 0.0
+      },
+      "hand": "T6s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.6294223833541913,
+        "check_call": 0.37057761664580857,
+        "fold": 0.0
+      },
+      "hand": "T7o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.6200880329181875,
+        "check_call": 0.3799119670818125,
+        "fold": 0.0
+      },
+      "hand": "T7s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.43593149144739973,
+        "check_call": 0.5640685085526003,
+        "fold": 0.0
+      },
+      "hand": "T8o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.6324233834524432,
+        "check_call": 0.3675766165475567,
+        "fold": 0.0
+      },
+      "hand": "T9o",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.46624137840308394,
+        "check_call": 0.533758621596916,
+        "fold": 0.0
+      },
+      "hand": "T9s",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5499302501920775,
+        "check_call": 0.45006974980792247,
+        "fold": 0.0
+      },
+      "hand": "TT",
+      "iteration": 58645,
+      "message": "live selected-node snapshot from current in-memory policy",
+      "ready": true,
+      "spot": "response_to_limp"
+    }
+  ],
+  "spot": "response_to_limp"
+}

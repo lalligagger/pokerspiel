@@ -12,6 +12,29 @@ http://localhost:8080
 
 or the public VM endpoint when deployed remotely.
 
+## Preflop spot aliases and exact betting histories
+
+The API normalizes aliases to the canonical names below before resolving the selected-node policy. The `history` values are the exact action paths used in the solver tree.
+
+| Canonical spot | Accepted aliases | Exact action history |
+| --- | --- | --- |
+| `first_to_act` | `first` | `[]` |
+| `response_to_limp` | `limp` | `["call"]` |
+| `response_to_limp_raise` | `limp_raise` | `["call", "bet"]` |
+| `response_to_open` | `open` | `["bet"]` |
+| `response_to_open_3bet` | `3bet`, `threebet`, `opener_response_to_3bet` | `["bet", "bet"]` |
+| `response_to_open_4bet` | `4bet`, `fourbet`, `opener_response_to_4bet` | `["bet", "bet", "raise"]` |
+| `response_to_open_5bet` | `5bet`, `fivebet`, `opener_response_to_5bet` | `["bet", "bet", "raise", "raise"]` |
+
+Examples:
+
+```bash
+curl "http://localhost:8080/preflop/open/TT"
+curl "http://localhost:8080/preflop/response_to_open/TT"
+curl "http://localhost:8080/preflop/3bet/AKs"
+curl "http://localhost:8080/preflop/response_to_limp_raise/QQ"
+```
+
 ---
 
 ## 1) Health and status
@@ -193,11 +216,16 @@ curl "http://localhost:8080/preflop/open/TT"
 curl "http://localhost:8080/preflop/response_to_open/AKs"
 ```
 
-Aliases supported by the API layer:
-- `open` => `response_to_open`
-- `first` => `first_to_act`
-- `3bet`, `threebet` => `response_to_open_3bet`
-- `4bet`, `fourbet` => `response_to_open_4bet`
+Canonical preflop spots and accepted aliases:
+- `first_to_act` — aliases: `first`
+- `response_to_limp` — aliases: `limp`
+- `response_to_limp_raise` — aliases: `limp_raise`
+- `response_to_open` — aliases: `open`
+- `response_to_open_3bet` — aliases: `3bet`, `threebet`, `opener_response_to_3bet`
+- `response_to_open_4bet` — aliases: `4bet`, `fourbet`, `opener_response_to_4bet`
+- `response_to_open_5bet` — aliases: `5bet`, `fivebet`, `opener_response_to_5bet`
+
+The public contract always normalizes aliases to the canonical label before returning the response payload. For example, a request to `/preflop/open/TT` and `/preflop/response_to_open/TT` both resolve to the same canonical spot.
 
 Example response:
 
@@ -232,6 +260,19 @@ This is effectively the same as:
 ```bash
 curl "http://localhost:8080/preflop/response_to_open/TT"
 ```
+
+### GET /preflop/{spot}/{hand} contract notes
+
+The route contract is:
+- `spot`: canonical preflop label or any supported alias
+- `hand`: compact combo key such as `TT`, `AKs`, `AQo`, or `JTo`
+- response shape:
+  - `spot`: canonical normalized spot label
+  - `hand`: requested hand key
+  - `iteration`: current solver iteration
+  - `frequencies`: {`fold`, `check_call`, `bet_raise`}
+  - `ready`: whether the data is currently queryable
+  - `message`: runtime status or blocking reason
 
 ---
 

@@ -597,14 +597,24 @@ class SolverService:
         alias_map = {
             "first": "first_to_act",
             "first_to_act": "first_to_act",
+            "limp": "response_to_limp",
+            "response_to_limp": "response_to_limp",
+            "response_to_limp_raise": "response_to_limp_raise",
+            "limp_raise": "response_to_limp_raise",
             "open": "response_to_open",
             "response_to_open": "response_to_open",
             "response_to_open_3bet": "response_to_open_3bet",
             "threebet": "response_to_open_3bet",
             "3bet": "response_to_open_3bet",
+            "opener_response_to_3bet": "response_to_open_3bet",
             "response_to_open_4bet": "response_to_open_4bet",
             "fourbet": "response_to_open_4bet",
             "4bet": "response_to_open_4bet",
+            "opener_response_to_4bet": "response_to_open_4bet",
+            "response_to_open_5bet": "response_to_open_5bet",
+            "fivebet": "response_to_open_5bet",
+            "5bet": "response_to_open_5bet",
+            "opener_response_to_5bet": "response_to_open_5bet",
         }
         key = (spot or "").strip().lower().replace("-", "_").replace(" ", "_")
         return alias_map.get(key, key)

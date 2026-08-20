@@ -105,6 +105,36 @@ def test_app_solver_accepts_checkpoint_every_alias():
     assert result.returncode == 0, result.stderr
 
 
+def test_preflop_spot_aliases_normalize_to_canonical_labels():
+    service = SolverService()
+
+    expected = {
+        "first": "first_to_act",
+        "first_to_act": "first_to_act",
+        "open": "response_to_open",
+        "response_to_open": "response_to_open",
+        "limp": "response_to_limp",
+        "response_to_limp": "response_to_limp",
+        "response_to_limp_raise": "response_to_limp_raise",
+        "limp_raise": "response_to_limp_raise",
+        "response_to_open_3bet": "response_to_open_3bet",
+        "3bet": "response_to_open_3bet",
+        "threebet": "response_to_open_3bet",
+        "opener_response_to_3bet": "response_to_open_3bet",
+        "response_to_open_4bet": "response_to_open_4bet",
+        "4bet": "response_to_open_4bet",
+        "fourbet": "response_to_open_4bet",
+        "opener_response_to_4bet": "response_to_open_4bet",
+        "response_to_open_5bet": "response_to_open_5bet",
+        "5bet": "response_to_open_5bet",
+        "fivebet": "response_to_open_5bet",
+        "opener_response_to_5bet": "response_to_open_5bet",
+    }
+
+    for alias, canonical in expected.items():
+        assert service._normalize_preflop_spot(alias) == canonical
+
+
 def test_solver_service_defaults_to_external_and_respects_env_override(monkeypatch):
     monkeypatch.delenv("POKERSPIEL_SOLVER", raising=False)
     service = SolverService()
@@ -310,7 +340,7 @@ def test_solver_service_stays_live_after_min_iterations_when_stability_is_reache
     assert service.runtime.ready_for_queries is False
 
 
-def test_get_preflop_range_returns_full_canonical_range_from_live_policy():
+def test_get_preflop_range_returns_live_policy_entries_for_requested_spot():
     service = SolverService()
     service.runtime.state = SolverState.AVAILABLE
     service.runtime.ready_for_queries = True
@@ -324,7 +354,11 @@ def test_get_preflop_range_returns_full_canonical_range_from_live_policy():
                 "name": "response_to_open",
                 "display_name": "response_to_open",
                 "history": ["bet"],
-                "hands": [{"hand": "TT", "policy": {"fold": 0.15, "check_call": 0.25, "bet_raise": 0.6}}],
+                "hands": [
+                    {"hand": "TT", "policy": {"fold": 0.15, "check_call": 0.25, "bet_raise": 0.6}},
+                    {"hand": "AA", "policy": {"fold": 0.05, "check_call": 0.2, "bet_raise": 0.75}},
+                    {"hand": "AKs", "policy": {"fold": 0.1, "check_call": 0.3, "bet_raise": 0.6}},
+                ],
             }
         ]
     }
@@ -336,7 +370,7 @@ def test_get_preflop_range_returns_full_canonical_range_from_live_policy():
     assert any(hand.hand == "TT" for hand in response.hands)
     assert any(hand.hand == "AA" for hand in response.hands)
     assert any(hand.hand == "AKs" for hand in response.hands)
-    assert response.hand_count >= 169
+    assert response.hand_count == 3
 
 
 def test_postflop_exact_is_blocked_until_min_iterations_and_stability(monkeypatch):

@@ -1,0 +1,2969 @@
+{
+  "data_source": "legacy_per_hand",
+  "hand_classes": [
+    "AA",
+    "AKs",
+    "AQs",
+    "AJs",
+    "ATs",
+    "A9s",
+    "A8s",
+    "A7s",
+    "A6s",
+    "A5s",
+    "A4s",
+    "A3s",
+    "A2s",
+    "AKo",
+    "KK",
+    "KQs",
+    "KJs",
+    "KTs",
+    "K9s",
+    "K8s",
+    "K7s",
+    "K6s",
+    "K5s",
+    "K4s",
+    "K3s",
+    "K2s",
+    "AQo",
+    "KQo",
+    "QQ",
+    "QJs",
+    "QTs",
+    "Q9s",
+    "Q8s",
+    "Q7s",
+    "Q6s",
+    "Q5s",
+    "Q4s",
+    "Q3s",
+    "Q2s",
+    "AJo",
+    "KJo",
+    "QJo",
+    "JJ",
+    "JTs",
+    "J9s",
+    "J8s",
+    "J7s",
+    "J6s",
+    "J5s",
+    "J4s",
+    "J3s",
+    "J2s",
+    "ATo",
+    "KTo",
+    "QTo",
+    "JTo",
+    "TT",
+    "T9s",
+    "T8s",
+    "T7s",
+    "T6s",
+    "T5s",
+    "T4s",
+    "T3s",
+    "T2s",
+    "A9o",
+    "K9o",
+    "Q9o",
+    "J9o",
+    "T9o",
+    "99",
+    "98s",
+    "97s",
+    "96s",
+    "95s",
+    "94s",
+    "93s",
+    "92s",
+    "A8o",
+    "K8o",
+    "Q8o",
+    "J8o",
+    "T8o",
+    "98o",
+    "88",
+    "87s",
+    "86s",
+    "85s",
+    "84s",
+    "83s",
+    "82s",
+    "A7o",
+    "K7o",
+    "Q7o",
+    "J7o",
+    "T7o",
+    "97o",
+    "87o",
+    "77",
+    "76s",
+    "75s",
+    "74s",
+    "73s",
+    "72s",
+    "A6o",
+    "K6o",
+    "Q6o",
+    "J6o",
+    "T6o",
+    "96o",
+    "86o",
+    "76o",
+    "66",
+    "65s",
+    "64s",
+    "63s",
+    "62s",
+    "A5o",
+    "K5o",
+    "Q5o",
+    "J5o",
+    "T5o",
+    "95o",
+    "85o",
+    "75o",
+    "65o",
+    "55",
+    "54s",
+    "53s",
+    "52s",
+    "A4o",
+    "K4o",
+    "Q4o",
+    "J4o",
+    "T4o",
+    "94o",
+    "84o",
+    "74o",
+    "64o",
+    "54o",
+    "44",
+    "43s",
+    "42s",
+    "A3o",
+    "K3o",
+    "Q3o",
+    "J3o",
+    "T3o",
+    "93o",
+    "83o",
+    "73o",
+    "63o",
+    "53o",
+    "43o",
+    "33",
+    "32s",
+    "A2o",
+    "K2o",
+    "Q2o",
+    "J2o",
+    "T2o",
+    "92o",
+    "82o",
+    "72o",
+    "62o",
+    "52o",
+    "42o",
+    "32o",
+    "22"
+  ],
+  "hand_count": 169,
+  "matrices": {
+    "C": [
+      [
+        0.5342960693441103,
+        0.4386384689506135,
+        0.6205425270821778,
+        0.5303632812762085,
+        0.4287334069555652,
+        0.6319566050697718,
+        0.6053426842495878,
+        0.6080167689418144,
+        0.5765036767397071,
+        0.3884429728056389,
+        0.7238281216657876,
+        0.40403485751634655,
+        0.5864106598583168
+      ],
+      [
+        0.7288693631111235,
+        0.6308759646482487,
+        0.6046849013976666,
+        0.4551423699620803,
+        0.7314833789579429,
+        0.3529964246802787,
+        0.6037099500426514,
+        0.42032568851435953,
+        0.603228577404288,
+        0.4238908652867954,
+        0.5273117248579944,
+        0.3754975572072032,
+        0.5202228067937479
+      ],
+      [
+        0.5633593678312047,
+        0.5374534869381925,
+        0.5293290510751788,
+        0.3727404671075041,
+        0.35371532304217485,
+        0.7211065412785771,
+        0.582530162102619,
+        0.5129981371786929,
+        0.5780173279623644,
+        0.5248679879634703,
+        0.4093419649586014,
+        0.519438137860432,
+        0.5869975577741184
+      ],
+      [
+        0.4659338949693247,
+        0.4786846747203265,
+        0.4291412321288401,
+        0.5283832493905218,
+        0.498637233150775,
+        0.4839038196076912,
+        0.49883695858218985,
+        0.37491295373182315,
+        0.3291501602604642,
+        0.42331867273236556,
+        0.2851782127186217,
+        0.5208949116421793,
+        0.5849582895631192
+      ],
+      [
+        0.5997044301011167,
+        0.5894557297086304,
+        0.5923000365190753,
+        0.4676344475167807,
+        0.3551957826253708,
+        0.35437727711718997,
+        0.696630728328622,
+        0.5006775595763108,
+        0.6238421067870695,
+        0.6037052863920239,
+        0.4800134710265503,
+        0.5109627091858184,
+        0.5046661113601835
+      ],
+      [
+        0.46118520967511145,
+        0.4851632011876065,
+        0.4849788095048029,
+        0.556384090808499,
+        0.4488336858608638,
+        0.5357266511332334,
+        0.5087590321742775,
+        0.4135154013385113,
+        0.2926995091103029,
+        0.5336995223305717,
+        0.22515029952368232,
+        0.22126568446536268,
+        0.40110777943373155
+      ],
+      [
+        0.5220901994534336,
+        0.5451398302986771,
+        0.5144967166608291,
+        0.43579121006870597,
+        0.43251500394494846,
+        0.5895460291002583,
+        0.6804854395135871,
+        0.4173375783552261,
+        0.5481201778094125,
+        0.4673975107534748,
+        0.30473341605801274,
+        0.3142402691116483,
+        0.4221412022194424
+      ],
+      [
+        0.5029228361386844,
+        0.46917764432608133,
+        0.4193561130734882,
+        0.5016530249956522,
+        0.43449116790109943,
+        0.3897827711756056,
+        0.3630882423184105,
+        0.5170639452470716,
+        0.5040160245424329,
+        0.5784258622629526,
+        0.5719967669505478,
+        0.48444191927335933,
+        0.16253141148762498
+      ],
+      [
+        0.47557572824255784,
+        0.5488900905965491,
+        0.5159708723900559,
+        0.5889020818205155,
+        0.3937088673256462,
+        0.5430518273821733,
+        0.43968009885417786,
+        0.42541595040029095,
+        0.5064491454188034,
+        0.37641921918123394,
+        0.37830502530366933,
+        0.3246537039555461,
+        0.48268119945187277
+      ],
+      [
+        0.4242983342120747,
+        0.43455890483401505,
+        0.497891287577671,
+        0.5306321071129577,
+        0.5189647444185909,
+        0.4772968317382393,
+        0.40593491170997875,
+        0.4754720612359006,
+        0.49540562715007636,
+        0.54903947973496,
+        0.28688212420727,
+        0.3157181002785487,
+        0.3936757606883269
+      ],
+      [
+        0.7217315263247511,
+        0.36708269816178585,
+        0.3952985726543101,
+        0.3874928170544262,
+        0.48640911208783993,
+        0.46451007481126244,
+        0.36758569920838663,
+        0.2567332097464361,
+        0.40389854700248273,
+        0.3911054187987246,
+        0.4560720144459156,
+        0.639664392959537,
+        0.3624827853135833
+      ],
+      [
+        0.49829076334156464,
+        0.6512612953512754,
+        0.4422667611662812,
+        0.4789904837979757,
+        0.5793840913627848,
+        0.5098591749416014,
+        0.3759306834202393,
+        0.3744464179023853,
+        0.4445255322835006,
+        0.3782422163253355,
+        0.29192670278110333,
+        0.4188876468541524,
+        0.3367591653288882
+      ],
+      [
+        0.44673724929605363,
+        0.44541568436633355,
+        0.35034607390245714,
+        0.5885178563853578,
+        0.35073139140929976,
+        0.34203791248156123,
+        0.3135876517277818,
+        0.41384232212813565,
+        0.32770715904545816,
+        0.41112500310119654,
+        0.25364206482115,
+        0.30186633733945756,
+        0.37069460637519525
+      ]
+    ],
+    "F": [
+      [
+        0.00850252495570685,
+        0.07721454067078996,
+        0.013806035080679587,
+        0.03920561060767513,
+        0.04577854153945627,
+        0.05622528004078175,
+        0.0038980451746986663,
+        0.13526985268195116,
+        0.02597834602143702,
+        0.10314026787974678,
+        0.05887359383137032,
+        0.1380838475274963,
+        0.02820044620761363
+      ],
+      [
+        0.031020776471013072,
+        0.01429568223172148,
+        0.06920442255492731,
+        0.031385241521562614,
+        0.0682930509735217,
+        0.02693619723088921,
+        0.11759398618597866,
+        0.16070842520111545,
+        0.028381933881181265,
+        0.052381428853858804,
+        0.09540422019082101,
+        0.07738226671252163,
+        0.02856410637818065
+      ],
+      [
+        0.038120260571056344,
+        0.05000366164415084,
+        0.026054534601937674,
+        0.03384658555789531,
+        0.0925713944448323,
+        0.04137414205998584,
+        0.07936356300911503,
+        0.1073262718143394,
+        0.05591353219026258,
+        0.10338606967461655,
+        0.10723644578789214,
+        0.06586978483763961,
+        0.12604085871789447
+      ],
+      [
+        0.06254652664316011,
+        0.05530426336934819,
+        0.07049428855056544,
+        0.011201984669627978,
+        0.09071586360920907,
+        0.0440831116269618,
+        0.1469726828265472,
+        0.0929366417536086,
+        0.17003673430686542,
+        0.14937831124078377,
+        0.13916508455019932,
+        0.35266699463799533,
+        0.11444886775661078
+      ],
+      [
+        0.04500793255916782,
+        0.07639041944378966,
+        0.1110784757754381,
+        0.04115073890510342,
+        0.02018019923151521,
+        0.10475405697156422,
+        0.08720752961639282,
+        0.21659533440016074,
+        0.11078512640185643,
+        0.1871103791761885,
+        0.24979464635319998,
+        0.19554131484153847,
+        0.367545165357653
+      ],
+      [
+        0.04945218864053639,
+        0.057624004050284595,
+        0.10929744410174387,
+        0.12319869413115392,
+        0.14404420926614153,
+        0.03237784026670577,
+        0.15105361114870544,
+        0.27946382676443504,
+        0.0709946601021285,
+        0.12301790994855463,
+        0.2722805724760849,
+        0.24802355376317856,
+        0.23885928507438603
+      ],
+      [
+        0.06016676022597412,
+        0.1603659904622578,
+        0.062054702200059694,
+        0.12585019636695968,
+        0.1371645329600948,
+        0.10831836903330212,
+        0.027298043267837593,
+        0.12780362860313918,
+        0.10255051337840473,
+        0.16440683920429536,
+        0.31227562313143054,
+        0.35541505740117607,
+        0.31040562995921095
+      ],
+      [
+        0.0354115038517878,
+        0.09393335058284005,
+        0.09288544118603723,
+        0.18257816427330933,
+        0.153898104362844,
+        0.19305726492878839,
+        0.21967561573410477,
+        0.09229136513996453,
+        0.20428110820344028,
+        0.16337840512088558,
+        0.26243723405690034,
+        0.2984902316258157,
+        0.5155870291655859
+      ],
+      [
+        0.07086531978048116,
+        0.08872252614838774,
+        0.07542078797666524,
+        0.1262631304895762,
+        0.20297314161074587,
+        0.1973654721276948,
+        0.22410539884952113,
+        0.18584253594155983,
+        0.020291368443901656,
+        0.15029059975221887,
+        0.38079842464826535,
+        0.2835095344134318,
+        0.3961783310110881
+      ],
+      [
+        0.05128672745021543,
+        0.17170652008595078,
+        0.1613247738946668,
+        0.09931914416240332,
+        0.16133803707944236,
+        0.18244922945628766,
+        0.23988148333022927,
+        0.24405128609790228,
+        0.17182285614381992,
+        0.03547425987511363,
+        0.24995272674707206,
+        0.266718194088025,
+        0.3353638289390655
+      ],
+      [
+        0.07286319923889831,
+        0.15496513339241028,
+        0.1223635992082606,
+        0.158947907596831,
+        0.13978284664547536,
+        0.2106033057550941,
+        0.3676196644915193,
+        0.3384690987691104,
+        0.26612173348539736,
+        0.2897405223507281,
+        0.050137176243914276,
+        0.20365465813003164,
+        0.3780413311099175
+      ],
+      [
+        0.08993521366902404,
+        0.043206035550618464,
+        0.17626112113426928,
+        0.14596703149530899,
+        0.2283621544659881,
+        0.2862051403318424,
+        0.28295093216916334,
+        0.35706903268744206,
+        0.28206632652197633,
+        0.3232125257767641,
+        0.39063833330917896,
+        0.127322573278485,
+        0.4866224588937618
+      ],
+      [
+        0.13994212139738627,
+        0.13331670137279497,
+        0.17619228318813895,
+        0.11671084005862468,
+        0.3094086337768304,
+        0.3142467320345198,
+        0.35651955126536367,
+        0.3784933220487613,
+        0.38621671660270535,
+        0.3000153900445666,
+        0.33872103913914775,
+        0.4437078439063975,
+        0.2547433451519156
+      ]
+    ],
+    "R": [
+      [
+        0.45720140570018275,
+        0.4841469903785965,
+        0.36565143783714227,
+        0.4304311081161163,
+        0.5254880515049785,
+        0.31181811488944655,
+        0.39075927057571347,
+        0.25671337837623437,
+        0.39751797723885585,
+        0.5084167593146144,
+        0.2172982845028422,
+        0.4578812949561573,
+        0.3853888939340698
+      ],
+      [
+        0.24010986041786364,
+        0.3548283531200299,
+        0.326110676047406,
+        0.5134723885163571,
+        0.20022357006853533,
+        0.6200673780888322,
+        0.2786960637713698,
+        0.4189658862845251,
+        0.3683894887145311,
+        0.5237277058593459,
+        0.3772840549511847,
+        0.5471201760802753,
+        0.45121308682807143
+      ],
+      [
+        0.3985203715977388,
+        0.4125428514176571,
+        0.4446164143228834,
+        0.5934129473346004,
+        0.5537132825129928,
+        0.23751931666143714,
+        0.33810627488826606,
+        0.37967559100696757,
+        0.3660691398473733,
+        0.37174594236191305,
+        0.48342158925350637,
+        0.41469207730192814,
+        0.2869615835079873
+      ],
+      [
+        0.47151957838751535,
+        0.4660110619103254,
+        0.5003644793205944,
+        0.4604147659398498,
+        0.41064690324001596,
+        0.47201306876534704,
+        0.35419035859126297,
+        0.532150404514568,
+        0.5008131054326703,
+        0.4273030160268508,
+        0.5756567027311791,
+        0.12643809371982523,
+        0.30059284268027
+      ],
+      [
+        0.3552876373397154,
+        0.3341538508475803,
+        0.2966214877054864,
+        0.491214813578116,
+        0.6246240181431139,
+        0.5408686659112459,
+        0.21616174205498503,
+        0.2827271060235284,
+        0.26537276681107386,
+        0.2091843344317877,
+        0.27019188262024957,
+        0.29349597597264304,
+        0.1277887232821636
+      ],
+      [
+        0.48936260168435236,
+        0.457212794762109,
+        0.4057237463934533,
+        0.32041721506034687,
+        0.40712210487299455,
+        0.43189550860006093,
+        0.34018735667701705,
+        0.30702077189705373,
+        0.6363058307875689,
+        0.3432825677208735,
+        0.5025691280002327,
+        0.5307107617714588,
+        0.3600329354918823
+      ],
+      [
+        0.4177430403205924,
+        0.2944941792390652,
+        0.4234485811391115,
+        0.4383585935643342,
+        0.43032046309495664,
+        0.30213560186643906,
+        0.2922165172185753,
+        0.4548587930416347,
+        0.34932930881218266,
+        0.3681956500422299,
+        0.3829909608105567,
+        0.3303446734871755,
+        0.26745316782134676
+      ],
+      [
+        0.46166566000952725,
+        0.4368890050910789,
+        0.4877584457404744,
+        0.31576881073103813,
+        0.4116107277360566,
+        0.4171599638956055,
+        0.41723614194748515,
+        0.3906446896129637,
+        0.29170286725412686,
+        0.2581957326161618,
+        0.16556599899255192,
+        0.21706784910082508,
+        0.3218815593467891
+      ],
+      [
+        0.45355895197696094,
+        0.3623873832550629,
+        0.40860833963327914,
+        0.284834787689908,
+        0.40331799106360816,
+        0.2595827004901319,
+        0.3362145022963011,
+        0.3887415136581491,
+        0.4732594861372946,
+        0.47329018106654736,
+        0.24089655004806534,
+        0.39183676163102205,
+        0.12114046953703907
+      ],
+      [
+        0.5244149383377099,
+        0.39373457508003423,
+        0.34078393852766253,
+        0.370048748724639,
+        0.3196972185019668,
+        0.34025393880547306,
+        0.35418360495979195,
+        0.2804766526661973,
+        0.33277151670610394,
+        0.4154862603899261,
+        0.4631651490456579,
+        0.41756370563342643,
+        0.27096041037260743
+      ],
+      [
+        0.20540527443635026,
+        0.47795216844580396,
+        0.48233782813742954,
+        0.4535592753487426,
+        0.3738080412666847,
+        0.3248866194336434,
+        0.26479463630009414,
+        0.4047976914844534,
+        0.32997971951211985,
+        0.3191540588505472,
+        0.4937908093101702,
+        0.15668094891043133,
+        0.25947588357649937
+      ],
+      [
+        0.4117740229894112,
+        0.3055326690981063,
+        0.3814721176994498,
+        0.37504248470671525,
+        0.1922537541712277,
+        0.20393568472655588,
+        0.3411183844105973,
+        0.26848454941017263,
+        0.2734081411945229,
+        0.2985452578979003,
+        0.31743496390971804,
+        0.4537897798673625,
+        0.17661837577734998
+      ],
+      [
+        0.4133206293065601,
+        0.4212676142608718,
+        0.4734616429094042,
+        0.2947713035560171,
+        0.33985997481386937,
+        0.34371535548391885,
+        0.32989279700685453,
+        0.20766435582310294,
+        0.286076124351837,
+        0.2888596068542364,
+        0.4076368960397026,
+        0.25442581875414455,
+        0.37456204847288926
+      ]
+    ]
+  },
+  "ready_count": 169,
+  "rows": [
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.45720140570018275,
+        "check_call": 0.5342960693441103,
+        "fold": 0.00850252495570685
+      },
+      "hand": "AA",
+      "iteration": 57705,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4841469903785965,
+        "check_call": 0.4386384689506135,
+        "fold": 0.07721454067078996
+      },
+      "hand": "AKs",
+      "iteration": 57705,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.36565143783714227,
+        "check_call": 0.6205425270821778,
+        "fold": 0.013806035080679587
+      },
+      "hand": "AQs",
+      "iteration": 57705,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4304311081161163,
+        "check_call": 0.5303632812762085,
+        "fold": 0.03920561060767513
+      },
+      "hand": "AJs",
+      "iteration": 57705,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5254880515049785,
+        "check_call": 0.4287334069555652,
+        "fold": 0.04577854153945627
+      },
+      "hand": "ATs",
+      "iteration": 57706,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.31181811488944655,
+        "check_call": 0.6319566050697718,
+        "fold": 0.05622528004078175
+      },
+      "hand": "A9s",
+      "iteration": 57706,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.39075927057571347,
+        "check_call": 0.6053426842495878,
+        "fold": 0.0038980451746986663
+      },
+      "hand": "A8s",
+      "iteration": 57706,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.25671337837623437,
+        "check_call": 0.6080167689418144,
+        "fold": 0.13526985268195116
+      },
+      "hand": "A7s",
+      "iteration": 57706,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.39751797723885585,
+        "check_call": 0.5765036767397071,
+        "fold": 0.02597834602143702
+      },
+      "hand": "A6s",
+      "iteration": 57706,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5084167593146144,
+        "check_call": 0.3884429728056389,
+        "fold": 0.10314026787974678
+      },
+      "hand": "A5s",
+      "iteration": 57707,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.2172982845028422,
+        "check_call": 0.7238281216657876,
+        "fold": 0.05887359383137032
+      },
+      "hand": "A4s",
+      "iteration": 57707,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4578812949561573,
+        "check_call": 0.40403485751634655,
+        "fold": 0.1380838475274963
+      },
+      "hand": "A3s",
+      "iteration": 57707,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.3853888939340698,
+        "check_call": 0.5864106598583168,
+        "fold": 0.02820044620761363
+      },
+      "hand": "A2s",
+      "iteration": 57707,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.24010986041786364,
+        "check_call": 0.7288693631111235,
+        "fold": 0.031020776471013072
+      },
+      "hand": "AKo",
+      "iteration": 57707,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.3548283531200299,
+        "check_call": 0.6308759646482487,
+        "fold": 0.01429568223172148
+      },
+      "hand": "KK",
+      "iteration": 57707,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.326110676047406,
+        "check_call": 0.6046849013976666,
+        "fold": 0.06920442255492731
+      },
+      "hand": "KQs",
+      "iteration": 57708,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5134723885163571,
+        "check_call": 0.4551423699620803,
+        "fold": 0.031385241521562614
+      },
+      "hand": "KJs",
+      "iteration": 57708,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.20022357006853533,
+        "check_call": 0.7314833789579429,
+        "fold": 0.0682930509735217
+      },
+      "hand": "KTs",
+      "iteration": 57708,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.6200673780888322,
+        "check_call": 0.3529964246802787,
+        "fold": 0.02693619723088921
+      },
+      "hand": "K9s",
+      "iteration": 57708,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.2786960637713698,
+        "check_call": 0.6037099500426514,
+        "fold": 0.11759398618597866
+      },
+      "hand": "K8s",
+      "iteration": 57709,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4189658862845251,
+        "check_call": 0.42032568851435953,
+        "fold": 0.16070842520111545
+      },
+      "hand": "K7s",
+      "iteration": 57709,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.3683894887145311,
+        "check_call": 0.603228577404288,
+        "fold": 0.028381933881181265
+      },
+      "hand": "K6s",
+      "iteration": 57709,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5237277058593459,
+        "check_call": 0.4238908652867954,
+        "fold": 0.052381428853858804
+      },
+      "hand": "K5s",
+      "iteration": 57709,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.3772840549511847,
+        "check_call": 0.5273117248579944,
+        "fold": 0.09540422019082101
+      },
+      "hand": "K4s",
+      "iteration": 57709,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5471201760802753,
+        "check_call": 0.3754975572072032,
+        "fold": 0.07738226671252163
+      },
+      "hand": "K3s",
+      "iteration": 57710,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.45121308682807143,
+        "check_call": 0.5202228067937479,
+        "fold": 0.02856410637818065
+      },
+      "hand": "K2s",
+      "iteration": 57710,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.3985203715977388,
+        "check_call": 0.5633593678312047,
+        "fold": 0.038120260571056344
+      },
+      "hand": "AQo",
+      "iteration": 57710,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4125428514176571,
+        "check_call": 0.5374534869381925,
+        "fold": 0.05000366164415084
+      },
+      "hand": "KQo",
+      "iteration": 57710,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4446164143228834,
+        "check_call": 0.5293290510751788,
+        "fold": 0.026054534601937674
+      },
+      "hand": "QQ",
+      "iteration": 57711,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5934129473346004,
+        "check_call": 0.3727404671075041,
+        "fold": 0.03384658555789531
+      },
+      "hand": "QJs",
+      "iteration": 57711,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5537132825129928,
+        "check_call": 0.35371532304217485,
+        "fold": 0.0925713944448323
+      },
+      "hand": "QTs",
+      "iteration": 57711,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.23751931666143714,
+        "check_call": 0.7211065412785771,
+        "fold": 0.04137414205998584
+      },
+      "hand": "Q9s",
+      "iteration": 57711,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.33810627488826606,
+        "check_call": 0.582530162102619,
+        "fold": 0.07936356300911503
+      },
+      "hand": "Q8s",
+      "iteration": 57712,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.37967559100696757,
+        "check_call": 0.5129981371786929,
+        "fold": 0.1073262718143394
+      },
+      "hand": "Q7s",
+      "iteration": 57712,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.3660691398473733,
+        "check_call": 0.5780173279623644,
+        "fold": 0.05591353219026258
+      },
+      "hand": "Q6s",
+      "iteration": 57712,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.37174594236191305,
+        "check_call": 0.5248679879634703,
+        "fold": 0.10338606967461655
+      },
+      "hand": "Q5s",
+      "iteration": 57712,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.48342158925350637,
+        "check_call": 0.4093419649586014,
+        "fold": 0.10723644578789214
+      },
+      "hand": "Q4s",
+      "iteration": 57713,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.41469207730192814,
+        "check_call": 0.519438137860432,
+        "fold": 0.06586978483763961
+      },
+      "hand": "Q3s",
+      "iteration": 57713,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.2869615835079873,
+        "check_call": 0.5869975577741184,
+        "fold": 0.12604085871789447
+      },
+      "hand": "Q2s",
+      "iteration": 57713,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.47151957838751535,
+        "check_call": 0.4659338949693247,
+        "fold": 0.06254652664316011
+      },
+      "hand": "AJo",
+      "iteration": 57713,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4660110619103254,
+        "check_call": 0.4786846747203265,
+        "fold": 0.05530426336934819
+      },
+      "hand": "KJo",
+      "iteration": 57713,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5003644793205944,
+        "check_call": 0.4291412321288401,
+        "fold": 0.07049428855056544
+      },
+      "hand": "QJo",
+      "iteration": 57714,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4604147659398498,
+        "check_call": 0.5283832493905218,
+        "fold": 0.011201984669627978
+      },
+      "hand": "JJ",
+      "iteration": 57714,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.41064690324001596,
+        "check_call": 0.498637233150775,
+        "fold": 0.09071586360920907
+      },
+      "hand": "JTs",
+      "iteration": 57714,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.47201306876534704,
+        "check_call": 0.4839038196076912,
+        "fold": 0.0440831116269618
+      },
+      "hand": "J9s",
+      "iteration": 57714,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.35419035859126297,
+        "check_call": 0.49883695858218985,
+        "fold": 0.1469726828265472
+      },
+      "hand": "J8s",
+      "iteration": 57714,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.532150404514568,
+        "check_call": 0.37491295373182315,
+        "fold": 0.0929366417536086
+      },
+      "hand": "J7s",
+      "iteration": 57715,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5008131054326703,
+        "check_call": 0.3291501602604642,
+        "fold": 0.17003673430686542
+      },
+      "hand": "J6s",
+      "iteration": 57715,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4273030160268508,
+        "check_call": 0.42331867273236556,
+        "fold": 0.14937831124078377
+      },
+      "hand": "J5s",
+      "iteration": 57715,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5756567027311791,
+        "check_call": 0.2851782127186217,
+        "fold": 0.13916508455019932
+      },
+      "hand": "J4s",
+      "iteration": 57716,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.12643809371982523,
+        "check_call": 0.5208949116421793,
+        "fold": 0.35266699463799533
+      },
+      "hand": "J3s",
+      "iteration": 57716,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.30059284268027,
+        "check_call": 0.5849582895631192,
+        "fold": 0.11444886775661078
+      },
+      "hand": "J2s",
+      "iteration": 57716,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.3552876373397154,
+        "check_call": 0.5997044301011167,
+        "fold": 0.04500793255916782
+      },
+      "hand": "ATo",
+      "iteration": 57717,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.3341538508475803,
+        "check_call": 0.5894557297086304,
+        "fold": 0.07639041944378966
+      },
+      "hand": "KTo",
+      "iteration": 57717,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.2966214877054864,
+        "check_call": 0.5923000365190753,
+        "fold": 0.1110784757754381
+      },
+      "hand": "QTo",
+      "iteration": 57718,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.491214813578116,
+        "check_call": 0.4676344475167807,
+        "fold": 0.04115073890510342
+      },
+      "hand": "JTo",
+      "iteration": 57718,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.6246240181431139,
+        "check_call": 0.3551957826253708,
+        "fold": 0.02018019923151521
+      },
+      "hand": "TT",
+      "iteration": 57718,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5408686659112459,
+        "check_call": 0.35437727711718997,
+        "fold": 0.10475405697156422
+      },
+      "hand": "T9s",
+      "iteration": 57718,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.21616174205498503,
+        "check_call": 0.696630728328622,
+        "fold": 0.08720752961639282
+      },
+      "hand": "T8s",
+      "iteration": 57718,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.2827271060235284,
+        "check_call": 0.5006775595763108,
+        "fold": 0.21659533440016074
+      },
+      "hand": "T7s",
+      "iteration": 57719,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.26537276681107386,
+        "check_call": 0.6238421067870695,
+        "fold": 0.11078512640185643
+      },
+      "hand": "T6s",
+      "iteration": 57719,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.2091843344317877,
+        "check_call": 0.6037052863920239,
+        "fold": 0.1871103791761885
+      },
+      "hand": "T5s",
+      "iteration": 57719,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.27019188262024957,
+        "check_call": 0.4800134710265503,
+        "fold": 0.24979464635319998
+      },
+      "hand": "T4s",
+      "iteration": 57719,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.29349597597264304,
+        "check_call": 0.5109627091858184,
+        "fold": 0.19554131484153847
+      },
+      "hand": "T3s",
+      "iteration": 57719,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.1277887232821636,
+        "check_call": 0.5046661113601835,
+        "fold": 0.367545165357653
+      },
+      "hand": "T2s",
+      "iteration": 57720,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.48936260168435236,
+        "check_call": 0.46118520967511145,
+        "fold": 0.04945218864053639
+      },
+      "hand": "A9o",
+      "iteration": 57720,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.457212794762109,
+        "check_call": 0.4851632011876065,
+        "fold": 0.057624004050284595
+      },
+      "hand": "K9o",
+      "iteration": 57720,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4057237463934533,
+        "check_call": 0.4849788095048029,
+        "fold": 0.10929744410174387
+      },
+      "hand": "Q9o",
+      "iteration": 57720,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.32041721506034687,
+        "check_call": 0.556384090808499,
+        "fold": 0.12319869413115392
+      },
+      "hand": "J9o",
+      "iteration": 57720,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.40712210487299455,
+        "check_call": 0.4488336858608638,
+        "fold": 0.14404420926614153
+      },
+      "hand": "T9o",
+      "iteration": 57721,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.43189550860006093,
+        "check_call": 0.5357266511332334,
+        "fold": 0.03237784026670577
+      },
+      "hand": "99",
+      "iteration": 57721,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.34018735667701705,
+        "check_call": 0.5087590321742775,
+        "fold": 0.15105361114870544
+      },
+      "hand": "98s",
+      "iteration": 57721,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.30702077189705373,
+        "check_call": 0.4135154013385113,
+        "fold": 0.27946382676443504
+      },
+      "hand": "97s",
+      "iteration": 57721,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.6363058307875689,
+        "check_call": 0.2926995091103029,
+        "fold": 0.0709946601021285
+      },
+      "hand": "96s",
+      "iteration": 57721,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.3432825677208735,
+        "check_call": 0.5336995223305717,
+        "fold": 0.12301790994855463
+      },
+      "hand": "95s",
+      "iteration": 57722,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5025691280002327,
+        "check_call": 0.22515029952368232,
+        "fold": 0.2722805724760849
+      },
+      "hand": "94s",
+      "iteration": 57722,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5307107617714588,
+        "check_call": 0.22126568446536268,
+        "fold": 0.24802355376317856
+      },
+      "hand": "93s",
+      "iteration": 57722,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.3600329354918823,
+        "check_call": 0.40110777943373155,
+        "fold": 0.23885928507438603
+      },
+      "hand": "92s",
+      "iteration": 57722,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4177430403205924,
+        "check_call": 0.5220901994534336,
+        "fold": 0.06016676022597412
+      },
+      "hand": "A8o",
+      "iteration": 57723,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.2944941792390652,
+        "check_call": 0.5451398302986771,
+        "fold": 0.1603659904622578
+      },
+      "hand": "K8o",
+      "iteration": 57723,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4234485811391115,
+        "check_call": 0.5144967166608291,
+        "fold": 0.062054702200059694
+      },
+      "hand": "Q8o",
+      "iteration": 57723,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4383585935643342,
+        "check_call": 0.43579121006870597,
+        "fold": 0.12585019636695968
+      },
+      "hand": "J8o",
+      "iteration": 57723,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.43032046309495664,
+        "check_call": 0.43251500394494846,
+        "fold": 0.1371645329600948
+      },
+      "hand": "T8o",
+      "iteration": 57723,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.30213560186643906,
+        "check_call": 0.5895460291002583,
+        "fold": 0.10831836903330212
+      },
+      "hand": "98o",
+      "iteration": 57724,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.2922165172185753,
+        "check_call": 0.6804854395135871,
+        "fold": 0.027298043267837593
+      },
+      "hand": "88",
+      "iteration": 57724,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4548587930416347,
+        "check_call": 0.4173375783552261,
+        "fold": 0.12780362860313918
+      },
+      "hand": "87s",
+      "iteration": 57724,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.34932930881218266,
+        "check_call": 0.5481201778094125,
+        "fold": 0.10255051337840473
+      },
+      "hand": "86s",
+      "iteration": 57724,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.3681956500422299,
+        "check_call": 0.4673975107534748,
+        "fold": 0.16440683920429536
+      },
+      "hand": "85s",
+      "iteration": 57724,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.3829909608105567,
+        "check_call": 0.30473341605801274,
+        "fold": 0.31227562313143054
+      },
+      "hand": "84s",
+      "iteration": 57725,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.3303446734871755,
+        "check_call": 0.3142402691116483,
+        "fold": 0.35541505740117607
+      },
+      "hand": "83s",
+      "iteration": 57725,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.26745316782134676,
+        "check_call": 0.4221412022194424,
+        "fold": 0.31040562995921095
+      },
+      "hand": "82s",
+      "iteration": 57725,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.46166566000952725,
+        "check_call": 0.5029228361386844,
+        "fold": 0.0354115038517878
+      },
+      "hand": "A7o",
+      "iteration": 57725,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4368890050910789,
+        "check_call": 0.46917764432608133,
+        "fold": 0.09393335058284005
+      },
+      "hand": "K7o",
+      "iteration": 57725,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4877584457404744,
+        "check_call": 0.4193561130734882,
+        "fold": 0.09288544118603723
+      },
+      "hand": "Q7o",
+      "iteration": 57726,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.31576881073103813,
+        "check_call": 0.5016530249956522,
+        "fold": 0.18257816427330933
+      },
+      "hand": "J7o",
+      "iteration": 57726,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4116107277360566,
+        "check_call": 0.43449116790109943,
+        "fold": 0.153898104362844
+      },
+      "hand": "T7o",
+      "iteration": 57726,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4171599638956055,
+        "check_call": 0.3897827711756056,
+        "fold": 0.19305726492878839
+      },
+      "hand": "97o",
+      "iteration": 57726,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.41723614194748515,
+        "check_call": 0.3630882423184105,
+        "fold": 0.21967561573410477
+      },
+      "hand": "87o",
+      "iteration": 57727,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.3906446896129637,
+        "check_call": 0.5170639452470716,
+        "fold": 0.09229136513996453
+      },
+      "hand": "77",
+      "iteration": 57727,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.29170286725412686,
+        "check_call": 0.5040160245424329,
+        "fold": 0.20428110820344028
+      },
+      "hand": "76s",
+      "iteration": 57727,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.2581957326161618,
+        "check_call": 0.5784258622629526,
+        "fold": 0.16337840512088558
+      },
+      "hand": "75s",
+      "iteration": 57727,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.16556599899255192,
+        "check_call": 0.5719967669505478,
+        "fold": 0.26243723405690034
+      },
+      "hand": "74s",
+      "iteration": 57728,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.21706784910082508,
+        "check_call": 0.48444191927335933,
+        "fold": 0.2984902316258157
+      },
+      "hand": "73s",
+      "iteration": 57728,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.3218815593467891,
+        "check_call": 0.16253141148762498,
+        "fold": 0.5155870291655859
+      },
+      "hand": "72s",
+      "iteration": 57728,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.45355895197696094,
+        "check_call": 0.47557572824255784,
+        "fold": 0.07086531978048116
+      },
+      "hand": "A6o",
+      "iteration": 57728,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.3623873832550629,
+        "check_call": 0.5488900905965491,
+        "fold": 0.08872252614838774
+      },
+      "hand": "K6o",
+      "iteration": 57728,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.40860833963327914,
+        "check_call": 0.5159708723900559,
+        "fold": 0.07542078797666524
+      },
+      "hand": "Q6o",
+      "iteration": 57729,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.284834787689908,
+        "check_call": 0.5889020818205155,
+        "fold": 0.1262631304895762
+      },
+      "hand": "J6o",
+      "iteration": 57729,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.40331799106360816,
+        "check_call": 0.3937088673256462,
+        "fold": 0.20297314161074587
+      },
+      "hand": "T6o",
+      "iteration": 57729,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.2595827004901319,
+        "check_call": 0.5430518273821733,
+        "fold": 0.1973654721276948
+      },
+      "hand": "96o",
+      "iteration": 57730,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.3362145022963011,
+        "check_call": 0.43968009885417786,
+        "fold": 0.22410539884952113
+      },
+      "hand": "86o",
+      "iteration": 57730,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.3887415136581491,
+        "check_call": 0.42541595040029095,
+        "fold": 0.18584253594155983
+      },
+      "hand": "76o",
+      "iteration": 57730,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4732594861372946,
+        "check_call": 0.5064491454188034,
+        "fold": 0.020291368443901656
+      },
+      "hand": "66",
+      "iteration": 57731,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.47329018106654736,
+        "check_call": 0.37641921918123394,
+        "fold": 0.15029059975221887
+      },
+      "hand": "65s",
+      "iteration": 57731,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.24089655004806534,
+        "check_call": 0.37830502530366933,
+        "fold": 0.38079842464826535
+      },
+      "hand": "64s",
+      "iteration": 57731,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.39183676163102205,
+        "check_call": 0.3246537039555461,
+        "fold": 0.2835095344134318
+      },
+      "hand": "63s",
+      "iteration": 57731,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.12114046953703907,
+        "check_call": 0.48268119945187277,
+        "fold": 0.3961783310110881
+      },
+      "hand": "62s",
+      "iteration": 57731,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.5244149383377099,
+        "check_call": 0.4242983342120747,
+        "fold": 0.05128672745021543
+      },
+      "hand": "A5o",
+      "iteration": 57732,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.39373457508003423,
+        "check_call": 0.43455890483401505,
+        "fold": 0.17170652008595078
+      },
+      "hand": "K5o",
+      "iteration": 57732,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.34078393852766253,
+        "check_call": 0.497891287577671,
+        "fold": 0.1613247738946668
+      },
+      "hand": "Q5o",
+      "iteration": 57732,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.370048748724639,
+        "check_call": 0.5306321071129577,
+        "fold": 0.09931914416240332
+      },
+      "hand": "J5o",
+      "iteration": 57733,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.3196972185019668,
+        "check_call": 0.5189647444185909,
+        "fold": 0.16133803707944236
+      },
+      "hand": "T5o",
+      "iteration": 57733,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.34025393880547306,
+        "check_call": 0.4772968317382393,
+        "fold": 0.18244922945628766
+      },
+      "hand": "95o",
+      "iteration": 57733,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.35418360495979195,
+        "check_call": 0.40593491170997875,
+        "fold": 0.23988148333022927
+      },
+      "hand": "85o",
+      "iteration": 57733,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.2804766526661973,
+        "check_call": 0.4754720612359006,
+        "fold": 0.24405128609790228
+      },
+      "hand": "75o",
+      "iteration": 57734,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.33277151670610394,
+        "check_call": 0.49540562715007636,
+        "fold": 0.17182285614381992
+      },
+      "hand": "65o",
+      "iteration": 57735,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4154862603899261,
+        "check_call": 0.54903947973496,
+        "fold": 0.03547425987511363
+      },
+      "hand": "55",
+      "iteration": 57735,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4631651490456579,
+        "check_call": 0.28688212420727,
+        "fold": 0.24995272674707206
+      },
+      "hand": "54s",
+      "iteration": 57735,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.41756370563342643,
+        "check_call": 0.3157181002785487,
+        "fold": 0.266718194088025
+      },
+      "hand": "53s",
+      "iteration": 57735,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.27096041037260743,
+        "check_call": 0.3936757606883269,
+        "fold": 0.3353638289390655
+      },
+      "hand": "52s",
+      "iteration": 57736,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.20540527443635026,
+        "check_call": 0.7217315263247511,
+        "fold": 0.07286319923889831
+      },
+      "hand": "A4o",
+      "iteration": 57736,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.47795216844580396,
+        "check_call": 0.36708269816178585,
+        "fold": 0.15496513339241028
+      },
+      "hand": "K4o",
+      "iteration": 57736,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.48233782813742954,
+        "check_call": 0.3952985726543101,
+        "fold": 0.1223635992082606
+      },
+      "hand": "Q4o",
+      "iteration": 57736,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4535592753487426,
+        "check_call": 0.3874928170544262,
+        "fold": 0.158947907596831
+      },
+      "hand": "J4o",
+      "iteration": 57736,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.3738080412666847,
+        "check_call": 0.48640911208783993,
+        "fold": 0.13978284664547536
+      },
+      "hand": "T4o",
+      "iteration": 57737,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.3248866194336434,
+        "check_call": 0.46451007481126244,
+        "fold": 0.2106033057550941
+      },
+      "hand": "94o",
+      "iteration": 57737,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.26479463630009414,
+        "check_call": 0.36758569920838663,
+        "fold": 0.3676196644915193
+      },
+      "hand": "84o",
+      "iteration": 57737,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4047976914844534,
+        "check_call": 0.2567332097464361,
+        "fold": 0.3384690987691104
+      },
+      "hand": "74o",
+      "iteration": 57737,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.32997971951211985,
+        "check_call": 0.40389854700248273,
+        "fold": 0.26612173348539736
+      },
+      "hand": "64o",
+      "iteration": 57738,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.3191540588505472,
+        "check_call": 0.3911054187987246,
+        "fold": 0.2897405223507281
+      },
+      "hand": "54o",
+      "iteration": 57738,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4937908093101702,
+        "check_call": 0.4560720144459156,
+        "fold": 0.050137176243914276
+      },
+      "hand": "44",
+      "iteration": 57738,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.15668094891043133,
+        "check_call": 0.639664392959537,
+        "fold": 0.20365465813003164
+      },
+      "hand": "43s",
+      "iteration": 57739,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.25947588357649937,
+        "check_call": 0.3624827853135833,
+        "fold": 0.3780413311099175
+      },
+      "hand": "42s",
+      "iteration": 57739,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4117740229894112,
+        "check_call": 0.49829076334156464,
+        "fold": 0.08993521366902404
+      },
+      "hand": "A3o",
+      "iteration": 57739,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.3055326690981063,
+        "check_call": 0.6512612953512754,
+        "fold": 0.043206035550618464
+      },
+      "hand": "K3o",
+      "iteration": 57740,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.3814721176994498,
+        "check_call": 0.4422667611662812,
+        "fold": 0.17626112113426928
+      },
+      "hand": "Q3o",
+      "iteration": 57740,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.37504248470671525,
+        "check_call": 0.4789904837979757,
+        "fold": 0.14596703149530899
+      },
+      "hand": "J3o",
+      "iteration": 57740,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.1922537541712277,
+        "check_call": 0.5793840913627848,
+        "fold": 0.2283621544659881
+      },
+      "hand": "T3o",
+      "iteration": 57740,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.20393568472655588,
+        "check_call": 0.5098591749416014,
+        "fold": 0.2862051403318424
+      },
+      "hand": "93o",
+      "iteration": 57740,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.3411183844105973,
+        "check_call": 0.3759306834202393,
+        "fold": 0.28295093216916334
+      },
+      "hand": "83o",
+      "iteration": 57740,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.26848454941017263,
+        "check_call": 0.3744464179023853,
+        "fold": 0.35706903268744206
+      },
+      "hand": "73o",
+      "iteration": 57741,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.2734081411945229,
+        "check_call": 0.4445255322835006,
+        "fold": 0.28206632652197633
+      },
+      "hand": "63o",
+      "iteration": 57741,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.2985452578979003,
+        "check_call": 0.3782422163253355,
+        "fold": 0.3232125257767641
+      },
+      "hand": "53o",
+      "iteration": 57742,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.31743496390971804,
+        "check_call": 0.29192670278110333,
+        "fold": 0.39063833330917896
+      },
+      "hand": "43o",
+      "iteration": 57742,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4537897798673625,
+        "check_call": 0.4188876468541524,
+        "fold": 0.127322573278485
+      },
+      "hand": "33",
+      "iteration": 57742,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.17661837577734998,
+        "check_call": 0.3367591653288882,
+        "fold": 0.4866224588937618
+      },
+      "hand": "32s",
+      "iteration": 57742,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4133206293065601,
+        "check_call": 0.44673724929605363,
+        "fold": 0.13994212139738627
+      },
+      "hand": "A2o",
+      "iteration": 57742,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4212676142608718,
+        "check_call": 0.44541568436633355,
+        "fold": 0.13331670137279497
+      },
+      "hand": "K2o",
+      "iteration": 57743,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4734616429094042,
+        "check_call": 0.35034607390245714,
+        "fold": 0.17619228318813895
+      },
+      "hand": "Q2o",
+      "iteration": 57743,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.2947713035560171,
+        "check_call": 0.5885178563853578,
+        "fold": 0.11671084005862468
+      },
+      "hand": "J2o",
+      "iteration": 57744,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.33985997481386937,
+        "check_call": 0.35073139140929976,
+        "fold": 0.3094086337768304
+      },
+      "hand": "T2o",
+      "iteration": 57744,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.34371535548391885,
+        "check_call": 0.34203791248156123,
+        "fold": 0.3142467320345198
+      },
+      "hand": "92o",
+      "iteration": 57744,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.32989279700685453,
+        "check_call": 0.3135876517277818,
+        "fold": 0.35651955126536367
+      },
+      "hand": "82o",
+      "iteration": 57744,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.20766435582310294,
+        "check_call": 0.41384232212813565,
+        "fold": 0.3784933220487613
+      },
+      "hand": "72o",
+      "iteration": 57744,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.286076124351837,
+        "check_call": 0.32770715904545816,
+        "fold": 0.38621671660270535
+      },
+      "hand": "62o",
+      "iteration": 57745,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.2888596068542364,
+        "check_call": 0.41112500310119654,
+        "fold": 0.3000153900445666
+      },
+      "hand": "52o",
+      "iteration": 57745,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.4076368960397026,
+        "check_call": 0.25364206482115,
+        "fold": 0.33872103913914775
+      },
+      "hand": "42o",
+      "iteration": 57745,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.25442581875414455,
+        "check_call": 0.30186633733945756,
+        "fold": 0.4437078439063975
+      },
+      "hand": "32o",
+      "iteration": 57745,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    },
+    {
+      "error": null,
+      "frequencies": {
+        "bet_raise": 0.37456204847288926,
+        "check_call": 0.37069460637519525,
+        "fold": 0.2547433451519156
+      },
+      "hand": "22",
+      "iteration": 57746,
+      "message": "live preflop spot lookup from current in-memory policy",
+      "ready": true,
+      "spot": "first_to_act"
+    }
+  ],
+  "spot": "first_to_act"
+}
