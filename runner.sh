@@ -4,8 +4,14 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CANONICAL_CONFIG_PATH="$ROOT_DIR/cfg/solve_config_light.json"
 LEGACY_CONFIG_PATH="$ROOT_DIR/solve_config_light.json"
-CONFIG_PATH="${1:-$CANONICAL_CONFIG_PATH}"
+CONFIG_PATH="${1:-${CONFIG_PATH:-}}"
 DEPLOY_TARGET="${2:-local}"
+
+if [[ -z "$CONFIG_PATH" ]]; then
+  echo "Usage: $0 <config.json> [local|gce]" >&2
+  echo "Example: $0 cfg/solve_config_light.json local" >&2
+  exit 1
+fi
 
 # Only the runner/CLI uses JSON profiles. The live FastAPI app does not read
 # these config files directly; it owns its runtime state in memory.

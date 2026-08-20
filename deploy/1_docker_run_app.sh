@@ -9,7 +9,13 @@ IMAGE_NAME="${IMAGE_NAME:-pokerspiel-live}"
 REPO_DIR="${REPO_DIR:-$HOME/pokerspiel}"
 BRANCH="${BRANCH:-postflop-redux}"
 REMOTE_NAME="${REMOTE_NAME:-origin}"
-CONFIG_PATH="${CONFIG_PATH:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/cfg/solve_config_light.json}"
+CONFIG_PATH="${1:-${CONFIG_PATH:-}}"
+
+if [[ -z "$CONFIG_PATH" ]]; then
+  echo "Usage: $0 <config.json>" >&2
+  echo "Example: $0 cfg/solve_config_light.json" >&2
+  exit 1
+fi
 
 DOCKER_ENV_ARGS="$(python3 - "$CONFIG_PATH" <<'PY'
 import json, sys
