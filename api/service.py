@@ -67,6 +67,18 @@ class SolverService:
         if configured_min_iterations is not None:
             min_iterations = int(configured_min_iterations)
 
+        configured_checkpoint_every = os.getenv("POKERSPIEL_CHECKPOINT_EVERY")
+        if configured_checkpoint_every is not None:
+            checkpoint_every = int(configured_checkpoint_every)
+
+        configured_stability_threshold = os.getenv("POKERSPIEL_STABILITY_THRESHOLD")
+        if configured_stability_threshold is not None:
+            stability_threshold = float(configured_stability_threshold)
+
+        configured_stop_patience = os.getenv("POKERSPIEL_STOP_PATIENCE")
+        if configured_stop_patience is not None:
+            stop_patience = int(configured_stop_patience)
+
         self.solver_name = solver_name
         self.max_iterations = max_iterations
         self.checkpoint_every = checkpoint_every
