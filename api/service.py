@@ -107,6 +107,7 @@ class SolverService:
         self._selected_specs = []
         self._probes = []
         self._current_ranges = {"nodes": []}
+        self._preflop_range_cache: Dict[str, Dict[str, Any]] = {}
         self._last_stability: Optional[Dict[str, object]] = None
         self._last_error: Optional[str] = None
         self._flat_state_index: Optional[FlatStateIndex] = None
@@ -269,6 +270,36 @@ class SolverService:
             summary_rows.append(row)
         return summary_rows
 
+    def _refresh_preflop_range_cache(self, current_ranges: Optional[Dict[str, Any]] = None) -> Dict[str, Dict[str, Any]]:
+        source = current_ranges if isinstance(current_ranges, dict) else self._current_ranges
+        cache: Dict[str, Dict[str, Any]] = {}
+        for node in (source or {}).get("nodes", []) or []:
+            name = str(node.get("name") or node.get("display_name") or "").strip()
+            if not name:
+                continue
+            hands: List[Dict[str, Any]] = []
+            for hand_entry in node.get("hands", []) or []:
+                hand = hand_entry.get("hand")
+                if not hand:
+                    continue
+                policy = hand_entry.get("policy") or {}
+                hands.append(
+                    {
+                        "hand": str(hand),
+                        "policy": {str(action): float(prob) for action, prob in policy.items()},
+                    }
+                )
+            cache[name] = {
+                "spot": name,
+                "iteration": self.runtime.iteration,
+                "hands": hands,
+                "hand_count": len(hands),
+                "ready": bool(hands or (node.get("sample_count") or 0) > 0),
+                "message": "checkpoint preflop range snapshot",
+            }
+        self._preflop_range_cache = cache
+        return cache
+
     def status(self) -> SolverStatusResponse:
         selected_summary = build_selected_node_summary(self._current_ranges)
         if not selected_summary:
@@ -359,6 +390,7 @@ class SolverService:
                     )
                     previous_ranges = current_ranges
                     self._current_ranges = current_ranges
+                    self._refresh_preflop_range_cache(current_ranges)
                     self._last_stability = checkpoint_summary
                     self.runtime.last_probe_at = iteration
                     self.runtime.current_average_policy = policy
@@ -960,6 +992,29 @@ class SolverService:
                     f"solver is in phase '{self.runtime.state.value if self.runtime.state else 'unknown'}'; "
                     "preflop range data is unavailable until min_iterations and stability are both satisfied"
                 ),
+            )
+
+        cached = self._preflop_range_cache.get(resolved_spot)
+        if cached is not None:
+            hands = []
+            for hand_entry in cached.get("hands", []) or []:
+                hand = hand_entry.get("hand")
+                if not hand:
+                    continue
+                policy = hand_entry.get("policy") or {}
+                hands.append(
+                    HandPolicy(
+                        hand=str(hand),
+                        policy={str(action): float(prob) for action, prob in policy.items()},
+                    )
+                )
+            return PreflopRangeResponse(
+                spot=resolved_spot,
+                iteration=int(cached.get("iteration", self.runtime.iteration)),
+                hands=hands,
+                hand_count=len(hands),
+                ready=bool(cached.get("ready", bool(hands))),
+                message=cached.get("message") or "preflop range from latest checkpoint snapshot",
             )
 
         current_ranges = getattr(self, "_current_ranges", {}) or {}

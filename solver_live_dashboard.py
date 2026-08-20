@@ -59,7 +59,7 @@ DEFAULT_INTERVAL_SECONDS = 300
 DEFAULT_SAMPLES = 1326
 
 
-def http_json(url: str, payload: Optional[Dict[str, Any]] = None, timeout: int = 90) -> Dict[str, Any]:
+def http_json(url: str, payload: Optional[Dict[str, Any]] = None, timeout: int = 15) -> Dict[str, Any]:
     data = None if payload is None else json.dumps(payload).encode("utf-8")
     request = Request(
         url,
@@ -112,7 +112,7 @@ def category_to_cell(category: str) -> Optional[Tuple[int, int]]:
     return None
 
 
-def probe_to_matrices(probe_payload: Dict[str, Any]) -> Dict[str, List[List[float]]]:
+def range_hands_to_matrices(range_payload: Dict[str, Any]) -> Dict[str, List[List[float]]]:
     fold = [[1.0 for _ in range(13)] for _ in range(13)]
     call = [[0.0 for _ in range(13)] for _ in range(13)]
     raise_ = [[0.0 for _ in range(13)] for _ in range(13)]
@@ -120,8 +120,9 @@ def probe_to_matrices(probe_payload: Dict[str, Any]) -> Dict[str, List[List[floa
     totals: Dict[str, Dict[str, float]] = {}
     counts: Dict[str, int] = {}
 
-    for hand_record in (probe_payload.get("hands") or []):
-        category = hand_to_category(str(hand_record.get("hand") or ""))
+    for hand_record in (range_payload.get("hands") or []):
+        hand_name = str(hand_record.get("hand") or "")
+        category = hand_to_category(hand_name)
         if category is None:
             continue
         policy = hand_record.get("policy") or {}
@@ -157,22 +158,10 @@ def probe_to_matrices(probe_payload: Dict[str, Any]) -> Dict[str, List[List[floa
 
 
 def fetch_spot_payload(api_base_url: str, spot: str, samples: int) -> Dict[str, Any]:
-    status_url = api_base_url.rstrip("/") + "/status"
     range_url = api_base_url.rstrip("/") + f"/preflop/{spot}/range"
 
-    status: Dict[str, Any]
     try:
-        status = http_json(status_url, timeout=90)
-    except Exception as exc:
-        return {
-            "ok": False,
-            "error": f"status fetch failed: {exc}",
-            "status": {},
-            "spot": spot,
-        }
-
-    try:
-        range_payload = http_json(range_url, timeout=90)
+        range_payload = http_json(range_url, timeout=12)
     except HTTPError as exc:
         try:
             detail = json.loads(exc.read().decode("utf-8"))
@@ -181,14 +170,14 @@ def fetch_spot_payload(api_base_url: str, spot: str, samples: int) -> Dict[str, 
         return {
             "ok": False,
             "error": detail,
-            "status": status,
+            "status": {"iteration": None, "ready_for_queries": False},
             "spot": spot,
         }
     except Exception as exc:
         return {
             "ok": False,
-            "error": f"preflop range fetch failed: {exc}",
-            "status": status,
+            "error": f"preflop range fetch timed out or failed: {exc}",
+            "status": {"iteration": None, "ready_for_queries": False},
             "spot": spot,
         }
 
@@ -196,16 +185,22 @@ def fetch_spot_payload(api_base_url: str, spot: str, samples: int) -> Dict[str, 
         return {
             "ok": False,
             "error": range_payload.get("message") or f"preflop range for {spot} is not ready",
-            "status": status,
+            "status": {
+                "iteration": range_payload.get("iteration"),
+                "ready_for_queries": False,
+            },
             "spot": spot,
         }
 
-    matrices = probe_to_matrices({"hands": range_payload.get("hands", [])})
+    matrices = range_hands_to_matrices(range_payload)
     return {
         "ok": True,
         "spot": spot,
-        "status": status,
-        "probe": range_payload,
+        "status": {
+            "iteration": range_payload.get("iteration"),
+            "ready_for_queries": bool(range_payload.get("ready")),
+        },
+        "range": range_payload,
         "matrices": matrices,
         "ranks": RANKS,
         "grid_labels": build_grid_labels(),
@@ -307,16 +302,16 @@ def render_html(spots: List[str], default_spot: str, interval_seconds: int) -> s
         const tbody = document.querySelector('#node-table tbody');
         tbody.innerHTML = '';
         if (!Array.isArray(summaryRows) || summaryRows.length === 0) {{
-          tbody.innerHTML = '<tr><td colspan="5">no in-memory preflop nodes observed yet</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="5">range data is sourced from /preflop/&lt;spot&gt;/range only</td></tr>';
           return;
         }}
 
         for (const row of summaryRows) {{
-          const freqs = row && row.action_frequencies ? row.action_frequencies : {{}};
+          const freqs = row && row.policy ? row.policy : {{}};
           const tr = document.createElement('tr');
           tr.innerHTML = (
-            '<td>' + (row.display_name || row.node_name || 'node') + '</td>' +
-            '<td>' + Number(row.sample_count || 0) + '</td>' +
+            '<td>' + (row.hand || 'hand') + '</td>' +
+            '<td>' + Number(row.hand ? 1 : 0) + '</td>' +
             '<td>' + formatFreq(freqs.fold) + '</td>' +
             '<td>' + formatFreq(freqs['check_call']) + '</td>' +
             '<td>' + formatFreq(freqs['bet_raise']) + '</td>'
@@ -472,24 +467,29 @@ def render_html(spots: List[str], default_spot: str, interval_seconds: int) -> s
         const spot = spotSelect.value;
         statusEl.textContent = `loading ${{spot}}...`;
         errorEl.textContent = '';
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 15000);
         try {{
-          const resp = await fetch(`/grid-data?spot=${{encodeURIComponent(spot)}}`);
+          const resp = await fetch(`/grid-data?spot=${{encodeURIComponent(spot)}}`, {{ signal: controller.signal }});
           const payload = await resp.json();
           if (!payload.ok) {{
             throw new Error(typeof payload.error === 'string' ? payload.error : JSON.stringify(payload.error));
           }}
           buildFigure(payload);
-          const summaryRows = Array.isArray(payload.status && payload.status.selected_node_summary)
-            ? payload.status.selected_node_summary
+          const summaryRows = Array.isArray(payload.range && payload.range.hands)
+            ? payload.range.hands
             : [];
           renderNodeTable(summaryRows);
           const iter = payload.status && payload.status.iteration !== undefined ? payload.status.iteration : 'n/a';
           const ready = payload.status && payload.status.ready_for_queries !== undefined ? payload.status.ready_for_queries : false;
-          statusEl.textContent = `iteration=${{iter}} ready=${{ready}} fetched=${{new Date(payload.fetched_at * 1000).toLocaleTimeString()}}`;
+          statusEl.textContent = `iteration=${{iter}} ready=${{ready}} source=/preflop/${{encodeURIComponent(spot)}}/range fetched=${{new Date(payload.fetched_at * 1000).toLocaleTimeString()}}`;
         }} catch (err) {{
-          errorEl.textContent = `Error: ${{err.message || err}}`;
+          const detail = err && err.name === 'AbortError' ? 'request timed out after 15s' : (err.message || String(err));
+          errorEl.textContent = `Error: ${{detail}}`;
           statusEl.textContent = 'request failed';
           renderNodeTable([]);
+        }} finally {{
+          clearTimeout(timer);
         }}
       }}
 

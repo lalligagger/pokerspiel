@@ -7,7 +7,7 @@
   "stability_threshold": 0.9,
   "stop_patience": 3,
   "min_iterations": 10000,
-  "range_samples": 250,
+  "range_samples": 25,
   "range_last_n": 1000,
   "report_mode": "summary",
   "artifact_mode": "lightweight",

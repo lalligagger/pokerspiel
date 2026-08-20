@@ -373,6 +373,35 @@ def test_get_preflop_range_returns_live_policy_entries_for_requested_spot():
     assert response.hand_count == 3
 
 
+def test_get_preflop_range_uses_checkpoint_cache_when_available():
+    service = SolverService()
+    service.runtime.state = SolverState.AVAILABLE
+    service.runtime.ready_for_queries = True
+    service.runtime.iteration = 99
+    service._preflop_range_cache = {
+        "response_to_open": {
+            "spot": "response_to_open",
+            "iteration": 99,
+            "ready": True,
+            "hands": [
+                {"hand": "TT", "policy": {"fold": 0.1, "check_call": 0.4, "bet_raise": 0.5}},
+                {"hand": "AKs", "policy": {"fold": 0.08, "check_call": 0.3, "bet_raise": 0.62}},
+            ],
+        }
+    }
+    service._game = object()
+    service._solver = object()
+    service._selected_specs = [{"name": "response_to_open", "display_name": "response_to_open", "history": ["bet"]}]
+    service._current_ranges = {"nodes": []}
+
+    response = service.get_preflop_range("response_to_open")
+
+    assert response.ready is True
+    assert response.iteration == 99
+    assert response.spot == "response_to_open"
+    assert {hand.hand for hand in response.hands} == {"TT", "AKs"}
+
+
 def test_postflop_exact_is_blocked_until_min_iterations_and_stability(monkeypatch):
     service = SolverService(min_iterations=100, checkpoint_every=10, stop_patience=1)
     service.runtime.iteration = 10
