@@ -173,3 +173,4 @@ class SolverStatusResponse:
     last_probe_at: Optional[int] = None
     min_iteration: Optional[int] = None
     probe_budget_remaining: Optional[int] = None
+    selected_node_summary: List[Dict[str, Any]] = field(default_factory=list)

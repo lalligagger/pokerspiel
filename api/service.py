@@ -10,6 +10,7 @@ import pyspiel
 from app_solver import (
     GAME_CONFIGS,
     aggregate_selected_node_ranges,
+    build_selected_node_summary,
     make_solver,
     prepare_selected_node_probes,
     resolve_node_specs,
@@ -125,6 +126,7 @@ class SolverService:
         )
 
     def status(self) -> SolverStatusResponse:
+        selected_summary = build_selected_node_summary(self._current_ranges)
         return SolverStatusResponse(
             solver=self.solver_name,
             iteration=self.runtime.iteration,
@@ -134,6 +136,7 @@ class SolverService:
             last_probe_at=self.runtime.last_probe_at,
             min_iteration=self.min_iterations,
             probe_budget_remaining=self.range_samples,
+            selected_node_summary=selected_summary,
         )
 
     def _stability_summary(self) -> Optional[StabilitySummary]:

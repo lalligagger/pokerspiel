@@ -155,7 +155,7 @@ def probe_to_matrices(probe_payload: Dict[str, Any]) -> Dict[str, List[List[floa
 
 def fetch_spot_payload(api_base_url: str, spot: str, samples: int) -> Dict[str, Any]:
     status_url = api_base_url.rstrip("/") + "/status"
-    probe_url = api_base_url.rstrip("/") + "/probe"
+    range_url = api_base_url.rstrip("/") + f"/preflop/{spot}/range"
 
     status: Dict[str, Any]
     try:
@@ -168,16 +168,8 @@ def fetch_spot_payload(api_base_url: str, spot: str, samples: int) -> Dict[str, 
             "spot": spot,
         }
 
-    payload = {
-        "node": spot,
-        "history": [],
-        "samples": int(samples),
-        "include_hands": True,
-        "include_stability": True,
-    }
-
     try:
-        probe = http_json(probe_url, payload=payload, timeout=90)
+        range_payload = http_json(range_url, timeout=90)
     except HTTPError as exc:
         try:
             detail = json.loads(exc.read().decode("utf-8"))
@@ -192,17 +184,25 @@ def fetch_spot_payload(api_base_url: str, spot: str, samples: int) -> Dict[str, 
     except Exception as exc:
         return {
             "ok": False,
-            "error": f"probe fetch failed: {exc}",
+            "error": f"preflop range fetch failed: {exc}",
             "status": status,
             "spot": spot,
         }
 
-    matrices = probe_to_matrices(probe)
+    if not range_payload.get("ready", False):
+        return {
+            "ok": False,
+            "error": range_payload.get("message") or f"preflop range for {spot} is not ready",
+            "status": status,
+            "spot": spot,
+        }
+
+    matrices = probe_to_matrices({"hands": range_payload.get("hands", [])})
     return {
         "ok": True,
         "spot": spot,
         "status": status,
-        "probe": probe,
+        "probe": range_payload,
         "matrices": matrices,
         "ranks": RANKS,
         "grid_labels": build_grid_labels(),
@@ -246,6 +246,10 @@ def render_html(spots: List[str], default_spot: str, interval_seconds: int) -> s
       }}
       .status {{ font-size: 12px; color: #5c6c80; }}
       #plot {{ width: 900px; height: 900px; margin: 12px auto; }}
+      #node-table-wrap {{ width: 900px; margin: 0 auto 24px auto; }}
+      #node-table {{ border-collapse: collapse; width: 100%; font-size: 12px; }}
+      #node-table th, #node-table td {{ border: 1px solid #d9dde3; padding: 6px 8px; text-align: left; }}
+      #node-table th {{ background: #f3f6fa; }}
       #error {{ width: 900px; margin: 0 auto 16px auto; font-size: 12px; color: #9f1239; }}
     </style>
   </head>
@@ -256,6 +260,13 @@ def render_html(spots: List[str], default_spot: str, interval_seconds: int) -> s
       <span id="status" class="status"></span>
     </div>
     <div id="plot"></div>
+    <div id="node-table-wrap">
+      <h3 style="margin: 0 0 8px 0; font-size: 14px;">Observed preflop nodes</h3>
+      <table id="node-table">
+        <thead><tr><th>node</th><th>count</th><th>fold</th><th>check/call</th><th>bet/raise</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
     <div id="error"></div>
 
     <script>
@@ -281,6 +292,34 @@ def render_html(spots: List[str], default_spot: str, interval_seconds: int) -> s
         const lo = i < j ? j : i;
         const suffix = i < j ? 's' : 'o';
         return ranks[hi] + ranks[lo] + suffix;
+      }}
+
+      function formatFreq(value) {{
+        const number = Number(value ?? 0);
+        if (!Number.isFinite(number)) return '0.000';
+        return number.toFixed(3);
+      }}
+
+      function renderNodeTable(summaryRows) {{
+        const tbody = document.querySelector('#node-table tbody');
+        tbody.innerHTML = '';
+        if (!Array.isArray(summaryRows) || summaryRows.length === 0) {{
+          tbody.innerHTML = '<tr><td colspan="5">no in-memory preflop nodes observed yet</td></tr>';
+          return;
+        }}
+
+        for (const row of summaryRows) {{
+          const freqs = row && row.action_frequencies ? row.action_frequencies : {{}};
+          const tr = document.createElement('tr');
+          tr.innerHTML = (
+            '<td>' + (row.display_name || row.node_name || 'node') + '</td>' +
+            '<td>' + Number(row.sample_count || 0) + '</td>' +
+            '<td>' + formatFreq(freqs.fold) + '</td>' +
+            '<td>' + formatFreq(freqs['check_call']) + '</td>' +
+            '<td>' + formatFreq(freqs['bet_raise']) + '</td>'
+          );
+          tbody.appendChild(tr);
+        }}
       }}
 
       function buildFigure(payload) {{
@@ -437,12 +476,17 @@ def render_html(spots: List[str], default_spot: str, interval_seconds: int) -> s
             throw new Error(typeof payload.error === 'string' ? payload.error : JSON.stringify(payload.error));
           }}
           buildFigure(payload);
+          const summaryRows = Array.isArray(payload.status && payload.status.selected_node_summary)
+            ? payload.status.selected_node_summary
+            : [];
+          renderNodeTable(summaryRows);
           const iter = payload.status && payload.status.iteration !== undefined ? payload.status.iteration : 'n/a';
           const ready = payload.status && payload.status.ready_for_queries !== undefined ? payload.status.ready_for_queries : false;
           statusEl.textContent = `iteration=${{iter}} ready=${{ready}} fetched=${{new Date(payload.fetched_at * 1000).toLocaleTimeString()}}`;
         }} catch (err) {{
           errorEl.textContent = `Error: ${{err.message || err}}`;
           statusEl.textContent = 'request failed';
+          renderNodeTable([]);
         }}
       }}
 
