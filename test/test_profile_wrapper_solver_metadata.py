@@ -25,6 +25,8 @@ from app_solver import (
     GAME_CONFIGS,
     FlatMCCFRTables,
     FlatStateIndex,
+    decode_state_key_history_code,
+    decode_state_key_player,
     encode_state_key,
     exact_hole_board_signature,
     filter_recent_iteration_records,
@@ -45,13 +47,17 @@ def test_flat_state_index_and_tables_use_integer_ids_and_memmap(tmp_path):
     state_index = FlatStateIndex(str(base), max_states=8)
     tables = FlatMCCFRTables(str(base), max_states=8, max_actions=3)
 
-    key_a = encode_state_key(history=(1, 4), bucket=7)
-    key_b = encode_state_key(history=(1, 4), bucket=7)
-    key_c = encode_state_key(history=(0, 1), bucket=4)
+    key_a = encode_state_key(history=(1, 4), bucket=7, player=0)
+    key_b = encode_state_key(history=(1, 4), bucket=7, player=0)
+    key_c = encode_state_key(history=(1, 4), bucket=7, player=1)
+    key_d = encode_state_key(history=(0, 1), bucket=4, player=0)
 
     assert state_index.lookup_or_insert(key_a) == 0
     assert state_index.lookup_or_insert(key_b) == 0
-    assert state_index.lookup_or_insert(key_c) == 1
+    assert key_a != key_c
+    assert decode_state_key_player(key_a) == 0
+    assert decode_state_key_history_code(key_a) == decode_state_key_history_code(key_b)
+    assert state_index.lookup_or_insert(key_d) == 1
     assert tables.regret.shape == (8, 3)
     assert tables.regret.dtype == np.float32
     tables.regret[0, 0] = 1.25
@@ -65,9 +71,11 @@ def test_service_status_and_probe_compatibility_with_flat_runtime(tmp_path):
     service.runtime.stable = True
     service.runtime.state = SolverState.AVAILABLE
     service._selected_specs = [{"name": "first_to_act", "display_name": "first_to_act", "history": []}]
-    service._flat_state_index = FlatStateIndex(str(tmp_path / "flat_status"), max_states=8)
-    service._flat_tables = FlatMCCFRTables(str(tmp_path / "flat_status"), max_states=8, max_actions=3)
-    service._flat_state_index.lookup_or_insert(encode_state_key([], bucket=7))
+    service._flat_state_index_by_player[0] = FlatStateIndex(str(tmp_path / "flat_status_p0"), max_states=8)
+    service._flat_tables_by_player[0] = FlatMCCFRTables(str(tmp_path / "flat_status_p0"), max_states=8, max_actions=3)
+    service._flat_state_index = service._flat_state_index_by_player[0]
+    service._flat_tables = service._flat_tables_by_player[0]
+    service._flat_state_index.lookup_or_insert(encode_state_key([], bucket=7, player=0))
     service._flat_tables.avg_strategy[0, 0] = 0.1
     service._flat_tables.avg_strategy[0, 1] = 0.3
     service._flat_tables.avg_strategy[0, 2] = 0.6
@@ -413,6 +421,23 @@ def test_get_preflop_range_uses_checkpoint_cache_when_available():
     assert {hand.hand for hand in response.hands} == {"TT", "AKs"}
 
 
+def test_get_preflop_range_rejects_sampled_probe_fallbacks():
+    service = SolverService()
+    service.runtime.state = SolverState.AVAILABLE
+    service.runtime.ready_for_queries = True
+    service.runtime.iteration = 123
+    service._selected_specs = [{"name": "response_to_open", "display_name": "response_to_open", "history": ["bet"]}]
+    service._game = object()
+    service._solver = object()
+    service._current_ranges = {"nodes": []}
+    service._preflop_range_cache = {}
+
+    response = service.get_preflop_range("response_to_open")
+
+    assert response.ready is False
+    assert "realtime sampled probes are intentionally disabled" in response.message
+
+
 def test_postflop_exact_is_blocked_until_min_iterations_and_stability(monkeypatch):
     service = SolverService(min_iterations=100, checkpoint_every=10, stop_patience=1)
     service.runtime.iteration = 10
@@ -673,6 +698,49 @@ def test_aggregate_range_profiles_collapses_raw_pokerkit_action_ids_to_compact_f
     assert rows[0]["policy"]["4"] == 0.5
 
 
+def test_aggregate_selected_node_ranges_groups_by_exact_infoset_when_available():
+    snapshots = [
+        {
+            "label": "first_to_act",
+            "node_name": "first_to_act",
+            "normalized_name": "first_to_act",
+            "street": "preflop",
+            "history": [],
+            "selected_history": [],
+            "player": 0,
+            "hole_cards": ["ACE OF CLUBS (Ac)", "KING OF SPADES (Ks)"],
+            "exact_infoset_key": "infoset=exact:player=0|hole=AcKs|board=|hist=",
+            "action_probabilities": [
+                {"action": 0, "probability": 0.2},
+                {"action": 1, "probability": 0.3},
+                {"action": 4, "probability": 0.5},
+            ],
+        },
+        {
+            "label": "response_to_open",
+            "node_name": "response_to_open",
+            "normalized_name": "response_to_open",
+            "street": "preflop",
+            "history": ["bet"],
+            "selected_history": ["bet"],
+            "player": 1,
+            "hole_cards": ["ACE OF CLUBS (Ac)", "KING OF SPADES (Ks)"],
+            "exact_infoset_key": "infoset=exact:player=0|hole=AcKs|board=|hist=",
+            "action_probabilities": [
+                {"action": 0, "probability": 0.3},
+                {"action": 1, "probability": 0.2},
+                {"action": 4, "probability": 0.5},
+            ],
+        },
+    ]
+
+    ranges = aggregate_selected_node_ranges(snapshots)
+    assert len(ranges["nodes"]) == 1
+    assert ranges["nodes"][0]["sample_count"] == 2
+    assert ranges["nodes"][0]["action_frequencies"]["bet_raise"] == 0.5
+    assert ranges["nodes"][0]["hands"][0]["policy"]["fold"] == 0.25
+
+
 def test_aggregate_selected_node_ranges_groups_by_selected_node_and_hand():
     snapshots = [
         {
@@ -814,6 +882,37 @@ def test_profile_variant_reports_memory_usage(tmp_path):
     memory = report["performance"]["memory"]
     assert "max_rss_mb" in memory
     assert memory["max_rss_mb"] is None or memory["max_rss_mb"] >= 0.0
+
+
+def test_profile_variant_separates_stability_and_memory_thresholds(tmp_path):
+    report = profile_variant(
+        "hulh",
+        GAME_CONFIGS["hulh"],
+        iterations=4,
+        checkpoint_every=2,
+        solver_name="outcome",
+        history_samples=0,
+        street_samples=0,
+        report_mode="summary",
+        output_json_path=str(tmp_path / "explicit_thresholds_run.json"),
+        stability_threshold=0.05,
+        stop_threshold=0.85,
+        memory_threshold=0.75,
+    )
+
+    stop_policy = report["stop_policy"]
+    assert stop_policy["stability_threshold"] == pytest.approx(0.05)
+    assert stop_policy["memory_threshold"] == pytest.approx(0.75)
+    assert "memory_stop_recommended" in stop_policy
+    assert report["sampling_policy"] == {"preflop": "exact_only", "postflop": "diagnostic_only"}
+
+
+def test_service_status_exposes_sampling_policy(tmp_path):
+    service = SolverService(min_iterations=0, checkpoint_every=1, range_samples=1)
+    service.runtime.ready_for_queries = True
+    service.runtime.state = SolverState.AVAILABLE
+    status = service.status()
+    assert status.sampling_policy == {"preflop": "exact_only", "postflop": "diagnostic_only"}
 
 
 def test_hulh_history_labels_include_4bet_and_5bet_names():

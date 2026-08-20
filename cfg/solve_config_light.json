@@ -6,6 +6,11 @@
   "checkpoint_every": 10000,
   "stability_threshold": 0.9,
   "stop_threshold": 0.85,
+  "memory_threshold": 0.85,
+  "sampling_policy": {
+    "preflop": "exact_only",
+    "postflop": "diagnostic_only"
+  },
   "stop_patience": 3,
   "min_iterations": 10000,
   "range_samples": 25,

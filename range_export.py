@@ -349,10 +349,78 @@ def format_node_label(node_name: Any, history: Iterable[Any] = ()) -> str:
 
 
 def aggregate_selected_node_ranges(snapshots: Iterable[Dict[str, Any]]) -> Dict[str, Any]:
-    """Aggregate average-strategy samples by selected node and starting-hand class."""
+    """Aggregate average-strategy samples by exact infoset when available, otherwise by selected node."""
+    snapshots = list(snapshots or [])
+    if any(snapshot.get("exact_infoset_key") for snapshot in snapshots if isinstance(snapshot, dict)):
+        grouped: Dict[str, Dict[str, List[Dict[str, Any]]]] = defaultdict(lambda: defaultdict(list))
+        node_metadata: Dict[str, Dict[str, Any]] = {}
+        for snapshot in snapshots:
+            exact_key = snapshot.get("exact_infoset_key") or snapshot.get("state_serialize") or snapshot.get("summary") or snapshot.get("label")
+            if exact_key is None:
+                continue
+            node_name = str(snapshot.get("node_name") or snapshot.get("normalized_name") or snapshot.get("label") or "node")
+            compact_label = canonical_preflop_label(snapshot.get("hole_cards") or [])
+            if compact_label is None:
+                continue
+            grouped[str(exact_key)][compact_label].append(snapshot)
+            history = list(snapshot.get("selected_history") or snapshot.get("history") or [])
+            label = format_node_label(node_name, history)
+            node_metadata.setdefault(
+                str(exact_key),
+                {
+                    "name": str(exact_key),
+                    "display_name": label,
+                    "history": history,
+                    "history_label": label,
+                    "player": snapshot.get("player"),
+                    "street": snapshot.get("street"),
+                },
+            )
+
+        nodes = []
+        for exact_key, hands in sorted(grouped.items()):
+            hand_rows = []
+            node_action_totals: Dict[str, float] = defaultdict(float)
+            node_sample_count = 0
+            for compact_label, items in sorted(hands.items()):
+                action_totals: Dict[str, float] = defaultdict(float)
+                for item in items:
+                    for entry in item.get("action_probabilities") or []:
+                        action_totals[canonical_action_name(entry["action"])] += float(entry["probability"])
+                sample_count = len(items)
+                node_sample_count += sample_count
+                for action, total in action_totals.items():
+                    node_action_totals[action] += total
+                hand_rows.append(
+                    {
+                        "hand": compact_label,
+                        "sample_count": sample_count,
+                        "policy": {
+                            action: total / sample_count
+                            for action, total in sorted(action_totals.items())
+                        },
+                    }
+                )
+
+            metadata = node_metadata[exact_key]
+            nodes.append(
+                {
+                    **metadata,
+                    "sample_count": node_sample_count,
+                    "hand_count": len(hand_rows),
+                    "action_frequencies": {
+                        action: total / node_sample_count
+                        for action, total in sorted(node_action_totals.items())
+                    },
+                    "hands": hand_rows,
+                }
+            )
+
+        return {"action_families": ["fold", "check_call", "bet_raise"], "nodes": nodes}
+
     grouped: Dict[str, Dict[str, List[Dict[str, Any]]]] = defaultdict(lambda: defaultdict(list))
     node_metadata: Dict[str, Dict[str, Any]] = {}
-    for snapshot in snapshots or []:
+    for snapshot in snapshots:
         node_name = str(snapshot.get("node_name") or snapshot.get("label") or "node")
         compact_label = canonical_preflop_label(snapshot.get("hole_cards") or [])
         if compact_label is None:

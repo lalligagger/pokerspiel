@@ -17,11 +17,14 @@ from app_solver import (
     aggregate_selected_node_ranges,
     build_selected_node_summary,
     canonical_action_family,
+    decode_state_key_history_code,
+    decode_state_key_player,
     encode_state_key,
     exact_hole_board_signature,
     make_solver,
     prepare_selected_node_probes,
     resolve_node_specs,
+    runtime_telemetry_snapshot,
     snapshot_probe_states,
     summarize_selected_node_stability,
 )
@@ -54,6 +57,7 @@ class SolverService:
         checkpoint_every: int = 4000,
         stability_threshold: float = 0.01,
         stop_threshold: float = 0.85,
+        memory_threshold: float = 0.85,
         stop_patience: int = 3,
         min_iterations: int = 1_000_000,
         probe_min_iteration: int = 0,
@@ -89,6 +93,10 @@ class SolverService:
         if configured_stop_threshold is not None:
             stop_threshold = float(configured_stop_threshold)
 
+        configured_memory_threshold = os.getenv("POKERSPIEL_MEMORY_THRESHOLD")
+        if configured_memory_threshold is not None:
+            memory_threshold = float(configured_memory_threshold)
+
         configured_stop_patience = os.getenv("POKERSPIEL_STOP_PATIENCE")
         if configured_stop_patience is not None:
             stop_patience = int(configured_stop_patience)
@@ -98,6 +106,7 @@ class SolverService:
         self.checkpoint_every = checkpoint_every
         self.stability_threshold = stability_threshold
         self.stop_threshold = stop_threshold
+        self.memory_threshold = memory_threshold
         self.stop_patience = stop_patience
         self.min_iterations = min_iterations
         self.probe_min_iteration = probe_min_iteration
@@ -115,22 +124,47 @@ class SolverService:
         self._current_ranges = {"nodes": []}
         self._preflop_range_cache: Dict[str, Dict[str, Any]] = {}
         self._last_stability: Optional[Dict[str, object]] = None
+        self._last_checkpoint_telemetry: Dict[str, Any] = {}
+        self.sampling_policy: Dict[str, str] = {
+            "preflop": "exact_only",
+            "postflop": "diagnostic_only",
+        }
         self._last_error: Optional[str] = None
         self._flat_state_index: Optional[FlatStateIndex] = None
         self._flat_tables: Optional[FlatMCCFRTables] = None
+        self._flat_state_index_by_player: Dict[int, FlatStateIndex] = {0: None, 1: None}
+        self._flat_tables_by_player: Dict[int, FlatMCCFRTables] = {0: None, 1: None}
 
     def _init_flat_kernel(self) -> None:
-        if self._flat_state_index is not None and self._flat_tables is not None:
+        if self._flat_state_index is not None and self._flat_tables is not None and self._flat_state_index_by_player[0] is not None and self._flat_tables_by_player[0] is not None:
             return
 
         memmap_dir = os.getenv("POKERSPIEL_MEMMAP_DIR") or os.path.join(tempfile.gettempdir(), "pokerspiel_live_solver")
         os.makedirs(memmap_dir, exist_ok=True)
 
         max_states = max(4096, min(self.max_iterations * 8, 2_000_000))
-        state_path = os.path.join(memmap_dir, "state")
-        tables_path = os.path.join(memmap_dir, "solver")
-        self._flat_state_index = FlatStateIndex(state_path, max_states=max_states)
-        self._flat_tables = FlatMCCFRTables(tables_path, max_states=max_states, max_actions=3)
+        for player in (0, 1):
+            state_path = os.path.join(memmap_dir, f"state_player_{player}")
+            tables_path = os.path.join(memmap_dir, f"solver_player_{player}")
+            self._flat_state_index_by_player[player] = FlatStateIndex(state_path, max_states=max_states)
+            self._flat_tables_by_player[player] = FlatMCCFRTables(tables_path, max_states=max_states, max_actions=3)
+
+        self._flat_state_index = self._flat_state_index_by_player[0]
+        self._flat_tables = self._flat_tables_by_player[0]
+
+    def _state_kernel_for_player(self, player: int) -> Tuple[FlatStateIndex, FlatMCCFRTables]:
+        if self._flat_state_index is None or self._flat_tables is None:
+            self._init_flat_kernel()
+        player = int(player) & 1
+        state_index = self._flat_state_index_by_player.get(player)
+        tables = self._flat_tables_by_player.get(player)
+        if state_index is None or tables is None:
+            self._init_flat_kernel()
+            state_index = self._flat_state_index_by_player.get(player)
+            tables = self._flat_tables_by_player.get(player)
+        if state_index is None or tables is None:
+            raise RuntimeError(f"flat state kernel missing for player {player}")
+        return state_index, tables
 
     def _state_bucket_for_state(self, state, history=None) -> int:
         if state is None:
@@ -152,16 +186,19 @@ class SolverService:
         return None
 
     def _record_flat_policy_state(self, state, history, policy) -> Optional[int]:
-        if self._flat_state_index is None or self._flat_tables is None:
-            self._init_flat_kernel()
         if state is None:
             return None
 
-        state_key = encode_state_key(history or [], bucket=self._state_bucket_for_state(state, history))
-        state_id = self._flat_state_index.lookup_or_insert(state_key)
+        player = int(state.current_player())
+        state_index, tables = self._state_kernel_for_player(player)
+        state_key = encode_state_key(
+            history or [],
+            bucket=self._state_bucket_for_state(state, history),
+            player=player,
+        )
+        state_id = state_index.lookup_or_insert(state_key)
 
         try:
-            player = int(state.current_player())
             legal = set(int(action) for action in state.legal_actions())
             raw_policy = policy.get_state_policy(state, player)
         except Exception:
@@ -171,9 +208,9 @@ class SolverService:
             compact_action = self._flat_action_code(action)
             if compact_action is None or int(action) not in legal:
                 continue
-            self._flat_tables.strategy[state_id, compact_action] = float(probability)
-            self._flat_tables.avg_strategy[state_id, compact_action] += float(probability)
-            self._flat_tables.visits[state_id] += 1.0
+            tables.strategy[state_id, compact_action] = float(probability)
+            tables.avg_strategy[state_id, compact_action] += float(probability)
+            tables.visits[state_id] += 1.0
 
         return state_id
 
@@ -202,6 +239,7 @@ class SolverService:
         in-memory ranges and last stability snapshot available for API inspection.
         """
         self._stop_event.set()
+        self._last_checkpoint_telemetry = runtime_telemetry_snapshot()
         self.runtime.state = SolverState.PAUSED
         self.runtime.ready_for_queries = bool(
             self._current_ranges.get("nodes")
@@ -209,6 +247,12 @@ class SolverService:
             or (self._last_stability is not None)
         )
         self.runtime.stable = bool(self._last_stability and self._last_stability.get("passed"))
+        self.runtime.last_stability_check = {
+            "iteration": self.runtime.iteration,
+            "passed": bool(self._last_stability and self._last_stability.get("passed")),
+            "threshold": self.stop_threshold,
+            "telemetry": self._last_checkpoint_telemetry,
+        }
 
     def health(self) -> HealthStatus:
         status = self.runtime.state.value if self.runtime.state else "running"
@@ -221,9 +265,9 @@ class SolverService:
             message=self._last_error or "solver is running; read-only probe APIs are enabled",
         )
 
-    def _history_code_for_spec(self, history: Iterable[str]) -> int:
+    def _history_code_for_spec(self, history: Iterable[str], player: int = 0) -> int:
         action_code = 0
-        for depth, action in enumerate(history or []):
+        for depth, action in enumerate((history or [])[:8]):
             normalized = str(action).strip().lower()
             if normalized in {"fold"}:
                 compact = 0
@@ -236,14 +280,19 @@ class SolverService:
             action_code |= int(compact) << (2 * depth)
         return action_code
 
-    def _flat_action_frequencies_for_history(self, history: Iterable[str]) -> Optional[Dict[str, float]]:
+    def _flat_action_frequencies_for_history(self, history: Iterable[str], player: int = 0) -> Optional[Dict[str, float]]:
         if self._flat_state_index is None or self._flat_tables is None:
-            return None
+            self._init_flat_kernel()
 
-        keys = self._flat_state_index.state_keys[: self._flat_state_index.state_count]
-        target_history_code = self._history_code_for_spec(history)
+        state_index, tables = self._state_kernel_for_player(player)
+        keys = state_index.state_keys[: state_index.state_count]
+        target_history_code = self._history_code_for_spec(history, player=player)
+        player_code = int(player) & 0x3
         matches = [
-            idx for idx, key in enumerate(keys) if (int(key) >> 32) == target_history_code
+            idx
+            for idx, key in enumerate(keys)
+            if decode_state_key_player(int(key)) == player_code
+            and decode_state_key_history_code(int(key)) == target_history_code
         ]
         if not matches:
             return None
@@ -255,10 +304,10 @@ class SolverService:
         }
         sample_count = 0
         for idx in matches:
-            action_frequencies["fold"] += float(self._flat_tables.avg_strategy[idx, 0])
-            action_frequencies["check_call"] += float(self._flat_tables.avg_strategy[idx, 1])
-            action_frequencies["bet_raise"] += float(self._flat_tables.avg_strategy[idx, 2])
-            sample_count += int(self._flat_tables.visits[idx])
+            action_frequencies["fold"] += float(tables.avg_strategy[idx, 0])
+            action_frequencies["check_call"] += float(tables.avg_strategy[idx, 1])
+            action_frequencies["bet_raise"] += float(tables.avg_strategy[idx, 2])
+            sample_count += int(tables.visits[idx])
 
         return {
             "action_frequencies": action_frequencies,
@@ -327,10 +376,20 @@ class SolverService:
         self._current_ranges = {"nodes": compact_nodes}
         return cache
 
+    def _stop_recommendation(self) -> bool:
+        if not isinstance(self._last_stability, dict):
+            return False
+        avg_delta = float(self._last_stability.get("avg_abs_delta") or 0.0)
+        max_delta = float(self._last_stability.get("max_abs_delta") or 0.0)
+        threshold = float(self.stop_threshold)
+        passed = bool(self._last_stability.get("passed"))
+        return passed and avg_delta <= threshold and max_delta <= threshold
+
     def status(self) -> SolverStatusResponse:
         selected_summary = build_selected_node_summary(self._current_ranges)
         if not selected_summary:
             selected_summary = self._selected_summary_from_flat_kernel()
+        telemetry = self._last_checkpoint_telemetry or runtime_telemetry_snapshot()
         return SolverStatusResponse(
             solver=self.solver_name,
             iteration=self.runtime.iteration,
@@ -341,6 +400,13 @@ class SolverService:
             min_iteration=self.min_iterations,
             probe_budget_remaining=self.range_samples,
             selected_node_summary=selected_summary,
+            telemetry=telemetry,
+            sampling_policy=dict(self.sampling_policy),
+            stability_threshold=float(self.stability_threshold),
+            stop_threshold=float(self.stop_threshold),
+            memory_threshold=float(self.memory_threshold),
+            stop_recommended=self._stop_recommendation(),
+            memory_stop_recommended=bool(self.memory_threshold is not None and self.memory_threshold > 0),
         )
 
     def _stability_summary(self) -> Optional[StabilitySummary]:
@@ -430,8 +496,17 @@ class SolverService:
                     previous_ranges = current_ranges
                     self._refresh_preflop_range_cache(current_ranges)
                     self._last_stability = checkpoint_summary
+                    self._last_checkpoint_telemetry = runtime_telemetry_snapshot()
                     self.runtime.last_probe_at = iteration
                     self.runtime.current_average_policy = policy
+                    self.runtime.last_stability_check = {
+                        "iteration": iteration,
+                        "passed": bool(checkpoint_summary.get("passed")),
+                        "threshold": self.stop_threshold,
+                        "avg_abs_delta": checkpoint_summary.get("avg_abs_delta"),
+                        "max_abs_delta": checkpoint_summary.get("max_abs_delta"),
+                        "telemetry": self._last_checkpoint_telemetry,
+                    }
 
                     if checkpoint_summary.get("passed"):
                         consecutive_stable += 1
@@ -612,16 +687,7 @@ class SolverService:
                     message=f"no probe records available for node '{request.node}'",
                 )
 
-            sample_count = max(int(request.samples or self.range_samples), 1)
-            probes = prepare_selected_node_probes(self._game, [resolved], samples_per_node=sample_count)
-            records = snapshot_probe_states(self._solver.average_policy(), probes)
-            if not records:
-                if flat_ready:
-                    history = list(resolved.get("history") or [])
-                    return flat_probe_response_for_history(
-                        history,
-                        message="live selected-node snapshot from flat memmap-backed state table",
-                    )
+            if not flat_ready:
                 return ProbeResponse(
                     iteration=self.runtime.iteration,
                     node=request.node,
@@ -632,35 +698,16 @@ class SolverService:
                     hands=[],
                     stability=self._stability_summary(),
                     ready=False,
-                    message=f"no probe records available for node '{request.node}'",
+                    message=(
+                        f"no exact selected-node state is available for '{request.node}'; "
+                        "realtime sampled probes were removed from the preflop path"
+                    ),
                 )
 
-            aggregated = aggregate_selected_node_ranges(records)
-            node_data = next(
-                (node for node in aggregated.get("nodes", []) if node.get("name") == resolved.get("name")),
-                aggregated.get("nodes", [{}])[0],
-            )
-            action_frequencies = dict(node_data.get("action_frequencies") or {})
-            hand_policies = [
-                HandPolicy(
-                    hand=hand.get("hand"),
-                    policy={str(action): float(prob) for action, prob in (hand.get("policy") or {}).items()},
-                )
-                for hand in node_data.get("hands", [])
-                if hand.get("hand")
-            ]
-
-            return ProbeResponse(
-                iteration=self.runtime.iteration,
-                node=request.node,
-                display_name=node_data.get("display_name") or resolved.get("display_name") or request.node,
-                history=list(request.history or resolved.get("history") or []),
-                sample_count=int(node_data.get("sample_count") or len(records)),
-                action_frequencies={str(key): float(value) for key, value in action_frequencies.items()},
-                hands=hand_policies,
-                stability=self._stability_summary(),
-                ready=True,
-                message="live selected-node snapshot from current in-memory policy",
+            history = list(resolved.get("history") or [])
+            return flat_probe_response_for_history(
+                history,
+                message="live selected-node snapshot from exact memmap-backed state table",
             )
 
     def request_bulk_probe(self, request: BulkProbeRequest) -> BulkProbeResponse:
@@ -1094,39 +1141,16 @@ class SolverService:
                 selected_spec = spec
                 break
 
-        probe = self.request_probe(
-            ProbeRequest(
-                node=resolved_spot,
-                history=list((selected_spec or {}).get("history") or []),
-                samples=max(int(self.range_samples), 1),
-                min_iteration=0,
-                include_stability=False,
-                include_hands=True,
-            )
-        )
-        if not probe.ready:
-            return PreflopRangeResponse(
-                spot=resolved_spot,
-                iteration=self.runtime.iteration,
-                ready=False,
-                message=probe.message or f"preflop range for spot '{resolved_spot}' is not available",
-            )
-
-        hands = [
-            HandPolicy(
-                hand=str(hand.hand),
-                policy={str(action): float(prob) for action, prob in (getattr(hand, "policy", {}) or {}).items()},
-            )
-            for hand in (probe.hands or [])
-            if getattr(hand, "hand", None)
-        ]
         return PreflopRangeResponse(
             spot=resolved_spot,
             iteration=self.runtime.iteration,
-            hands=hands,
-            hand_count=len(hands),
-            ready=True,
-            message="live preflop range from current in-memory policy",
+            hands=[],
+            hand_count=0,
+            ready=False,
+            message=(
+                f"preflop range for spot '{resolved_spot}' is unavailable because the exact-state lookup "
+                "has no materialized data; realtime sampled probes are intentionally disabled on this path"
+            ),
         )
 
     def get_preflop_spot(self, spot: str, hand: str) -> "SpotFrequencyResponse":

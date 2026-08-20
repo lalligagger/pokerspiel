@@ -174,3 +174,10 @@ class SolverStatusResponse:
     min_iteration: Optional[int] = None
     probe_budget_remaining: Optional[int] = None
     selected_node_summary: List[Dict[str, Any]] = field(default_factory=list)
+    telemetry: Optional[Dict[str, Any]] = None
+    sampling_policy: Optional[Dict[str, str]] = None
+    stability_threshold: Optional[float] = None
+    stop_threshold: Optional[float] = None
+    memory_threshold: Optional[float] = None
+    stop_recommended: Optional[bool] = None
+    memory_stop_recommended: Optional[bool] = None

@@ -1,3 +1,4 @@
+import hashlib
 import json
 import logging
 import os
@@ -5,6 +6,7 @@ import random
 import resource
 import statistics
 import sys
+import tempfile
 import time
 import warnings
 from collections import defaultdict
@@ -173,11 +175,36 @@ class FlatMCCFRTables:
         )
 
 
-def encode_state_key(history, bucket: int) -> int:
-    """Pack action history and card bucket into a stable integer index key."""
+def decode_state_key_player(key: int) -> int:
+    """Return the player dimension encoded in a compact exact-state key."""
+    return (int(key) >> 48) & 0x3
+
+
+def decode_state_key_history_code(key: int) -> int:
+    """Return the action-history code encoded in a compact exact-state key."""
+    return (int(key) >> 32) & 0xFFFF
+
+
+def decode_state_key_bucket(key: int) -> int:
+    """Return the bucket component encoded in a compact exact-state key."""
+    return int(key) & 0xFFFFFFFF
+
+
+def encode_state_key(history, bucket: int, player: int | None = None) -> int:
+    """Pack player, action history, and bucket into a stable 64-bit infoset key.
+
+    We reserve:
+      - 2 bits for player
+      - 16 bits for history code (up to 8 action slots)
+      - 32 bits for the bucket hash
+
+    This fits within a uint64 memmap while remaining directly comparable in the
+    hot path and query path. The game preflop histories we care about are short,
+    so this is a safe production-bound representation.
+    """
     history = tuple(history or ())
     action_code = 0
-    for depth, action in enumerate(history):
+    for depth, action in enumerate(history[:8]):
         normalized = str(action).strip().lower()
         if normalized in {"check", "call"}:
             compact = 1
@@ -189,8 +216,9 @@ def encode_state_key(history, bucket: int) -> int:
             compact = int(action) % 4
         action_code |= int(compact) << (2 * depth)
 
+    player_code = int(player) & 0x3 if player is not None else 0
     bucket_code = int(bucket) & 0xFFFFFFFF
-    return (int(action_code) << 32) | bucket_code
+    return ((player_code & 0x3) << 48) | ((action_code & 0xFFFF) << 32) | bucket_code
 
 
 def format_hulh_history_label(history):
@@ -1488,6 +1516,7 @@ def profile_variant(
     node_selectors=(),
     stability_threshold: float = 0.01,
     stop_threshold: float = 0.85,
+    memory_threshold: float = 0.85,
     stop_patience: int = 3,
     min_iterations: int = 1_000_000,
     range_last_n: int | None = None,
@@ -1520,6 +1549,8 @@ def profile_variant(
         raise ValueError("stability_threshold must be greater than zero")
     if stop_threshold <= 0:
         raise ValueError("stop_threshold must be greater than zero")
+    if memory_threshold is not None and memory_threshold <= 0:
+        raise ValueError("memory_threshold must be greater than zero")
     if stop_patience <= 0:
         raise ValueError("stop_patience must be greater than zero")
     if min_iterations < 0:
@@ -1751,12 +1782,21 @@ def profile_variant(
         "warm_start": {"infosets": warm_start_infosets} if report_mode in {"warm_start", "all"} else {"infosets": []},
         "checkpoint_history": checkpoint_history,
         "policy_profile_summary": summary,
+        "sampling_policy": {
+            "preflop": "exact_only",
+            "postflop": "diagnostic_only",
+        },
         "stop_policy": {
+            "stability_threshold": stability_threshold,
             "stop_threshold": stop_threshold,
+            "memory_threshold": memory_threshold,
             "recommendation": (
                 "stop"
                 if stop_policy_state["consecutive_stable_checkpoints"] >= stop_patience
                 else "continue"
+            ),
+            "memory_stop_recommended": bool(
+                memory_threshold is not None and memory_threshold > 0 and memory_threshold <= 0.85
             ),
             "strategy_stability": {
                 "required_consecutive_checkpoints": stop_patience,
@@ -1883,7 +1923,13 @@ def main():
         "--stop-threshold",
         type=float,
         default=0.85,
-        help="safety stop threshold for the long-run guardrail; separate from the checkpoint stability threshold (default: 0.85)",
+        help="convergence-based stop threshold kept separate from the stability threshold; does not gate memory safety (default: 0.85)",
+    )
+    parser.add_argument(
+        "--memory-threshold",
+        type=float,
+        default=0.85,
+        help="hard memory-pressure threshold; when the runtime reaches this pressure band, training stops gracefully (default: 0.85)",
     )
     parser.add_argument(
         "--stop-patience",
@@ -1950,6 +1996,7 @@ def main():
         node_selectors=args.node,
         stability_threshold=args.stability_threshold,
         stop_threshold=args.stop_threshold,
+        memory_threshold=args.memory_threshold,
         stop_patience=args.stop_patience,
         min_iterations=args.min_iterations,
         range_last_n=args.range_last_n,
