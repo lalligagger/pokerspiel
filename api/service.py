@@ -5,7 +5,7 @@ import os
 import re
 import tempfile
 import threading
-from typing import Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
 
 import numpy as np
 import pyspiel
@@ -273,6 +273,7 @@ class SolverService:
     def _refresh_preflop_range_cache(self, current_ranges: Optional[Dict[str, Any]] = None) -> Dict[str, Dict[str, Any]]:
         source = current_ranges if isinstance(current_ranges, dict) else self._current_ranges
         cache: Dict[str, Dict[str, Any]] = {}
+        compact_nodes: List[Dict[str, Any]] = []
         for node in (source or {}).get("nodes", []) or []:
             name = str(node.get("name") or node.get("display_name") or "").strip()
             if not name:
@@ -297,7 +298,17 @@ class SolverService:
                 "ready": bool(hands or (node.get("sample_count") or 0) > 0),
                 "message": "checkpoint preflop range snapshot",
             }
+            compact_nodes.append(
+                {
+                    "name": name,
+                    "display_name": node.get("display_name") or name,
+                    "history": list(node.get("history") or []),
+                    "sample_count": node.get("sample_count"),
+                    "action_frequencies": dict(node.get("action_frequencies") or {}),
+                }
+            )
         self._preflop_range_cache = cache
+        self._current_ranges = {"nodes": compact_nodes}
         return cache
 
     def status(self) -> SolverStatusResponse:
@@ -389,7 +400,6 @@ class SolverService:
                         threshold=self.stability_threshold,
                     )
                     previous_ranges = current_ranges
-                    self._current_ranges = current_ranges
                     self._refresh_preflop_range_cache(current_ranges)
                     self._last_stability = checkpoint_summary
                     self.runtime.last_probe_at = iteration
@@ -1131,6 +1141,32 @@ class SolverService:
             if node.get("name") == node_name or node.get("display_name") == node_name:
                 node_data = node
                 break
+
+        cached_range = self._preflop_range_cache.get(node_name)
+        if cached_range is not None:
+            hand_policy = next(
+                (
+                    hand_entry
+                    for hand_entry in (cached_range.get("hands") or [])
+                    if str(hand_entry.get("hand", "")).strip() == normalized_hand
+                ),
+                None,
+            )
+            if hand_policy is not None:
+                policy = hand_policy.get("policy") or {}
+                frequencies = {
+                    "fold": float(policy.get("fold", 0.0)),
+                    "check_call": float(policy.get("check_call", policy.get("call", 0.0))),
+                    "bet_raise": float(policy.get("bet_raise", policy.get("bet", 0.0))),
+                }
+                return SpotFrequencyResponse(
+                    spot=resolved_spot,
+                    hand=normalized_hand,
+                    iteration=int(cached_range.get("iteration", self.runtime.iteration)),
+                    frequencies=frequencies,
+                    ready=True,
+                    message="live preflop spot lookup from the latest checkpoint snapshot",
+                )
 
         selected_spec = None
         for spec in getattr(self, "_selected_specs", []) or []:
