@@ -53,7 +53,7 @@ CONFIG_PATH="${1:-${CONFIG_PATH:-}}"
 
 if [[ -z "$CONFIG_PATH" ]]; then
   echo "Usage: $0 <config.json>" >&2
-  echo "Example: $0 cfg/solve_config_light.json" >&2
+  echo "Example: $0 cfg/solve_config_gce.json" >&2
   exit 1
 fi
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CONFIG_PATH="${CONFIG_PATH:-/app/cfg/solve_config_debug.json}"
+CONFIG_PATH="${CONFIG_PATH:-/app/cfg/solve_config_local.json}"
 
 if [[ -f "$CONFIG_PATH" ]]; then
   eval "$(python3 /app/config_env.py --config "$CONFIG_PATH" --format shell)"

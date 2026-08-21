@@ -704,7 +704,8 @@ class SolverService:
                     message="live solver has not started yet",
                 )
 
-            if self.runtime.state not in {SolverState.AVAILABLE, SolverState.QUERYABLE, SolverState.STABLE} and not flat_ready:
+            oom_block = self._oom_block_reason()
+            if oom_block is not None:
                 return ProbeResponse(
                     iteration=self.runtime.iteration,
                     node=request.node,
@@ -715,28 +716,7 @@ class SolverService:
                     hands=[],
                     stability=self._stability_summary(),
                     ready=False,
-                    message=(
-                        f"solver is in phase '{self.runtime.state.value if self.runtime.state else 'unknown'}'; "
-                        "preflop probes are unavailable until min_iterations and stability are both satisfied"
-                    ),
-                )
-
-            effective_min_iteration = request.min_iteration if request.min_iteration is not None else self.probe_min_iteration
-            if request.min_iteration is not None and self.runtime.iteration < effective_min_iteration:
-                return ProbeResponse(
-                    iteration=self.runtime.iteration,
-                    node=request.node,
-                    display_name=request.node,
-                    history=request.history,
-                    sample_count=0,
-                    action_frequencies={},
-                    hands=[],
-                    stability=self._stability_summary(),
-                    ready=False,
-                    message=(
-                        f"solver iteration {self.runtime.iteration} is below min_iteration "
-                        f"{effective_min_iteration}"
-                    ),
+                    message=oom_block,
                 )
 
             lookup = {spec["name"]: spec for spec in self._selected_specs}
@@ -882,32 +862,23 @@ class SolverService:
             return average_policy()
         return self._solver
 
+    def _oom_block_reason(self) -> Optional[str]:
+        """Return a runtime block reason only when memory pressure requires stopping."""
+        if self._solver is None or self._game is None:
+            return "live solver has not started yet"
+        telemetry = self._refresh_memory_telemetry()
+        if self._memory_stop_recommendation(telemetry):
+            return "solver is paused due to memory pressure; access is disabled to avoid OOM"
+        return None
+
     def _postflop_access_block_reason(self, *, request_min_iteration: Optional[int] = None) -> Optional[str]:
-        """Return a blocking reason when post-flop probes are not yet allowed."""
+        """Return a blocking reason only when memory pressure requires stopping."""
         if self._solver is None or self._game is None:
             return "live solver has not started yet"
 
-        effective_min_iteration = self.min_iterations
-        if request_min_iteration is not None:
-            effective_min_iteration = max(int(request_min_iteration), effective_min_iteration)
-
-        if self.runtime.state not in {SolverState.AVAILABLE, SolverState.QUERYABLE, SolverState.STABLE}:
-            return (
-                f"solver is in phase '{self.runtime.state.value if self.runtime.state else 'unknown'}'; "
-                "postflop probes are unavailable until min_iterations and stability are both satisfied"
-            )
-
-        if effective_min_iteration is not None and self.runtime.iteration < int(effective_min_iteration):
-            return (
-                f"solver iteration {self.runtime.iteration} is below min_iteration "
-                f"{int(effective_min_iteration)}"
-            )
-
-        if self._last_stability is not None and not bool(self._last_stability.get("passed")):
-            return "postflop probes are blocked until stability criteria pass"
-
-        if not self.runtime.stable:
-            return "postflop probes are blocked until the solver reaches minimum iteration and stability"
+        oom_block = self._oom_block_reason()
+        if oom_block is not None:
+            return oom_block
 
         return None
 
@@ -1237,25 +1208,6 @@ class SolverService:
             )
 
         cached = self._preflop_range_cache.get(resolved_spot)
-        if cached is None and self.runtime.state not in {SolverState.AVAILABLE, SolverState.QUERYABLE, SolverState.STABLE}:
-            elapsed_ms = (time.perf_counter() - start_time) * 1000.0
-            print(
-                f"[preflop-range] spot={resolved_spot} cache=miss elapsed_ms={elapsed_ms:.1f} "
-                f"runtime_state={self.runtime.state.value if self.runtime.state else 'unknown'} "
-                "status=not-ready",
-                flush=True,
-            )
-            return PreflopRangeResponse(
-                spot=resolved_spot,
-                iteration=self.runtime.iteration,
-                ready=False,
-                message=(
-                    f"solver is in phase '{self.runtime.state.value if self.runtime.state else 'unknown'}'; "
-                    "preflop range data is unavailable until min_iterations and stability are both satisfied"
-                ),
-                metadata=metadata,
-            )
-
         if cached is not None:
             hands = []
             for hand_entry in cached.get("hands", []) or []:
@@ -1393,17 +1345,15 @@ class SolverService:
                 message="live solver has not started yet",
             )
 
-        if self.runtime.state not in {SolverState.AVAILABLE, SolverState.QUERYABLE, SolverState.STABLE}:
+        oom_block = self._oom_block_reason()
+        if oom_block is not None:
             return SpotFrequencyResponse(
                 spot=resolved_spot,
                 hand=normalized_hand,
                 iteration=self.runtime.iteration,
                 frequencies={},
                 ready=False,
-                message=(
-                    f"solver is in phase '{self.runtime.state.value if self.runtime.state else 'unknown'}'; "
-                    "preflop data is unavailable until min_iterations and stability are both satisfied"
-                ),
+                message=oom_block,
             )
 
         node_name = resolved_spot
