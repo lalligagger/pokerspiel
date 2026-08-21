@@ -125,6 +125,27 @@ components:
           items:
             type: object
             additionalProperties: true
+    SelectedNodeSummary:
+      type: object
+      properties:
+        node_name:
+          type: string
+          nullable: true
+        display_name:
+          type: string
+          nullable: true
+        history:
+          type: array
+          items:
+            type: integer
+          nullable: true
+        sample_count:
+          type: integer
+          nullable: true
+        action_frequencies:
+          type: object
+          additionalProperties:
+            type: number
     ProbeRequest:
       type: object
       required:
@@ -249,6 +270,34 @@ components:
           nullable: true
         probe_budget_remaining:
           type: integer
+          nullable: true
+        selected_node_summary:
+          type: array
+          items:
+            $ref: '#/components/schemas/SelectedNodeSummary'
+        telemetry:
+          type: object
+          additionalProperties: true
+          nullable: true
+        sampling_policy:
+          type: object
+          additionalProperties:
+            type: string
+          nullable: true
+        stability_threshold:
+          type: number
+          nullable: true
+        stop_threshold:
+          type: number
+          nullable: true
+        memory_threshold:
+          type: number
+          nullable: true
+        stop_recommended:
+          type: boolean
+          nullable: true
+        memory_stop_recommended:
+          type: boolean
           nullable: true
     ErrorResponse:
       type: object

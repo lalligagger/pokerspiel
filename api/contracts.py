@@ -13,6 +13,8 @@ class StabilitySummary:
     avg_abs_delta: Optional[float] = None
     threshold: Optional[float] = None
     consecutive_passes: Optional[int] = None
+    matched_nodes: Optional[int] = None
+    top_moving: List[Dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass

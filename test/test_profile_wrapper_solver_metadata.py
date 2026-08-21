@@ -96,10 +96,16 @@ def test_runtime_telemetry_snapshot_collects_memory_and_disk_usage(tmp_path):
     snapshot = runtime_telemetry_snapshot(str(tmp_path / "report.json"))
 
     assert "rss_mb" in snapshot
+    assert "available_memory_mb" in snapshot
+    assert "total_memory_mb" in snapshot
+    assert "used_memory_mb" in snapshot
+    assert "memory_available_ratio" in snapshot
     assert "disk_bytes" in snapshot
     assert "memmap_bytes" in snapshot
     assert isinstance(snapshot["disk_bytes"], (int, float))
     assert snapshot["rss_available"] in {True, False}
+    assert snapshot["available_memory_mb"] is None or snapshot["available_memory_mb"] >= 0
+    assert snapshot["memory_available_ratio"] is None or 0.0 <= float(snapshot["memory_available_ratio"]) <= 1.0
 
 
 def test_app_solver_accepts_checkpoint_every_alias():

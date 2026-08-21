@@ -5,6 +5,7 @@ import os
 import random
 import resource
 import statistics
+import subprocess
 import sys
 import tempfile
 import time
@@ -1227,16 +1228,19 @@ def summarize_selected_node_stability(current_ranges, previous_ranges=None, thre
     }
 
     deltas = []
+    moving = []
     for name, current in current_nodes.items():
         prev = previous_nodes.get(name)
         if prev is None:
             continue
 
+        node_deltas = []
         current_actions = current.get("action_frequencies") or {}
         previous_actions = prev.get("action_frequencies") or {}
         for action in sorted(set(current_actions) | set(previous_actions)):
             delta = abs(float(current_actions.get(action, 0.0)) - float(previous_actions.get(action, 0.0)))
             deltas.append(delta)
+            node_deltas.append(delta)
 
         current_hands = {hand["hand"]: hand for hand in current.get("hands", []) if hand.get("hand")}
         previous_hands = {hand["hand"]: hand for hand in prev.get("hands", []) if hand.get("hand")}
@@ -1250,15 +1254,30 @@ def summarize_selected_node_stability(current_ranges, previous_ranges=None, thre
                     - float((prev_hand.get("policy") or {}).get(action, 0.0))
                 )
                 deltas.append(delta)
+                node_deltas.append(delta)
+
+        if node_deltas:
+            moving.append(
+                {
+                    "node_name": name,
+                    "display_name": current.get("display_name") or name,
+                    "history": list(current.get("history") or []),
+                    "max_abs_delta": max(node_deltas),
+                    "avg_abs_delta": statistics.fmean(node_deltas),
+                }
+            )
 
     max_delta = max(deltas) if deltas else None
     has_nonzero_delta = any(float(delta) > 0.0 for delta in deltas)
+    moving.sort(key=lambda item: float(item.get("max_abs_delta") or 0.0), reverse=True)
     return {
         "sample_count": len(current_nodes),
+        "matched_nodes": len(moving),
         "avg_abs_delta": statistics.fmean(deltas) if deltas else None,
         "max_abs_delta": max_delta,
         "threshold": threshold,
         "passed": max_delta is not None and has_nonzero_delta and max_delta <= threshold,
+        "top_moving": moving[:5],
     }
 
 
@@ -1302,6 +1321,7 @@ def build_selected_node_summary(range_payload):
             {
                 "node_name": node.get("name"),
                 "display_name": node.get("display_name") or node.get("history_label") or node.get("name"),
+                "history": list(node.get("history") or []),
                 "sample_count": node.get("sample_count"),
                 "action_frequencies": {
                     "fold": float(action_frequencies.get("fold", 0.0)),
@@ -1401,6 +1421,101 @@ def max_rss_mb():
     return {"max_rss_mb": rss_mb, "unit": "MiB", "available": True}
 
 
+def system_memory_snapshot() -> Dict[str, object]:
+    """Collect host memory availability at checkpoint time without touching the hot iteration path."""
+    if os.path.exists("/proc/meminfo"):
+        try:
+            meminfo: Dict[str, float] = {}
+            with open("/proc/meminfo", "r", encoding="utf-8") as handle:
+                for line in handle:
+                    if ":" not in line:
+                        continue
+                    key, raw_value = line.split(":", 1)
+                    try:
+                        value_kib = float(raw_value.strip().split()[0])
+                    except (IndexError, ValueError):
+                        continue
+                    meminfo[key.strip()] = value_kib
+
+            total_kib = float(meminfo.get("MemTotal", 0.0))
+            available_kib = float(meminfo.get("MemAvailable", meminfo.get("MemFree", 0.0)))
+            if total_kib > 0:
+                total_mb = total_kib / 1024.0
+                available_mb = available_kib / 1024.0
+                used_mb = max(0.0, total_mb - available_mb)
+                return {
+                    "total_memory_mb": total_mb,
+                    "available_memory_mb": available_mb,
+                    "used_memory_mb": used_mb,
+                    "memory_available_ratio": available_kib / total_kib if total_kib else 0.0,
+                    "memory_available": True,
+                }
+        except OSError:
+            pass
+
+    if sys.platform == "darwin":
+        try:
+            total_bytes = int(subprocess.check_output(["sysctl", "-n", "hw.memsize"], text=True).strip())
+        except Exception:
+            return {
+                "total_memory_mb": None,
+                "available_memory_mb": None,
+                "used_memory_mb": None,
+                "memory_available_ratio": None,
+                "memory_available": False,
+            }
+
+        try:
+            vm_stat = subprocess.check_output(["vm_stat"], text=True)
+        except Exception:
+            return {
+                "total_memory_mb": total_bytes / (1024.0 * 1024.0),
+                "available_memory_mb": None,
+                "used_memory_mb": None,
+                "memory_available_ratio": None,
+                "memory_available": False,
+            }
+
+        pagesize = 4096
+        parsed: Dict[str, float] = {}
+        for line in vm_stat.splitlines():
+            if ":" not in line:
+                continue
+            key, raw_value = line.split(":", 1)
+            cleaned = raw_value.strip().replace(".", "").replace("pages", "").strip()
+            if not cleaned:
+                continue
+            try:
+                parsed[key.strip()] = float(cleaned)
+            except ValueError:
+                continue
+
+        free_pages = parsed.get("Pages free", 0.0)
+        inactive_pages = parsed.get("Pages inactive", 0.0)
+        speculative_pages = parsed.get("Pages speculative", 0.0)
+        purgeable_pages = parsed.get("Pages purgeable", 0.0)
+        available_pages = free_pages + inactive_pages + speculative_pages + purgeable_pages
+        available_bytes = available_pages * pagesize
+        total_mb = total_bytes / (1024.0 * 1024.0)
+        available_mb = available_bytes / (1024.0 * 1024.0)
+        used_mb = max(0.0, total_mb - available_mb)
+        return {
+            "total_memory_mb": total_mb,
+            "available_memory_mb": available_mb,
+            "used_memory_mb": used_mb,
+            "memory_available_ratio": (available_bytes / total_bytes) if total_bytes else 0.0,
+            "memory_available": True,
+        }
+
+    return {
+        "total_memory_mb": None,
+        "available_memory_mb": None,
+        "used_memory_mb": None,
+        "memory_available_ratio": None,
+        "memory_available": False,
+    }
+
+
 def directory_size_bytes(path: str | None) -> int:
     if not path or not os.path.isdir(path):
         return 0
@@ -1418,6 +1533,7 @@ def directory_size_bytes(path: str | None) -> int:
 def runtime_telemetry_snapshot(output_json_path: str | None = None) -> Dict[str, object]:
     rss = max_rss_mb()
     rss_mb = rss.get("max_rss_mb")
+    host_mem = system_memory_snapshot()
 
     memmap_dir = os.getenv("POKERSPIEL_MEMMAP_DIR") or os.path.join(tempfile.gettempdir(), "pokerspiel_live_solver")
     disk_bytes = directory_size_bytes(memmap_dir)
@@ -1429,6 +1545,11 @@ def runtime_telemetry_snapshot(output_json_path: str | None = None) -> Dict[str,
         "rss_mb": rss_mb,
         "rss_unit": rss.get("unit"),
         "rss_available": bool(rss.get("available")),
+        "total_memory_mb": host_mem.get("total_memory_mb"),
+        "available_memory_mb": host_mem.get("available_memory_mb"),
+        "used_memory_mb": host_mem.get("used_memory_mb"),
+        "memory_available_ratio": host_mem.get("memory_available_ratio"),
+        "memory_available": bool(host_mem.get("memory_available")),
         "memmap_dir": memmap_dir,
         "memmap_bytes": disk_bytes,
         "output_dir_bytes": output_bytes,

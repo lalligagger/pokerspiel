@@ -129,6 +129,8 @@ class SolverService:
         self._preflop_range_cache: Dict[str, Dict[str, Any]] = {}
         self._last_stability: Optional[Dict[str, object]] = None
         self._last_checkpoint_telemetry: Dict[str, Any] = {}
+        self._last_selected_node_summary: List[Dict[str, Any]] = []
+        self._last_memory_sample_iteration: int = 0
         self.sampling_policy: Dict[str, str] = {
             "preflop": "exact_only",
             "postflop": "diagnostic_only",
@@ -473,8 +475,25 @@ class SolverService:
         passed = bool(self._last_stability.get("passed"))
         return passed and avg_delta <= threshold and max_delta <= threshold
 
+    def _refresh_memory_telemetry(self, iteration: Optional[int] = None) -> Dict[str, Any]:
+        current_iteration = int(iteration if iteration is not None else self.runtime.iteration)
+        cadence = max(100, min(1000, int(self.checkpoint_every or 100)))
+        if (
+            not self._last_checkpoint_telemetry
+            or current_iteration - self._last_memory_sample_iteration >= cadence
+            or current_iteration == 0
+        ):
+            self._last_checkpoint_telemetry = runtime_telemetry_snapshot()
+            self._last_memory_sample_iteration = current_iteration
+        return self._last_checkpoint_telemetry
+
     def status(self) -> SolverStatusResponse:
-        telemetry = self._last_checkpoint_telemetry or runtime_telemetry_snapshot()
+        telemetry = self._refresh_memory_telemetry()
+        selected_summary = self._last_selected_node_summary or []
+        if not selected_summary:
+            current_nodes = (self._current_ranges or {}).get("nodes") or []
+            if current_nodes:
+                selected_summary = build_selected_node_summary({"nodes": current_nodes})
         return SolverStatusResponse(
             solver=self.solver_name,
             iteration=self.runtime.iteration,
@@ -484,7 +503,7 @@ class SolverService:
             last_probe_at=self.runtime.last_probe_at,
             min_iteration=self.min_iterations,
             probe_budget_remaining=self.range_samples,
-            selected_node_summary=[],
+            selected_node_summary=selected_summary,
             telemetry=telemetry,
             sampling_policy=dict(self.sampling_policy),
             stability_threshold=float(self.stability_threshold),
@@ -503,7 +522,9 @@ class SolverService:
             max_abs_delta=summary.get("max_abs_delta"),
             avg_abs_delta=summary.get("avg_abs_delta"),
             threshold=summary.get("threshold"),
-            consecutive_passes=0,
+            consecutive_passes=summary.get("consecutive_passes", 0),
+            matched_nodes=summary.get("matched_nodes"),
+            top_moving=list(summary.get("top_moving") or []),
         )
 
     def _run_live_solver(self) -> None:
@@ -536,6 +557,7 @@ class SolverService:
                     or (self._last_stability is not None)
                 )
                 self.runtime.stable = bool(self._last_stability and self._last_stability.get("passed"))
+                self._refresh_memory_telemetry(iteration)
                 self._solver.run_iteration()
                 self.runtime.iteration = iteration
                 if iteration % max(100, int(self.checkpoint_every or 100)) == 0:
@@ -571,9 +593,11 @@ class SolverService:
                         threshold=self.stability_threshold,
                     )
                     previous_ranges = current_ranges
+                    self._last_selected_node_summary = build_selected_node_summary(current_ranges)
                     self._refresh_preflop_range_cache(current_ranges)
                     self._last_stability = checkpoint_summary
                     self._last_checkpoint_telemetry = runtime_telemetry_snapshot()
+                    self._last_memory_sample_iteration = iteration
                     self.runtime.last_probe_at = iteration
                     self.runtime.current_average_policy = policy
                     self.runtime.last_stability_check = {
