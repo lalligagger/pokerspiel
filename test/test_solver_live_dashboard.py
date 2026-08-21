@@ -18,9 +18,13 @@ def test_hand_to_category_requires_highest_rank_first_indexing():
     assert hand_to_category("KAs") is None
     assert hand_to_category("Q2s") == "Q2s"
     assert hand_to_category("2Qs") is None
+    assert hand_to_category("72s") == "72s"
+    assert hand_to_category("72o") == "72o"
     assert category_to_cell("AKs") == (0, 1)
     assert category_to_cell("AKo") == (1, 0)
     assert category_to_cell("Q2s") == (2, 12)
+    assert category_to_cell("72s") == (7, 12)
+    assert category_to_cell("72o") == (12, 7)
     assert category_to_cell("KAs") is None
 
 

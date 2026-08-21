@@ -1159,6 +1159,7 @@ class SolverService:
     def get_preflop_range(self, spot: str) -> "PreflopRangeResponse":
         from .contracts import PreflopRangeResponse
 
+        start_time = time.perf_counter()
         resolved_spot = self._normalize_preflop_spot(spot)
         spot_history: List[str] = []
         selected_spec = None
@@ -1171,6 +1172,12 @@ class SolverService:
         metadata = self._preflop_range_metadata(resolved_spot, history=spot_history)
 
         if self._solver is None or self._game is None:
+            elapsed_ms = (time.perf_counter() - start_time) * 1000.0
+            print(
+                f"[preflop-range] spot={resolved_spot} cache=miss elapsed_ms={elapsed_ms:.1f} "
+                "status=solver-not-started",
+                flush=True,
+            )
             return PreflopRangeResponse(
                 spot=resolved_spot,
                 iteration=self.runtime.iteration,
@@ -1181,6 +1188,13 @@ class SolverService:
 
         cached = self._preflop_range_cache.get(resolved_spot)
         if cached is None and self.runtime.state not in {SolverState.AVAILABLE, SolverState.QUERYABLE, SolverState.STABLE}:
+            elapsed_ms = (time.perf_counter() - start_time) * 1000.0
+            print(
+                f"[preflop-range] spot={resolved_spot} cache=miss elapsed_ms={elapsed_ms:.1f} "
+                f"runtime_state={self.runtime.state.value if self.runtime.state else 'unknown'} "
+                "status=not-ready",
+                flush=True,
+            )
             return PreflopRangeResponse(
                 spot=resolved_spot,
                 iteration=self.runtime.iteration,
@@ -1206,6 +1220,7 @@ class SolverService:
                     )
                 )
             reference_policy = cached.get("reference_policy")
+            elapsed_ms = (time.perf_counter() - start_time) * 1000.0
             if not hands and reference_policy is not None:
                 status = str(cached.get("status") or "fallback_seed")
                 if status == "fallback_seed":
@@ -1218,6 +1233,12 @@ class SolverService:
                         f"preflop spot '{resolved_spot}' is materialized as a checkpoint reference "
                         "with the default uniform action policy until exact hand rows are available"
                     )
+                print(
+                    f"[preflop-range] spot={resolved_spot} cache=hit elapsed_ms={elapsed_ms:.1f} "
+                    f"iteration={int(cached.get('iteration', self.runtime.iteration))} "
+                    f"hand_count=0 status={status} fallback_policy=True",
+                    flush=True,
+                )
                 return PreflopRangeResponse(
                     spot=resolved_spot,
                     iteration=int(cached.get("iteration", self.runtime.iteration)),
@@ -1227,6 +1248,12 @@ class SolverService:
                     message=message,
                     metadata={**metadata, "prior_fold_mass": 0.0, "reference_policy": reference_policy},
                 )
+            print(
+                f"[preflop-range] spot={resolved_spot} cache=hit elapsed_ms={elapsed_ms:.1f} "
+                f"iteration={int(cached.get('iteration', self.runtime.iteration))} hand_count={len(hands)} "
+                f"ready={bool(cached.get('ready', bool(hands)))}",
+                flush=True,
+            )
             return PreflopRangeResponse(
                 spot=resolved_spot,
                 iteration=int(cached.get("iteration", self.runtime.iteration)),
@@ -1256,6 +1283,12 @@ class SolverService:
                         policy={str(action): float(prob) for action, prob in policy.items()},
                     )
                 )
+            elapsed_ms = (time.perf_counter() - start_time) * 1000.0
+            print(
+                f"[preflop-range] spot={resolved_spot} cache=miss-live elapsed_ms={elapsed_ms:.1f} "
+                f"iteration={self.runtime.iteration} hand_count={len(hands)} status=current_ranges",
+                flush=True,
+            )
             return PreflopRangeResponse(
                 spot=resolved_spot,
                 iteration=self.runtime.iteration,
@@ -1266,6 +1299,12 @@ class SolverService:
                 metadata=metadata,
             )
 
+        elapsed_ms = (time.perf_counter() - start_time) * 1000.0
+        print(
+            f"[preflop-range] spot={resolved_spot} cache=miss elapsed_ms={elapsed_ms:.1f} "
+            f"iteration={self.runtime.iteration} status=unavailable",
+            flush=True,
+        )
         return PreflopRangeResponse(
             spot=resolved_spot,
             iteration=self.runtime.iteration,

@@ -76,21 +76,22 @@ def http_json(url: str, payload: Optional[Dict[str, Any]] = None, timeout: int =
 
 
 def hand_to_category(hand: str) -> Optional[str]:
-    text = str(hand or "").strip().upper()
+    text = str(hand or "").strip()
     if not text:
         return None
 
-    if len(text) == 2 and text[0] in RANK_IDX and text[1] in RANK_IDX:
-        if text[0] == text[1]:
-            return text
-        hi, lo = sorted((text[0], text[1]), key=lambda r: RANK_IDX[r], reverse=True)
+    upper = text.upper()
+    if len(upper) == 2 and upper[0] in RANK_IDX and upper[1] in RANK_IDX:
+        if upper[0] == upper[1]:
+            return upper
+        hi, lo = sorted((upper[0], upper[1]), key=lambda r: RANK_IDX[r])
         return f"{hi}{lo}"
 
-    if len(text) == 3 and text[0] in RANK_IDX and text[1] in RANK_IDX and text[2] in {"S", "O"}:
-        if text[0] == text[1]:
-            return text[:2]
-        hi, lo = sorted((text[0], text[1]), key=lambda r: RANK_IDX[r], reverse=True)
-        return f"{hi}{lo}{text[2]}"
+    if len(upper) == 3 and upper[0] in RANK_IDX and upper[1] in RANK_IDX and upper[2] in {"S", "O"}:
+        if upper[0] == upper[1]:
+            return upper[:2]
+        hi, lo = sorted((upper[0], upper[1]), key=lambda r: RANK_IDX[r])
+        return f"{hi}{lo}{upper[2]}"
 
     return None
 
@@ -99,15 +100,16 @@ def category_to_cell(category: str) -> Optional[Tuple[int, int]]:
     cat = hand_to_category(category)
     if cat is None:
         return None
-    if len(cat) == 2 and cat[0] == cat[1] and cat[0] in RANK_IDX:
-        idx = RANK_IDX[cat[0]]
+    normalized = cat.upper()
+    if len(normalized) == 2 and normalized[0] == normalized[1] and normalized[0] in RANK_IDX:
+        idx = RANK_IDX[normalized[0]]
         return idx, idx
-    if len(cat) == 3 and cat[0] in RANK_IDX and cat[1] in RANK_IDX and cat[2] in {"S", "O"}:
-        if cat[0] == cat[1]:
-            return RANK_IDX[cat[0]], RANK_IDX[cat[1]]
-        i = RANK_IDX[cat[0]]
-        j = RANK_IDX[cat[1]]
-        if cat[2] == "S":
+    if len(normalized) == 3 and normalized[0] in RANK_IDX and normalized[1] in RANK_IDX and normalized[2] in {"S", "O"}:
+        if normalized[0] == normalized[1]:
+            return RANK_IDX[normalized[0]], RANK_IDX[normalized[1]]
+        i = RANK_IDX[normalized[0]]
+        j = RANK_IDX[normalized[1]]
+        if normalized[2] == "S":
             return i, j
         return j, i
     return None
