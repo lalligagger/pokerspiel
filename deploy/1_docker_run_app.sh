@@ -1,13 +1,53 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PROJECT="${PROJECT:-pokerspiel}"
-ZONE="${ZONE:-us-west1-b}"
-INSTANCE_NAME="${INSTANCE_NAME:-instance-20260818-234442}"
+PROJECT="${PROJECT:-$(python3 - "${1:-${CONFIG_PATH:-}}" <<'PY'
+import json, sys
+from pathlib import Path
+path = sys.argv[1]
+if not path or not Path(path).exists():
+    print('pokerspiel')
+    raise SystemExit
+cfg = json.loads(Path(path).read_text(encoding='utf-8'))
+print(cfg.get('project', 'pokerspiel'))
+PY
+)}"
+ZONE="${ZONE:-$(python3 - "${1:-${CONFIG_PATH:-}}" <<'PY'
+import json, sys
+from pathlib import Path
+path = sys.argv[1]
+if not path or not Path(path).exists():
+    print('us-west1-b')
+    raise SystemExit
+cfg = json.loads(Path(path).read_text(encoding='utf-8'))
+print(cfg.get('zone', 'us-west1-b'))
+PY
+)}"
+INSTANCE_NAME="${INSTANCE_NAME:-$(python3 - "${1:-${CONFIG_PATH:-}}" <<'PY'
+import json, sys
+from pathlib import Path
+path = sys.argv[1]
+if not path or not Path(path).exists():
+    print('instance-20260818-234442')
+    raise SystemExit
+cfg = json.loads(Path(path).read_text(encoding='utf-8'))
+print(cfg.get('instance', cfg.get('instance_name', 'instance-20260818-234442')))
+PY
+)}"
 APP_PORT="${APP_PORT:-8080}"
 IMAGE_NAME="${IMAGE_NAME:-pokerspiel-live}"
 REPO_DIR="${REPO_DIR:-$HOME/pokerspiel}"
-BRANCH="${BRANCH:-postflop-redux}"
+BRANCH="${BRANCH:-$(python3 - "${1:-${CONFIG_PATH:-}}" <<'PY'
+import json, sys
+from pathlib import Path
+path = sys.argv[1]
+if not path or not Path(path).exists():
+    print('postflop-redux')
+    raise SystemExit
+cfg = json.loads(Path(path).read_text(encoding='utf-8'))
+print(cfg.get('branch', cfg.get('git_branch', 'postflop-redux')))
+PY
+)}"
 REMOTE_NAME="${REMOTE_NAME:-origin}"
 CONFIG_PATH="${1:-${CONFIG_PATH:-}}"
 
@@ -26,11 +66,9 @@ env_map = {
     'POKERSPIEL_PRESET': cfg.get('preset'),
     'POKERSPIEL_RANGE_SAMPLES': cfg.get('range_samples'),
     'POKERSPIEL_POSTFLOP_SAMPLES': cfg.get('postflop_samples'),
-    'POKERSPIEL_STABILITY_THRESHOLD': cfg.get('stability_threshold'),
-    'POKERSPIEL_STOP_THRESHOLD': cfg.get('stop_threshold', 0.85),
-    'POKERSPIEL_STOP_PATIENCE': cfg.get('stop_patience'),
     'POKERSPIEL_MIN_ITERATIONS': cfg.get('min_iterations'),
     'POKERSPIEL_CHECKPOINT_EVERY': cfg.get('checkpoint_every') if cfg.get('checkpoint_every') is not None else cfg.get('stability_checkpoint'),
+    'POKERSPIEL_MEMORY_THRESHOLD': cfg.get('memory_threshold'),
     'POKERSPIEL_OUTPUT_JSON': cfg.get('output_json'),
 }
 parts = []

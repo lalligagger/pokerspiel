@@ -1,4 +1,10 @@
 {
+  "name": "gce-template",
+  "deploy": "gce",
+  "project": "<gcp-project-id>",
+  "zone": "us-west1-b",
+  "instance": "<instance-name>",
+  "branch": "<branch-or-commit>",
   "mode": "hulh",
   "solver": "external",
   "preset": "hulh-preflop",

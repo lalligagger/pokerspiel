@@ -1,4 +1,6 @@
 {
+  "name": "local-template",
+  "deploy": "local",
   "mode": "hulh",
   "solver": "external",
   "preset": "hulh-preflop",

@@ -52,9 +52,6 @@ args = [
     "--iterations", str(config.get("iterations", 100)),
     "--preset", config.get("preset", "hulh-preflop"),
     "--range-samples", str(config.get("range_samples", 1000)),
-    "--stability-threshold", str(config.get("stability_threshold", 0.01)),
-    "--stop-threshold", str(config.get("stop_threshold", 0.85)),
-    "--stop-patience", str(config.get("stop_patience", 3)),
     "--min-iterations", str(config.get("min_iterations", 0)),
     "--solver", config.get("solver", "outcome"),
     "--report-mode", config.get("report_mode", "summary"),
@@ -100,9 +97,6 @@ args = [
     "--preset", config.get("preset", "hulh-preflop"),
     "--range-samples", str(config.get("range_samples", 1000)),
     "--postflop-samples", str(config.get("postflop_samples", 32)),
-    "--stability-threshold", str(config.get("stability_threshold", 0.01)),
-    "--stop-threshold", str(config.get("stop_threshold", 0.85)),
-    "--stop-patience", str(config.get("stop_patience", 3)),
     "--min-iterations", str(config.get("min_iterations", 0)),
     "--solver", config.get("solver", "outcome"),
     "--report-mode", config.get("report_mode", "summary"),
@@ -125,34 +119,7 @@ print(' '.join(__import__('shlex').quote(x) for x in args))
 PY
 )"
 
-SOLVER_ENV_EXPORTS="$(python3 - "$CONFIG_PATH" <<'PY'
-import json, shlex, sys
-from pathlib import Path
-
-config_path = Path(sys.argv[1])
-config = json.loads(config_path.read_text(encoding='utf-8'))
-
-env_map = {
-    'POKERSPIEL_SOLVER': config.get('solver'),
-    'POKERSPIEL_PRESET': config.get('preset'),
-    'POKERSPIEL_RANGE_SAMPLES': config.get('range_samples'),
-    'POKERSPIEL_POSTFLOP_SAMPLES': config.get('postflop_samples'),
-    'POKERSPIEL_STABILITY_THRESHOLD': config.get('stability_threshold'),
-    'POKERSPIEL_STOP_THRESHOLD': config.get('stop_threshold', 0.85),
-    'POKERSPIEL_STOP_PATIENCE': config.get('stop_patience'),
-    'POKERSPIEL_MIN_ITERATIONS': config.get('min_iterations'),
-    'POKERSPIEL_CHECKPOINT_EVERY': config.get('checkpoint_every') if config.get('checkpoint_every') is not None else config.get('stability_checkpoint'),
-    'POKERSPIEL_OUTPUT_JSON': config.get('output_json'),
-}
-env_map = {key: value for key, value in env_map.items() if value is not None}
-exports = []
-for key, value in env_map.items():
-    if isinstance(value, (dict, list)):
-        value = json.dumps(value, separators=(',', ':'))
-    exports.append(f"{key}={shlex.quote(str(value))}")
-print(' '.join(exports))
-PY
-)"
+SOLVER_ENV_EXPORTS="$(python3 /app/config_env.py --config "$CONFIG_PATH" --format shell 2>/dev/null || python3 "$ROOT_DIR/config_env.py" --config "$CONFIG_PATH" --format shell)"
 
 printf '==> resolved command for %s\n' "$DEPLOY_TARGET"
 printf '%s\n' "$JSON_OUT"
@@ -166,14 +133,12 @@ keys = [
     'POKERSPIEL_PRESET',
     'POKERSPIEL_RANGE_SAMPLES',
     'POKERSPIEL_POSTFLOP_SAMPLES',
-    'POKERSPIEL_STABILITY_THRESHOLD',
-    'POKERSPIEL_STOP_THRESHOLD',
-    'POKERSPIEL_STOP_PATIENCE',
     'POKERSPIEL_MIN_ITERATIONS',
     'POKERSPIEL_CHECKPOINT_EVERY',
     'POKERSPIEL_OUTPUT_JSON',
+    'POKERSPIEL_MEMORY_THRESHOLD',
 ]
-print(sum(1 for key in keys if config.get(key.lower().replace('pokerpiel_', '').replace('pokerpiel', '').replace('pokerspiel', '')) is not None))
+print(sum(1 for key in keys if config.get(key.lower().replace('pokerpiel_', '').replace('pokerpiel', '').replace('pokerspiel', '').replace('pokerpiel', '')) is not None))
 PY
 )"
   printf '==> exporting %s env values\n' "$SOLVER_ENV_COUNT"
@@ -193,7 +158,7 @@ fi
 if [[ "$DEPLOY_TARGET" == "gce" ]]; then
   echo "==> gce deploy"
 
-  PROJECT="${PROJECT:-$(python3 - "$CONFIG_PATH" <<'PY'
+    PROJECT="${PROJECT:-$(python3 - "$CONFIG_PATH" <<'PY'
 import json, sys
 from pathlib import Path
 cfg = json.loads(Path(sys.argv[1]).read_text())
@@ -207,6 +172,20 @@ cfg = json.loads(Path(sys.argv[1]).read_text())
 print(cfg.get('zone', 'us-west1-b'))
 PY
 )}"
+  INSTANCE_NAME="${INSTANCE_NAME:-$(python3 - "$CONFIG_PATH" <<'PY'
+import json, sys
+from pathlib import Path
+cfg = json.loads(Path(sys.argv[1]).read_text())
+print(cfg.get('instance', cfg.get('instance_name', 'instance-20260818-234442')))
+PY
+)}"
+  BRANCH="${BRANCH:-$(python3 - "$CONFIG_PATH" <<'PY'
+import json, sys
+from pathlib import Path
+cfg = json.loads(Path(sys.argv[1]).read_text())
+print(cfg.get('branch', cfg.get('git_branch', 'postflop-redux')))
+PY
+)}"
 
   GCE_INSTANCES="$(python3 - "$CONFIG_PATH" <<'PY'
 import json, sys
@@ -215,6 +194,8 @@ cfg = json.loads(Path(sys.argv[1]).read_text())
 instances = cfg.get('instances') or []
 if cfg.get('instance'):
     instances = [cfg['instance']] + list(instances)
+if cfg.get('instance_name') and cfg.get('instance_name') not in instances:
+    instances = [cfg['instance_name']] + list(instances)
 if not instances:
     instances = ['instance-20260818-234442']
 print('\n'.join(instances))
@@ -232,31 +213,7 @@ PY
     GCE_INSTANCES="$INSTANCE"
   fi
 
-  SOLVER_ENV_DOCKER_ARGS="$(python3 - "$CONFIG_PATH" <<'PY'
-import json, shlex, sys
-from pathlib import Path
-config = json.loads(Path(sys.argv[1]).read_text(encoding='utf-8'))
-env_map = {
-    'POKERSPIEL_SOLVER': config.get('solver'),
-    'POKERSPIEL_PRESET': config.get('preset'),
-    'POKERSPIEL_RANGE_SAMPLES': config.get('range_samples'),
-    'POKERSPIEL_POSTFLOP_SAMPLES': config.get('postflop_samples'),
-    'POKERSPIEL_STABILITY_THRESHOLD': config.get('stability_threshold'),
-    'POKERSPIEL_STOP_THRESHOLD': config.get('stop_threshold', 0.85),
-    'POKERSPIEL_STOP_PATIENCE': config.get('stop_patience'),
-    'POKERSPIEL_MIN_ITERATIONS': config.get('min_iterations'),
-    'POKERSPIEL_CHECKPOINT_EVERY': config.get('checkpoint_every') if config.get('checkpoint_every') is not None else config.get('stability_checkpoint'),
-    'POKERSPIEL_OUTPUT_JSON': config.get('output_json'),
-}
-env_map = {key: value for key, value in env_map.items() if value is not None}
-args = []
-for key, value in env_map.items():
-    if isinstance(value, (dict, list)):
-        value = json.dumps(value, separators=(',', ':'))
-    args.append(f"-e {key}={shlex.quote(str(value))}")
-print(' '.join(args))
-PY
-)"
+  SOLVER_ENV_DOCKER_ARGS="$(python3 "$ROOT_DIR/config_env.py" --config "$CONFIG_PATH" --format docker)"
 
   deploy_failures=0
   while IFS= read -r target_instance; do

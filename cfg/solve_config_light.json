@@ -4,14 +4,10 @@
   "preset": "hulh-preflop",
   "iterations": 250000,
   "checkpoint_every": 5000,
-  "stability_threshold": 0.5,
-  "memory_threshold": 0.85,
-  "sampling_policy": {
-    "preflop": "exact_only",
-    "postflop": "diagnostic_only"
-  },
-  "stop_patience": 1,
   "min_iterations": 1000,
+  "range_samples": 1326,
+  "postflop_samples": 32,
+  "memory_threshold": 0.85,
   "report_mode": "summary",
   "artifact_mode": "lightweight",
   "checkpoint_history_limit": 2,
