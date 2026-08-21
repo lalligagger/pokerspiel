@@ -475,6 +475,39 @@ class SolverService:
         passed = bool(self._last_stability.get("passed"))
         return passed and avg_delta <= threshold and max_delta <= threshold
 
+    def _memory_utilization(self, telemetry: Optional[Dict[str, Any]] = None) -> Optional[float]:
+        snapshot = telemetry if isinstance(telemetry, dict) else self._last_checkpoint_telemetry
+        if not isinstance(snapshot, dict):
+            return None
+
+        ratio = snapshot.get("memory_available_ratio")
+        if ratio is not None:
+            try:
+                return max(0.0, min(1.0, 1.0 - float(ratio)))
+            except (TypeError, ValueError):
+                pass
+
+        total = snapshot.get("total_memory_mb")
+        used = snapshot.get("used_memory_mb")
+        if total is not None and used is not None:
+            try:
+                total_value = float(total)
+                used_value = float(used)
+                if total_value > 0:
+                    return max(0.0, min(1.0, used_value / total_value))
+            except (TypeError, ValueError):
+                pass
+        return None
+
+    def _memory_stop_recommendation(self, telemetry: Optional[Dict[str, Any]] = None) -> bool:
+        threshold = self.memory_threshold
+        if threshold is None or threshold <= 0:
+            return False
+        utilization = self._memory_utilization(telemetry)
+        if utilization is None:
+            return False
+        return utilization >= float(threshold)
+
     def _refresh_memory_telemetry(self, iteration: Optional[int] = None) -> Dict[str, Any]:
         current_iteration = int(iteration if iteration is not None else self.runtime.iteration)
         cadence = max(100, min(1000, int(self.checkpoint_every or 100)))
@@ -510,7 +543,7 @@ class SolverService:
             stop_threshold=float(self.stop_threshold),
             memory_threshold=float(self.memory_threshold),
             stop_recommended=self._stop_recommendation(),
-            memory_stop_recommended=bool(self.memory_threshold is not None and self.memory_threshold > 0),
+            memory_stop_recommended=self._memory_stop_recommendation(telemetry),
         )
 
     def _stability_summary(self) -> Optional[StabilitySummary]:
@@ -543,21 +576,12 @@ class SolverService:
             for iteration in range(1, self.max_iterations + 1):
                 if self._stop_event.is_set():
                     self.runtime.state = SolverState.PAUSED
-                    self.runtime.ready_for_queries = bool(
-                        self._current_ranges.get("nodes")
-                        or self._preflop_range_cache
-                        or (self._last_stability is not None)
-                    )
+                    self.runtime.ready_for_queries = False
                     self.runtime.stable = bool(self._last_stability and self._last_stability.get("passed"))
                     break
 
-                self.runtime.ready_for_queries = bool(
-                    self._current_ranges.get("nodes")
-                    or self._preflop_range_cache
-                    or (self._last_stability is not None)
-                )
+                self.runtime.ready_for_queries = False
                 self.runtime.stable = bool(self._last_stability and self._last_stability.get("passed"))
-                self._refresh_memory_telemetry(iteration)
                 self._solver.run_iteration()
                 self.runtime.iteration = iteration
                 if iteration % max(100, int(self.checkpoint_every or 100)) == 0:
@@ -609,27 +633,32 @@ class SolverService:
                         "telemetry": self._last_checkpoint_telemetry,
                     }
 
+                    if self._memory_stop_recommendation(self._last_checkpoint_telemetry):
+                        self.runtime.state = SolverState.PAUSED
+                        self.runtime.ready_for_queries = True
+                        self.runtime.stable = bool(checkpoint_summary.get("passed"))
+                        self.runtime.last_stability_check = {
+                            **self.runtime.last_stability_check,
+                            "memory_stop_recommended": True,
+                            "memory_threshold": self.memory_threshold,
+                            "memory_utilization": self._memory_utilization(self._last_checkpoint_telemetry),
+                        }
+                        self._stop_event.set()
+                        break
+
                     if checkpoint_summary.get("passed"):
                         consecutive_stable += 1
                     else:
                         consecutive_stable = 0
 
-                    if iteration >= self.min_iterations and consecutive_stable >= self.stop_patience:
-                        self.runtime.stable = True
-                        self.runtime.state = SolverState.AVAILABLE
-                        self.runtime.ready_for_queries = True
-                        self.runtime.latest_stable_snapshot = {
-                            "iteration": iteration,
-                            "stability": checkpoint_summary,
-                        }
+                    self.runtime.latest_stable_snapshot = {
+                        "iteration": iteration,
+                        "stability": checkpoint_summary,
+                    }
 
             if self._stop_event.is_set():
                 self.runtime.state = SolverState.PAUSED
-                self.runtime.ready_for_queries = bool(
-                    self._current_ranges.get("nodes")
-                    or self._preflop_range_cache
-                    or (self._last_stability is not None)
-                )
+                self.runtime.ready_for_queries = False
                 self.runtime.stable = bool(self._last_stability and self._last_stability.get("passed"))
             elif self.runtime.iteration >= self.max_iterations:
                 self.runtime.state = SolverState.STOPPED
@@ -637,16 +666,12 @@ class SolverService:
             elif self.runtime.state == SolverState.TRAINING:
                 self.runtime.state = SolverState.TRAINING
                 self.runtime.ready_for_queries = False
-            elif self.runtime.state == SolverState.SCORING and not self.runtime.stable:
+            elif self.runtime.state == SolverState.SCORING:
                 self.runtime.state = SolverState.SCORING
                 self.runtime.ready_for_queries = False
 
             if self._solver is not None:
                 self.runtime.current_average_policy = self._solver.average_policy()
-
-            if self.runtime.stable and self.runtime.state not in {SolverState.STOPPED, SolverState.PAUSED}:
-                self.runtime.state = SolverState.AVAILABLE
-                self.runtime.ready_for_queries = True
 
         except Exception as exc:  # pragma: no cover - runtime path
             import traceback

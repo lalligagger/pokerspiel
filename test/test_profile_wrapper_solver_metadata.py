@@ -108,6 +108,39 @@ def test_runtime_telemetry_snapshot_collects_memory_and_disk_usage(tmp_path):
     assert snapshot["memory_available_ratio"] is None or 0.0 <= float(snapshot["memory_available_ratio"]) <= 1.0
 
 
+def test_solver_loop_does_not_trigger_full_telemetry_each_iteration(monkeypatch):
+    service = SolverService(max_iterations=2, min_iterations=1, checkpoint_every=10, range_samples=1)
+    calls = {"count": 0}
+
+    class FakeSolver:
+        def run_iteration(self):
+            pass
+
+        def average_policy(self):
+            return {}
+
+    monkeypatch.setattr("api.service.pyspiel.load_game", lambda *args, **kwargs: object())
+    monkeypatch.setattr("api.service.make_solver", lambda game, solver_name: FakeSolver())
+    monkeypatch.setattr("api.service.resolve_node_specs", lambda *args, **kwargs: [])
+    monkeypatch.setattr("api.service.prepare_selected_node_probes", lambda *args, **kwargs: [])
+    monkeypatch.setattr("api.service.snapshot_probe_states", lambda policy, probes: [])
+    monkeypatch.setattr("api.service.aggregate_selected_node_ranges", lambda records: {"nodes": []})
+    monkeypatch.setattr(
+        "api.service.summarize_selected_node_stability",
+        lambda current_ranges, previous_ranges, threshold: {"passed": False, "avg_abs_delta": 0.0, "max_abs_delta": 0.0, "threshold": threshold, "matched_nodes": 0, "top_moving": []},
+    )
+
+    def fake_snapshot(*args, **kwargs):
+        calls["count"] += 1
+        return {"rss_mb": 0.0, "total_memory_mb": 1.0, "available_memory_mb": 1.0, "used_memory_mb": 0.0}
+
+    monkeypatch.setattr("api.service.runtime_telemetry_snapshot", fake_snapshot)
+
+    service._run_live_solver()
+
+    assert calls["count"] == 0
+
+
 def test_app_solver_accepts_checkpoint_every_alias():
     repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     result = subprocess.run(
