@@ -76,6 +76,52 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/BulkProbeResponse'
+  /postflop/exact:
+    post:
+      summary: Request an exact postflop infoset policy using sampled deal states
+      operationId: requestPostflopExact
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostflopExactRequest'
+      responses:
+        '200':
+          description: Exact postflop infoset action probabilities
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostflopExactResponse'
+        '409':
+          description: The exact infoset is not ready to be queried
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /postflop/range:
+    post:
+      summary: Estimate a postflop action distribution over a hand subset
+      operationId: requestPostflopRange
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostflopRangeRequest'
+      responses:
+        '200':
+          description: Averaged postflop action frequencies on the selected hand subset
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostflopRangeResponse'
+        '409':
+          description: The range estimate is not ready to be queried
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 components:
   schemas:
     HealthStatus:
@@ -224,6 +270,134 @@ components:
         message:
           type: string
           nullable: true
+    PostflopExactRequest:
+      type: object
+      required:
+        - board
+      properties:
+        board:
+          type: array
+          items:
+            type: string
+        history:
+          type: array
+          items:
+            type: string
+          nullable: true
+        hole_cards:
+          type: array
+          items:
+            type: string
+          nullable: true
+        player:
+          type: integer
+          nullable: true
+        samples:
+          type: integer
+          default: 32
+        min_iteration:
+          type: integer
+          nullable: true
+    PostflopExactResponse:
+      type: object
+      required:
+        - iteration
+        - board
+      properties:
+        iteration:
+          type: integer
+        board:
+          type: array
+          items:
+            type: string
+        history:
+          type: array
+          items:
+            type: string
+        hole_cards:
+          type: array
+          items:
+            type: string
+          nullable: true
+        player:
+          type: integer
+          nullable: true
+        exact_infoset_key:
+          type: string
+        action_probabilities:
+          type: object
+          additionalProperties:
+            type: number
+        sample_count:
+          type: integer
+        ready:
+          type: boolean
+        message:
+          type: string
+          nullable: true
+    PostflopRangeRequest:
+      type: object
+      required:
+        - board
+      properties:
+        board:
+          type: array
+          items:
+            type: string
+        history:
+          type: array
+          items:
+            type: string
+          nullable: true
+        hands:
+          type: array
+          items:
+            type: string
+        player:
+          type: integer
+          nullable: true
+        samples:
+          type: integer
+          default: 32
+        min_iteration:
+          type: integer
+          nullable: true
+    PostflopRangeResponse:
+      type: object
+      required:
+        - iteration
+        - board
+      properties:
+        iteration:
+          type: integer
+        board:
+          type: array
+          items:
+            type: string
+        history:
+          type: array
+          items:
+            type: string
+        hands:
+          type: array
+          items:
+            type: string
+        player:
+          type: integer
+          nullable: true
+        hand_count:
+          type: integer
+        action_frequencies:
+          type: object
+          additionalProperties:
+            type: number
+        sample_count:
+          type: integer
+        ready:
+          type: boolean
+        message:
+          type: string
+          nullable: true
     BulkProbeRequest:
       type: object
       required:
@@ -271,6 +445,10 @@ components:
         probe_budget_remaining:
           type: integer
           nullable: true
+        postflop_samples:
+          type: integer
+          nullable: true
+          description: Default sampled state count used for postflop exact and range probes when a request does not override it.
         selected_node_summary:
           type: array
           items:

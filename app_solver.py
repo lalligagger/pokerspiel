@@ -818,19 +818,6 @@ def summarize_policy_profiles(snapshots):
     }
 
 
-def deal_budget_for_iterations(total_iterations: int) -> int:
-    """How many fresh deal states to sample in the reporting layer for a single solver run."""
-    if total_iterations <= 100:
-        return 3
-    if total_iterations <= 500:
-        return 5
-    if total_iterations <= 2500:
-        return 8
-    if total_iterations <= 10000:
-        return 12
-    return 16
-
-
 def exact_hole_board_signature(state):
     """Return a stable exact private-card plus board signature for a state."""
     wrapped = getattr(state, "_wrapped_state", None)
@@ -864,33 +851,6 @@ def sample_random_actor_state(game):
             return None
         state = state.child(random.choice(actions))
     return state if state is not None and state.current_player() >= 0 else None
-
-
-def sample_distinct_deal_states(game, target_count: int, max_attempts: int = 200, dedupe: bool = False):
-    """Return fresh root states for reporting.
-
-    We intentionally disable hole-card/board deduplication by default because
-    deduping changes the sampling distribution and biases action-frequency
-    estimates. The opt-in `dedupe=True` mode remains available for diversity-only
-    coverage experiments.
-    """
-    states = []
-    seen = set()
-    attempts = 0
-
-    while len(states) < target_count and attempts < max_attempts:
-        attempts += 1
-        resolved = sample_random_actor_state(game)
-        if resolved is None:
-            continue
-        if dedupe:
-            signature = exact_hole_board_signature(resolved)
-            if signature in seen:
-                continue
-            seen.add(signature)
-        states.append(resolved)
-
-    return states
 
 
 def accumulate_global_infoset_policy(accumulator, state, policy):
@@ -948,26 +908,9 @@ def collect_checkpoint_snapshots(
     history_samples: int = 0,
     history_depth: int = 3,
     street_samples: int = 0,
-    deal_samples: int = 0,
-    deal_game=None,
 ):
-    """Collect a structured set of policy snapshots for a checkpoint.
-
-    The returned payload can be persisted to JSON and later used as a warm-start
-    seed for custom MCCFR or policy initialization logic. We keep a single MCCFR run,
-    but we sample several fresh deal states in the reporting layer to expose hole-card
-    and board diversity without changing the solver's training loop.
-    """
+    """Collect a structured set of policy snapshots for a checkpoint."""
     snapshots = []
-
-    if deal_samples > 0 and deal_game is not None:
-        deal_states = sample_distinct_deal_states(deal_game, target_count=deal_samples)
-        for resolved in deal_states:
-            record = policy_snapshot_record(policy, resolved, history=[], label="deal_sample")
-            if record is not None:
-                snapshots.append(record)
-        if snapshots:
-            return snapshots
 
     if street_samples > 0:
         for history, resolved in sample_street_boundary_states(state, max_states=street_samples):
@@ -1673,8 +1616,8 @@ def build_selected_node_export(records, range_last_n: int | None):
 def profile_variant(
     name: str,
     params: Dict[str, object],
-    iterations: int = 10,
-    stability_checkpoint: int = 0,
+    iterations: int = 100_000,
+    stability_checkpoint: int = 1000,
     solver_name: str = "external",
     history_samples: int = 0,
     history_depth: int = 3,
@@ -1686,11 +1629,11 @@ def profile_variant(
     heartbeat_seconds: float = 10.0,
     node_preset: str = None,
     node_selectors=(),
-    stability_threshold: float = 0.01,
+    stability_threshold: float = 0.9,
     stop_threshold: float = 0.85,
     memory_threshold: float = 0.85,
     stop_patience: int = 3,
-    min_iterations: int = 1_000_000,
+    min_iterations: int = 1000,
     range_last_n: int | None = None,
     artifact_mode: str = "standard",
     checkpoint_history_limit: int | None = None,
@@ -1769,7 +1712,7 @@ def profile_variant(
     solver_elapsed = time.perf_counter() - start
     print(f"solver_construct: {solver_elapsed:.4f}s")
 
-    probe_count = deal_budget_for_iterations(iterations) if range_samples is None else range_samples
+    probe_count = 1326 if range_samples is None else range_samples
     start = time.perf_counter()
     probes = prepare_selected_node_probes(
         game,

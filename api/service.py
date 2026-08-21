@@ -536,6 +536,7 @@ class SolverService:
             last_probe_at=self.runtime.last_probe_at,
             min_iteration=self.min_iterations,
             probe_budget_remaining=self.range_samples,
+            postflop_samples=self.postflop_samples,
             selected_node_summary=selected_summary,
             telemetry=telemetry,
             sampling_policy=dict(self.sampling_policy),

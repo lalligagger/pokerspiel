@@ -38,7 +38,6 @@ from app_solver import (
     replay_history_matches_spot,
     resolve_node_specs,
     runtime_telemetry_snapshot,
-    sample_distinct_deal_states,
     summarize_policy_profiles,
     summarize_selected_node_stability,
 )
@@ -380,26 +379,6 @@ def test_summarize_policy_profiles_counts_preflop_family_and_deeper_states():
     assert summary["unique_policy_profiles"] == 3
     assert summary["repeated_same_family_preflop_states"] == 1
     assert summary["deeper_non_preflop_states"] == 3
-
-
-def test_sample_distinct_deal_states_reaches_multiple_hole_card_signatures():
-    game = pyspiel.load_game(
-        "python_pokerkit_wrapper",
-        {
-            "variant": "NoLimitShortDeckHoldem",
-            "num_players": 2,
-            "blinds": "1 2",
-            "stack_sizes": "200 200",
-            "antes": "0 0",
-            "num_streets": 4,
-        },
-    )
-
-    states = sample_distinct_deal_states(game, target_count=4, max_attempts=200)
-    signatures = {exact_hole_board_signature(state) for state in states}
-
-    assert len(states) >= 2
-    assert len(signatures) >= 2
 
 
 def test_prepare_selected_node_probes_keeps_unbiased_sampling_by_default():

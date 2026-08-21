@@ -174,6 +174,7 @@ class SolverStatusResponse:
     last_probe_at: Optional[int] = None
     min_iteration: Optional[int] = None
     probe_budget_remaining: Optional[int] = None
+    postflop_samples: Optional[int] = None
     selected_node_summary: List[Dict[str, Any]] = field(default_factory=list)
     telemetry: Optional[Dict[str, Any]] = None
     sampling_policy: Optional[Dict[str, str]] = None
