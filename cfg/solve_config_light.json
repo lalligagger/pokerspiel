@@ -2,9 +2,9 @@
   "mode": "hulh",
   "solver": "external",
   "preset": "hulh-preflop",
-  "iterations": 100000,
-  "checkpoint_every": 1000,
-  "stability_threshold": 0.9,
+  "iterations": 250000,
+  "checkpoint_every": 5000,
+  "stability_threshold": 0.5,
   "memory_threshold": 0.85,
   "sampling_policy": {
     "preflop": "exact_only",

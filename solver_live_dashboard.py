@@ -57,6 +57,7 @@ DEFAULT_SPOTS = [
 
 DEFAULT_INTERVAL_SECONDS = 300
 DEFAULT_SAMPLES = 1326
+DEFAULT_REQUEST_TIMEOUT_SECONDS = 30
 
 
 def http_json(url: str, payload: Optional[Dict[str, Any]] = None, timeout: int = 15) -> Dict[str, Any]:
@@ -163,11 +164,16 @@ def range_hands_to_matrices(range_payload: Dict[str, Any]) -> Dict[str, List[Lis
     return {"F": fold, "C": call, "R": raise_}
 
 
-def fetch_spot_payload(api_base_url: str, spot: str, samples: int) -> Dict[str, Any]:
+def fetch_spot_payload(
+    api_base_url: str,
+    spot: str,
+    samples: int,
+    request_timeout_seconds: int = DEFAULT_REQUEST_TIMEOUT_SECONDS,
+) -> Dict[str, Any]:
     range_url = api_base_url.rstrip("/") + f"/preflop/{spot}/range"
 
     try:
-        range_payload = http_json(range_url, timeout=12)
+        range_payload = http_json(range_url, timeout=max(1, int(request_timeout_seconds)))
     except HTTPError as exc:
         try:
             detail = json.loads(exc.read().decode("utf-8"))
@@ -222,7 +228,12 @@ def fetch_spot_payload(api_base_url: str, spot: str, samples: int) -> Dict[str, 
     }
 
 
-def render_html(spots: List[str], default_spot: str, interval_seconds: int) -> str:
+def render_html(
+    spots: List[str],
+    default_spot: str,
+    interval_seconds: int,
+    request_timeout_seconds: int = DEFAULT_REQUEST_TIMEOUT_SECONDS,
+) -> str:
     spots_json = json.dumps(spots)
     default_spot_json = json.dumps(default_spot)
     return f"""
@@ -285,6 +296,7 @@ def render_html(spots: List[str], default_spot: str, interval_seconds: int) -> s
       const spots = {spots_json};
       const defaultSpot = {default_spot_json};
       const refreshMs = {max(1, int(interval_seconds))} * 1000;
+      const requestTimeoutMs = {max(1, int(request_timeout_seconds))} * 1000;
 
       const spotSelect = document.getElementById('spot-select');
       const statusEl = document.getElementById('status');
@@ -493,7 +505,7 @@ def render_html(spots: List[str], default_spot: str, interval_seconds: int) -> s
         statusEl.textContent = `loading ${{spot}}...`;
         errorEl.textContent = '';
         const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 15000);
+        const timer = setTimeout(() => controller.abort(), requestTimeoutMs);
         try {{
           const resp = await fetch(`/grid-data?spot=${{encodeURIComponent(spot)}}`, {{ signal: controller.signal }});
           const payload = await resp.json();
@@ -509,7 +521,8 @@ def render_html(spots: List[str], default_spot: str, interval_seconds: int) -> s
           const ready = payload.status && payload.status.ready_for_queries !== undefined ? payload.status.ready_for_queries : false;
           statusEl.textContent = `iteration=${{iter}} ready=${{ready}} source=/preflop/${{encodeURIComponent(spot)}}/range fetched=${{new Date(payload.fetched_at * 1000).toLocaleTimeString()}}`;
         }} catch (err) {{
-          const detail = err && err.name === 'AbortError' ? 'request timed out after 15s' : (err.message || String(err));
+          const timeoutLabel = Number(requestTimeoutMs / 1000).toFixed(0);
+          const detail = err && err.name === 'AbortError' ? `request timed out after ${{timeoutLabel}}s` : (err.message || String(err));
           errorEl.textContent = `Error: ${{detail}}`;
           statusEl.textContent = 'request failed';
           renderNodeTable([]);
@@ -540,6 +553,7 @@ class DashboardHTTPServer:
         interval_seconds: int,
         host: str,
         port: int,
+        request_timeout_seconds: int = DEFAULT_REQUEST_TIMEOUT_SECONDS,
     ) -> None:
         self.api_base_url = api_base_url
         self.spots = list(spots)
@@ -548,6 +562,7 @@ class DashboardHTTPServer:
         self.interval_seconds = int(interval_seconds)
         self.host = host
         self.port = port
+        self.request_timeout_seconds = max(1, int(request_timeout_seconds))
         self._server: Optional[ThreadingHTTPServer] = None
 
     def serve(self) -> None:
@@ -557,7 +572,12 @@ class DashboardHTTPServer:
             def do_GET(self):
                 parsed = urlparse(self.path)
                 if parsed.path in {"/", "/index.html"}:
-                    html = render_html(parent.spots, parent.default_spot, parent.interval_seconds)
+                    html = render_html(
+                        parent.spots,
+                        parent.default_spot,
+                        parent.interval_seconds,
+                        parent.request_timeout_seconds,
+                    )
                     self.send_response(200)
                     self.send_header("Content-Type", "text/html; charset=utf-8")
                     self.end_headers()
@@ -568,7 +588,12 @@ class DashboardHTTPServer:
                     query = parse_qs(parsed.query)
                     requested = (query.get("spot") or [parent.default_spot])[0]
                     spot = requested if requested in parent.spots else parent.default_spot
-                    payload = fetch_spot_payload(parent.api_base_url, spot, parent.samples)
+                    payload = fetch_spot_payload(
+                        parent.api_base_url,
+                        spot,
+                        parent.samples,
+                        parent.request_timeout_seconds,
+                    )
                     body = json.dumps(payload).encode("utf-8")
                     self.send_response(200)
                     self.send_header("Content-Type", "application/json")
@@ -607,6 +632,12 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_INTERVAL_SECONDS,
         help="Auto-refresh interval in seconds (default 300).",
     )
+    parser.add_argument(
+        "--request-timeout",
+        type=int,
+        default=DEFAULT_REQUEST_TIMEOUT_SECONDS,
+        help="API request timeout in seconds for dashboard range fetches (default 30).",
+    )
     parser.add_argument("--serve-host", default="127.0.0.1", help="Host for local viewer server.")
     parser.add_argument("--serve-port", type=int, default=8765, help="Port for local viewer server.")
     parser.add_argument("--open-browser", action="store_true", help="Open browser automatically.")
@@ -632,6 +663,7 @@ def main() -> None:
         interval_seconds=max(1, int(args.interval)),
         host=args.serve_host,
         port=args.serve_port,
+        request_timeout_seconds=max(1, int(args.request_timeout)),
     )
 
     try:
