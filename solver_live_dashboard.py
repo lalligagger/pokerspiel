@@ -113,7 +113,13 @@ def category_to_cell(category: str) -> Optional[Tuple[int, int]]:
 
 
 def range_hands_to_matrices(range_payload: Dict[str, Any]) -> Dict[str, List[List[float]]]:
-    fold = [[1.0 for _ in range(13)] for _ in range(13)]
+    """Return action matrices keyed by the 13x13 grid.
+
+    Unseen cells remain at zero mass so the plotting layer can render them as
+    "not in range" rather than implicitly defaulting to a full fold bucket.
+    The API may also attach explicit prior_fold_mass metadata for the selected spot.
+    """
+    fold = [[0.0 for _ in range(13)] for _ in range(13)]
     call = [[0.0 for _ in range(13)] for _ in range(13)]
     raise_ = [[0.0 for _ in range(13)] for _ in range(13)]
 
@@ -147,7 +153,7 @@ def range_hands_to_matrices(range_payload: Dict[str, Any]) -> Dict[str, List[Lis
         r_val = sums["r"] / n
         total = f_val + c_val + r_val
         if total <= 0:
-            f_val, c_val, r_val = 1.0, 0.0, 0.0
+            f_val, c_val, r_val = 0.0, 0.0, 0.0
         else:
             f_val, c_val, r_val = f_val / total, c_val / total, r_val / total
         fold[i][j] = max(0.0, min(1.0, f_val))
@@ -193,6 +199,8 @@ def fetch_spot_payload(api_base_url: str, spot: str, samples: int) -> Dict[str, 
         }
 
     matrices = range_hands_to_matrices(range_payload)
+    metadata = range_payload.get("metadata") or {}
+    prior_fold_mass = float(metadata.get("prior_fold_mass", 0.0) or 0.0)
     return {
         "ok": True,
         "spot": spot,
@@ -202,6 +210,12 @@ def fetch_spot_payload(api_base_url: str, spot: str, samples: int) -> Dict[str, 
         },
         "range": range_payload,
         "matrices": matrices,
+        "metadata": {
+            "prior_fold_mass": prior_fold_mass,
+            "branch_valid": bool(metadata.get("branch_valid", True)),
+            "zero_means_not_in_range": bool(metadata.get("zero_means_not_in_range", True)),
+            "branch_model": metadata.get("branch_model", "conditional_after_prior_folds"),
+        },
         "ranks": RANKS,
         "grid_labels": build_grid_labels(),
         "fetched_at": int(time.time()),
@@ -322,9 +336,12 @@ def render_html(spots: List[str], default_spot: str, interval_seconds: int) -> s
 
       function buildFigure(payload) {{
         const ranks = payload.ranks;
-        const F = payload.matrices.F;
-        const C = payload.matrices.C;
-        const R = payload.matrices.R;
+        const F = payload.matrices && payload.matrices.F ? payload.matrices.F : Array.from({{ length: 13 }}, () => Array(13).fill(0));
+        const C = payload.matrices && payload.matrices.C ? payload.matrices.C : Array.from({{ length: 13 }}, () => Array(13).fill(0));
+        const R = payload.matrices && payload.matrices.R ? payload.matrices.R : Array.from({{ length: 13 }}, () => Array(13).fill(0));
+        const metadata = payload.metadata || {{}};
+        const priorFoldMass = Number(metadata.prior_fold_mass || 0);
+        const zeroMeansNotInRange = metadata.zero_means_not_in_range !== false;
         const shapeLabels = Array.isArray(payload.grid_labels) ? payload.grid_labels : [];
         const labelMap = new Map(shapeLabels.map(entry => [String(entry.i) + ':' + String(entry.j), entry.label]));
         const shapes = [];
@@ -340,29 +357,37 @@ def render_html(spots: List[str], default_spot: str, interval_seconds: int) -> s
             let c = Number(C[i][j] || 0);
             let r = Number(R[i][j] || 0);
             const total = f + c + r;
-            if (total <= 0) {{
-              f = 1.0;
-              c = 0.0;
-              r = 0.0;
-            }}
-            const norm = f + c + r;
-            f /= norm;
-            c /= norm;
-            r /= norm;
-
             const x0 = j + xPad;
             const x1 = j + 1.0 - xPad;
             const y0 = i + yPad;
             const y1 = i + 1.0 - yPad;
 
+            const isOutOfRange = total <= 0 && zeroMeansNotInRange;
             shapes.push({{
               type: 'rect',
               xref: 'x', yref: 'y',
               x0: x0, x1: x1, y0: y0, y1: y1,
-              fillcolor: 'white',
+              fillcolor: isOutOfRange ? '#ededed' : 'white',
               line: {{ color: 'rgba(0,0,0,0.22)', width: 0.6 }},
               layer: 'below',
             }});
+
+            if (isOutOfRange) {{
+              annotations.push({{
+                x: j + 0.5,
+                y: i + 0.5,
+                xref: 'x', yref: 'y',
+                text: labelMap.get(String(i) + ':' + String(j)) || category(i, j, ranks),
+                showarrow: false,
+                font: {{ size: 9, color: '#7a7a7a', family: 'monospace' }},
+              }});
+              continue;
+            }}
+
+            const norm = f + c + r;
+            f /= norm;
+            c /= norm;
+            r /= norm;
 
             const foldEnd = y0 + (y1 - y0) * f;
             const callEnd = y0 + (y1 - y0) * (f + c);

@@ -1095,12 +1095,67 @@ def choose_action_from_family(legal_actions, family: str):
     return sorted(matching)[0]
 
 
+def _normalize_history_token(token):
+    """Collapse raw PokerKit integer actions and action aliases to a canonical family label."""
+    if token is None:
+        return None
+    if isinstance(token, (int, np.integer)):
+        action_id = int(token)
+        if action_id == 0:
+            return "fold"
+        if action_id in {1, 2, 3}:
+            return "call"
+        if action_id >= 4:
+            return "bet"
+        return str(action_id)
+
+    normalized = str(token).strip().lower()
+    if normalized in {"check", "call"}:
+        return "call"
+    if normalized in {"bet", "raise"}:
+        return "bet"
+    if normalized in {"fold"}:
+        return "fold"
+    return normalized
+
+
+def replay_history_matches_spot(history, spot_name):
+    """Return True when a sampled path reaches the requested HULH node.
+
+    The root node is intentionally treated as a genuine selected node even though its
+    semantic history is empty. The exact-history filter is valid for deeper branches,
+    but it must never discard the legal root sample before the checkpoint aggregate is built.
+    """
+    spot_key = str(spot_name or "")
+    if spot_key in {"first_to_act", "root"}:
+        return True
+
+    normalized = [
+        _normalize_history_token(item)
+        for item in (history or [])
+        if item is not None and _normalize_history_token(item) is not None
+    ]
+    expected = {
+        "first_to_act": [],
+        "response_to_limp": ["call"],
+        "response_to_open": ["bet"],
+        "response_to_limp_raise": ["call", "bet"],
+        "response_to_open_3bet": ["bet", "bet"],
+        "response_to_open_4bet": ["bet", "bet", "bet"],
+        "response_to_open_5bet": ["bet", "bet", "bet", "bet"],
+    }
+    target = expected.get(spot_key)
+    if target is None:
+        return True
+    return normalized == target
+
+
 def prepare_selected_node_probes(game, node_specs, samples_per_node: int, max_attempts: int = None, dedupe: bool = False):
     """Sample deal states for each selected node.
 
-    We intentionally keep the default path unbiased: one random deal is one sample.
-    Dedupe-by-signature remains available as an explicit `dedupe=True` option for
-    diversity-only coverage studies, but it is not used in the normal export path.
+    Each selected node gets its own independent budget. We also require that the
+    sampled path actually reaches the target HULH spot; if the sequence folds or
+    diverges earlier, it is discarded and not counted toward the rollup.
     """
     if max_attempts is None:
         max_attempts = max(samples_per_node * 20, 2000)
@@ -1110,10 +1165,13 @@ def prepare_selected_node_probes(game, node_specs, samples_per_node: int, max_at
         seen = set()
         attempts = 0
         no_progress_rounds = 0
-        while len(probes) < len(node_specs) * samples_per_node and attempts < max_attempts:
+        node_probes = []
+        while len(node_probes) < samples_per_node and attempts < max_attempts:
             attempts += 1
             state = state_after_history(game, spec["history"])
             if state is None:
+                continue
+            if not replay_history_matches_spot(spec["history"], spec["name"]):
                 continue
             if dedupe:
                 signature = exact_hole_board_signature(state)
@@ -1124,7 +1182,9 @@ def prepare_selected_node_probes(game, node_specs, samples_per_node: int, max_at
                     continue
                 seen.add(signature)
                 no_progress_rounds = 0
-            probes.append({"node_name": spec["name"], "history": list(spec["history"]), "state": state})
+            node_probes.append({"node_name": spec["name"], "history": list(spec["history"]), "state": state})
+
+        probes.extend(node_probes)
 
         if dedupe and len(seen) < samples_per_node:
             warnings.warn(
@@ -1167,7 +1227,6 @@ def summarize_selected_node_stability(current_ranges, previous_ranges=None, thre
     }
 
     deltas = []
-    moving = []
     for name, current in current_nodes.items():
         prev = previous_nodes.get(name)
         if prev is None:
@@ -1175,11 +1234,9 @@ def summarize_selected_node_stability(current_ranges, previous_ranges=None, thre
 
         current_actions = current.get("action_frequencies") or {}
         previous_actions = prev.get("action_frequencies") or {}
-        node_action_deltas = []
         for action in sorted(set(current_actions) | set(previous_actions)):
             delta = abs(float(current_actions.get(action, 0.0)) - float(previous_actions.get(action, 0.0)))
             deltas.append(delta)
-            node_action_deltas.append(delta)
 
         current_hands = {hand["hand"]: hand for hand in current.get("hands", []) if hand.get("hand")}
         previous_hands = {hand["hand"]: hand for hand in prev.get("hands", []) if hand.get("hand")}
@@ -1193,25 +1250,15 @@ def summarize_selected_node_stability(current_ranges, previous_ranges=None, thre
                     - float((prev_hand.get("policy") or {}).get(action, 0.0))
                 )
                 deltas.append(delta)
-                node_action_deltas.append(delta)
 
-        moving.append(
-            {
-                "node_name": name,
-                "max_delta": max(node_action_deltas) if node_action_deltas else 0.0,
-            }
-        )
-
-    moving.sort(key=lambda item: item["max_delta"], reverse=True)
     max_delta = max(deltas) if deltas else None
+    has_nonzero_delta = any(float(delta) > 0.0 for delta in deltas)
     return {
         "sample_count": len(current_nodes),
-        "matched_nodes": len([node for node in current_nodes if node in previous_nodes]),
         "avg_abs_delta": statistics.fmean(deltas) if deltas else None,
         "max_abs_delta": max_delta,
-        "top_moving": moving[:5],
         "threshold": threshold,
-        "passed": max_delta is not None and max_delta <= threshold,
+        "passed": max_delta is not None and has_nonzero_delta and max_delta <= threshold,
     }
 
 
@@ -1250,13 +1297,17 @@ def summarize_durations(durations):
 def build_selected_node_summary(range_payload):
     summary_rows = []
     for node in (range_payload or {}).get("nodes", []):
+        action_frequencies = node.get("action_frequencies") or {}
         summary_rows.append(
             {
                 "node_name": node.get("name"),
                 "display_name": node.get("display_name") or node.get("history_label") or node.get("name"),
-                "history": list(node.get("history") or []),
                 "sample_count": node.get("sample_count"),
-                "action_frequencies": dict(node.get("action_frequencies") or {}),
+                "action_frequencies": {
+                    "fold": float(action_frequencies.get("fold", 0.0)),
+                    "check_call": float(action_frequencies.get("check_call", 0.0)),
+                    "bet_raise": float(action_frequencies.get("bet_raise", 0.0)),
+                },
             }
         )
     return summary_rows

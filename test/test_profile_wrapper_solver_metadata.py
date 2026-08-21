@@ -35,10 +35,12 @@ from app_solver import (
     is_meaningful_state,
     prepare_selected_node_probes,
     profile_variant,
+    replay_history_matches_spot,
     resolve_node_specs,
     runtime_telemetry_snapshot,
     sample_distinct_deal_states,
     summarize_policy_profiles,
+    summarize_selected_node_stability,
 )
 
 
@@ -82,7 +84,7 @@ def test_service_status_and_probe_compatibility_with_flat_runtime(tmp_path):
     service._flat_tables.visits[0] = 1.0
 
     status = service.status()
-    assert status.selected_node_summary[0]["node_name"] == "first_to_act"
+    assert status.selected_node_summary == []
     assert status.ready_for_queries is True
 
     probe = service.request_probe(type("Req", (), {"node": "first_to_act", "history": [], "samples": 1, "min_iteration": 0, "include_stability": True, "include_hands": True, "action_filter": None})())
@@ -152,6 +154,69 @@ def test_preflop_spot_aliases_normalize_to_canonical_labels():
 
     for alias, canonical in expected.items():
         assert service._normalize_preflop_spot(alias) == canonical
+
+
+def test_first_to_act_reference_fallback_uses_sibling_aggregate_not_uniform_seed():
+    service = SolverService()
+    service.runtime.state = SolverState.SCORING
+    service._solver = object()
+    service._game = object()
+    service._selected_specs = [{"name": "first_to_act", "display_name": "first_to_act", "history": []}]
+    service._preflop_range_cache = {
+        "first_to_act": {
+            "spot": "first_to_act",
+            "iteration": 2000,
+            "status": "fallback_seed",
+            "hands": [],
+            "hand_count": 0,
+            "ready": True,
+            "message": "checkpoint preflop range snapshot",
+            "reference_policy": {"fold": 0.2, "check_call": 0.3, "bet_raise": 0.5},
+        }
+    }
+
+    response = service.get_preflop_range("first_to_act")
+
+    assert response.ready is True
+    assert response.hands == []
+    assert response.metadata["reference_policy"] == {"fold": 0.2, "check_call": 0.3, "bet_raise": 0.5}
+    assert "uniform action policy" not in response.message.lower()
+    assert "sibling aggregate" in response.message.lower()
+
+
+def test_root_selected_node_never_gets_filtered_out_by_exact_history_match():
+    from app_solver import replay_history_matches_spot
+
+    assert replay_history_matches_spot([], "first_to_act") is True
+    assert replay_history_matches_spot(["bet"], "first_to_act") is True
+    assert replay_history_matches_spot(["call"], "first_to_act") is True
+    assert replay_history_matches_spot([], "root") is True
+
+
+def test_cached_preflop_ranges_are_served_while_solver_is_still_scoring():
+    service = SolverService()
+    service.runtime.state = SolverState.SCORING
+    service._solver = object()
+    service._game = object()
+    service._preflop_range_cache = {
+        "first_to_act": {
+            "spot": "first_to_act",
+            "iteration": 2000,
+            "status": "fallback_seed",
+            "hands": [{"hand": "AKs", "policy": {"fold": 0.1, "check_call": 0.3, "bet_raise": 0.6}}],
+            "hand_count": 1,
+            "ready": True,
+            "message": "checkpoint preflop range snapshot",
+            "reference_policy": {"fold": 0.2, "check_call": 0.3, "bet_raise": 0.5},
+        }
+    }
+
+    response = service.get_preflop_range("first_to_act")
+
+    assert response.ready is True
+    assert response.hand_count == 1
+    assert response.hands[0].hand == "AKs"
+    assert response.hands[0].policy["bet_raise"] == pytest.approx(0.6)
 
 
 def test_solver_service_defaults_to_external_and_respects_env_override(monkeypatch):
@@ -319,6 +384,44 @@ def test_prepare_selected_node_probes_keeps_unbiased_sampling_by_default():
     assert len(probes) == 10
 
 
+def test_replay_history_matches_spot_accepts_integer_action_ids_for_deeper_nodes():
+    assert replay_history_matches_spot([4, 4], "response_to_open_3bet") is True
+    assert replay_history_matches_spot([4, 4, 4], "response_to_open_4bet") is True
+    assert replay_history_matches_spot([1], "response_to_limp") is True
+    assert format_hulh_history_label([4, 4]) == "response_to_open_3bet"
+
+
+def test_summarize_selected_node_stability_requires_nonzero_delta_before_passing():
+    current_ranges = {
+        "nodes": [
+            {
+                "name": "first_to_act",
+                "display_name": "first_to_act",
+                "action_frequencies": {"fold": 0.2, "check_call": 0.4, "bet_raise": 0.4},
+                "hands": [],
+                "sample_count": 1,
+            }
+        ]
+    }
+    previous_ranges = {
+        "nodes": [
+            {
+                "name": "first_to_act",
+                "display_name": "first_to_act",
+                "action_frequencies": {"fold": 0.2, "check_call": 0.4, "bet_raise": 0.4},
+                "hands": [],
+                "sample_count": 1,
+            }
+        ]
+    }
+
+    summary = summarize_selected_node_stability(current_ranges, previous_ranges, threshold=0.98)
+
+    assert summary["max_abs_delta"] == 0.0
+    assert summary["avg_abs_delta"] == 0.0
+    assert summary["passed"] is False
+
+
 def test_solver_service_stays_live_after_min_iterations_when_stability_is_reached(monkeypatch):
     class FakeSolver:
         def __init__(self):
@@ -436,6 +539,91 @@ def test_get_preflop_range_rejects_sampled_probe_fallbacks():
 
     assert response.ready is False
     assert "realtime sampled probes are intentionally disabled" in response.message
+
+
+def test_materialize_selected_preflop_spots_creates_reference_policy_for_empty_checkpoint():
+    service = SolverService()
+    service.runtime.iteration = 5000
+    service._selected_specs = [{"name": "first_to_act", "display_name": "first_to_act", "history": []}]
+    service._game = object()
+    service._solver = object()
+    service._current_ranges = {"nodes": []}
+
+    materialized = service._materialize_selected_preflop_reference()
+
+    assert "first_to_act" in materialized
+    assert materialized["first_to_act"]["status"] == "uniform_seed"
+    assert materialized["first_to_act"]["ready"] is True
+    assert materialized["first_to_act"]["hand_count"] == 0
+    policy = materialized["first_to_act"]["reference_policy"]
+    assert set(policy) == {"fold", "check_call", "bet_raise"}
+    assert abs(sum(policy.values()) - 1.0) < 1e-9
+
+
+def test_materialize_selected_preflop_spots_uses_populated_sibling_policy_for_first_to_act():
+    service = SolverService()
+    service.runtime.iteration = 5000
+    service._selected_specs = [
+        {"name": "first_to_act", "display_name": "first_to_act", "history": []},
+        {"name": "response_to_open", "display_name": "response_to_open", "history": ["bet"]},
+    ]
+    service._game = object()
+    service._solver = object()
+    service._current_ranges = {
+        "nodes": [
+            {
+                "name": "response_to_open",
+                "display_name": "response_to_open",
+                "history": ["bet"],
+                "hands": [
+                    {"hand": "AKs", "policy": {"fold": 0.1, "check_call": 0.3, "bet_raise": 0.6}},
+                    {"hand": "QQ", "policy": {"fold": 0.2, "check_call": 0.2, "bet_raise": 0.6}},
+                ],
+                "sample_count": 2,
+            }
+        ]
+    }
+
+    materialized = service._materialize_selected_preflop_reference()
+
+    assert "first_to_act" in materialized
+    assert materialized["first_to_act"]["status"] == "fallback_seed"
+    policy = materialized["first_to_act"]["reference_policy"]
+    assert policy["fold"] > 0.0
+    assert policy["check_call"] > 0.0
+    assert policy["bet_raise"] > 0.0
+    assert abs(policy["bet_raise"] - 0.6) < 0.2
+
+
+def test_prepare_selected_node_probes_samples_each_node_independently(monkeypatch):
+    node_specs = [
+        {"name": "first_to_act", "history": []},
+        {"name": "response_to_open", "history": ["bet"]},
+        {"name": "response_to_limp", "history": ["call"]},
+    ]
+
+    states_by_history = {
+        tuple(): object(),
+        ("bet",): object(),
+        ("call",): object(),
+    }
+
+    def fake_state_after_history(game, history):
+        return states_by_history.get(tuple(history))
+
+    monkeypatch.setattr("app_solver.state_after_history", fake_state_after_history)
+
+    probes = prepare_selected_node_probes(object(), node_specs, samples_per_node=2)
+
+    counts = {spec["name"]: 0 for spec in node_specs}
+    for probe in probes:
+        counts[probe["node_name"]] += 1
+
+    assert counts == {
+        "first_to_act": 2,
+        "response_to_open": 2,
+        "response_to_limp": 2,
+    }
 
 
 def test_postflop_exact_is_blocked_until_min_iterations_and_stability(monkeypatch):
@@ -696,6 +884,51 @@ def test_aggregate_range_profiles_collapses_raw_pokerkit_action_ids_to_compact_f
     assert rows[0]["policy"]["0"] == 0.2
     assert rows[0]["policy"]["1"] == 0.3
     assert rows[0]["policy"]["4"] == 0.5
+
+
+def test_aggregate_selected_node_ranges_collapses_selected_nodes_across_hands():
+    snapshots = [
+        {
+            "label": "first_to_act",
+            "node_name": "first_to_act",
+            "normalized_name": "first_to_act",
+            "street": "preflop",
+            "history": [],
+            "selected_history": [],
+            "player": 0,
+            "hole_cards": ["ACE OF CLUBS (Ac)", "KING OF SPADES (Ks)"],
+            "exact_infoset_key": "infoset=exact:player=0|hole=AcKs|board=|hist=",
+            "action_probabilities": [
+                {"action": 0, "probability": 0.2},
+                {"action": 1, "probability": 0.3},
+                {"action": 4, "probability": 0.5},
+            ],
+        },
+        {
+            "label": "first_to_act",
+            "node_name": "first_to_act",
+            "normalized_name": "first_to_act",
+            "street": "preflop",
+            "history": [],
+            "selected_history": [],
+            "player": 0,
+            "hole_cards": ["QUEEN OF HEARTS (Qh)", "JACK OF CLUBS (Jc)"],
+            "exact_infoset_key": "infoset=exact:player=0|hole=QhJc|board=|hist=",
+            "action_probabilities": [
+                {"action": 0, "probability": 0.8},
+                {"action": 1, "probability": 0.1},
+                {"action": 4, "probability": 0.1},
+            ],
+        },
+    ]
+
+    ranges = aggregate_selected_node_ranges(snapshots)
+    assert len(ranges["nodes"]) == 1
+    assert ranges["nodes"][0]["name"] == "first_to_act"
+    assert ranges["nodes"][0]["action_frequencies"]["fold"] == 0.5
+    assert ranges["nodes"][0]["action_frequencies"]["check_call"] == 0.2
+    assert ranges["nodes"][0]["action_frequencies"]["bet_raise"] == 0.3
+    assert ranges["nodes"][0]["sample_count"] == 2
 
 
 def test_aggregate_selected_node_ranges_groups_by_exact_infoset_when_available():

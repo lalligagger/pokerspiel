@@ -77,6 +77,10 @@ class SolverService:
         if postflop_samples is None:
             postflop_samples = int(configured_postflop_samples) if configured_postflop_samples is not None else 32
 
+        configured_max_iterations = os.getenv("POKERSPIEL_MAX_ITERATIONS") or os.getenv("POKERSPIEL_ITERATIONS")
+        if configured_max_iterations is not None:
+            max_iterations = int(configured_max_iterations)
+
         configured_min_iterations = os.getenv("POKERSPIEL_MIN_ITERATIONS")
         if configured_min_iterations is not None:
             min_iterations = int(configured_min_iterations)
@@ -328,21 +332,56 @@ class SolverService:
             row = {
                 "node_name": spec.get("name"),
                 "display_name": spec.get("display_name") or spec.get("name"),
-                "history": history,
                 "sample_count": flat_summary["sample_count"],
-                "action_frequencies": flat_summary["action_frequencies"],
             }
             summary_rows.append(row)
         return summary_rows
 
-    def _refresh_preflop_range_cache(self, current_ranges: Optional[Dict[str, Any]] = None) -> Dict[str, Dict[str, Any]]:
+    def _materialize_selected_preflop_reference(self, current_ranges: Optional[Dict[str, Any]] = None) -> Dict[str, Dict[str, Any]]:
+        """Materialize selected preflop spots at checkpoint time.
+
+        The selected spots are always represented in the cache so the read-only API has a stable
+        reference for the current checkpoint, even before those spots have accumulated concrete hand
+        rows. When a spot is empty, we prefer the aggregate policy from the populated sibling spots
+        over a hardcoded uniform seed so the API remains informative rather than silently degenerating
+        every empty node to a neutral 1/3 policy.
+        """
         source = current_ranges if isinstance(current_ranges, dict) else self._current_ranges
         cache: Dict[str, Dict[str, Any]] = {}
         compact_nodes: List[Dict[str, Any]] = []
+        current_by_name: Dict[str, Dict[str, Any]] = {}
+
         for node in (source or {}).get("nodes", []) or []:
             name = str(node.get("name") or node.get("display_name") or "").strip()
             if not name:
                 continue
+            current_by_name[name] = node
+
+        aggregate_policy: Dict[str, float] = {
+            "fold": 0.0,
+            "check_call": 0.0,
+            "bet_raise": 0.0,
+        }
+        filled_rows = 0
+        for node in current_by_name.values():
+            for hand_entry in (node.get("hands") or []) or []:
+                if not hand_entry.get("hand"):
+                    continue
+                policy = hand_entry.get("policy") or {}
+                for key in ("fold", "check_call", "bet_raise"):
+                    aggregate_policy[key] += float(policy.get(key, 0.0) or 0.0)
+                filled_rows += 1
+
+        if filled_rows > 0:
+            for key in aggregate_policy:
+                aggregate_policy[key] /= max(filled_rows, 1)
+
+        for spec in getattr(self, "_selected_specs", []) or []:
+            name = str(spec.get("name") or spec.get("display_name") or "").strip()
+            if not name:
+                continue
+
+            node = current_by_name.get(name) or {}
             hands: List[Dict[str, Any]] = []
             for hand_entry in node.get("hands", []) or []:
                 hand = hand_entry.get("hand")
@@ -355,6 +394,51 @@ class SolverService:
                         "policy": {str(action): float(prob) for action, prob in policy.items()},
                     }
                 )
+
+            reference_policy = None
+            status = "materialized"
+            if not hands:
+                if filled_rows > 0:
+                    reference_policy = {key: float(value) for key, value in aggregate_policy.items()}
+                    status = "fallback_seed"
+                else:
+                    reference_policy = {
+                        "fold": 1.0 / 3.0,
+                        "check_call": 1.0 / 3.0,
+                        "bet_raise": 1.0 / 3.0,
+                    }
+                    status = "uniform_seed"
+
+            cache[name] = {
+                "spot": name,
+                "iteration": self.runtime.iteration,
+                "status": status,
+                "hands": hands,
+                "hand_count": len(hands),
+                "ready": bool(hands or reference_policy is not None),
+                "message": "checkpoint preflop range snapshot",
+                "reference_policy": reference_policy,
+            }
+            compact_nodes.append(
+                {
+                    "name": name,
+                    "display_name": spec.get("display_name") or name,
+                    "sample_count": int(node.get("sample_count") or 0),
+                }
+            )
+
+        for node in (source or {}).get("nodes", []) or []:
+            name = str(node.get("name") or node.get("display_name") or "").strip()
+            if not name or name in cache:
+                continue
+            hands = [
+                {
+                    "hand": str(hand_entry.get("hand")),
+                    "policy": {str(action): float(prob) for action, prob in (hand_entry.get("policy") or {}).items()},
+                }
+                for hand_entry in (node.get("hands") or [])
+                if hand_entry.get("hand")
+            ]
             cache[name] = {
                 "spot": name,
                 "iteration": self.runtime.iteration,
@@ -362,19 +446,23 @@ class SolverService:
                 "hand_count": len(hands),
                 "ready": bool(hands or (node.get("sample_count") or 0) > 0),
                 "message": "checkpoint preflop range snapshot",
+                "reference_policy": None,
             }
             compact_nodes.append(
                 {
                     "name": name,
                     "display_name": node.get("display_name") or name,
-                    "history": list(node.get("history") or []),
                     "sample_count": node.get("sample_count"),
-                    "action_frequencies": dict(node.get("action_frequencies") or {}),
                 }
             )
+
         self._preflop_range_cache = cache
         self._current_ranges = {"nodes": compact_nodes}
         return cache
+
+    def _refresh_preflop_range_cache(self, current_ranges: Optional[Dict[str, Any]] = None) -> Dict[str, Dict[str, Any]]:
+        self._materialize_selected_preflop_reference(current_ranges)
+        return self._preflop_range_cache
 
     def _stop_recommendation(self) -> bool:
         if not isinstance(self._last_stability, dict):
@@ -386,9 +474,6 @@ class SolverService:
         return passed and avg_delta <= threshold and max_delta <= threshold
 
     def status(self) -> SolverStatusResponse:
-        selected_summary = build_selected_node_summary(self._current_ranges)
-        if not selected_summary:
-            selected_summary = self._selected_summary_from_flat_kernel()
         telemetry = self._last_checkpoint_telemetry or runtime_telemetry_snapshot()
         return SolverStatusResponse(
             solver=self.solver_name,
@@ -399,7 +484,7 @@ class SolverService:
             last_probe_at=self.runtime.last_probe_at,
             min_iteration=self.min_iterations,
             probe_budget_remaining=self.range_samples,
-            selected_node_summary=selected_summary,
+            selected_node_summary=[],
             telemetry=telemetry,
             sampling_policy=dict(self.sampling_policy),
             stability_threshold=float(self.stability_threshold),
@@ -419,8 +504,6 @@ class SolverService:
             avg_abs_delta=summary.get("avg_abs_delta"),
             threshold=summary.get("threshold"),
             consecutive_passes=0,
-            matched_nodes=summary.get("matched_nodes"),
-            top_moving=list(summary.get("top_moving") or []),
         )
 
     def _run_live_solver(self) -> None:
@@ -1055,19 +1138,49 @@ class SolverService:
             message="live postflop range estimate over the chosen hand subset",
         )
 
+    def _preflop_range_metadata(self, spot: str, *, history: Optional[List[str]] = None, prior_fold_mass: float = 0.0) -> Dict[str, Any]:
+        """Return explicit branch metadata so the grid can distinguish unseen / prior-fold cells from zero action mass.
+
+        The solver records the exact historical branch path, but the UI needs a stable flag telling it
+        that a zero-mass cell means "not in range" rather than "fold action probability is 1.0".
+        """
+        normalized_history = list(history or [])
+        normalized_spot = self._normalize_preflop_spot(spot)
+        branch_valid = normalized_spot == "first_to_act" or bool(normalized_history)
+        return {
+            "spot": normalized_spot,
+            "history": normalized_history,
+            "prior_fold_mass": float(prior_fold_mass),
+            "branch_valid": bool(branch_valid),
+            "zero_means_not_in_range": True,
+            "branch_model": "conditional_after_prior_folds",
+        }
+
     def get_preflop_range(self, spot: str) -> "PreflopRangeResponse":
         from .contracts import PreflopRangeResponse
 
         resolved_spot = self._normalize_preflop_spot(spot)
+        spot_history: List[str] = []
+        selected_spec = None
+        for spec in getattr(self, "_selected_specs", []) or []:
+            if spec.get("name") == resolved_spot or spec.get("display_name") == resolved_spot:
+                selected_spec = spec
+                spot_history = list(spec.get("history") or [])
+                break
+
+        metadata = self._preflop_range_metadata(resolved_spot, history=spot_history)
+
         if self._solver is None or self._game is None:
             return PreflopRangeResponse(
                 spot=resolved_spot,
                 iteration=self.runtime.iteration,
                 ready=False,
                 message="live solver has not started yet",
+                metadata=metadata,
             )
 
-        if self.runtime.state not in {SolverState.AVAILABLE, SolverState.QUERYABLE, SolverState.STABLE}:
+        cached = self._preflop_range_cache.get(resolved_spot)
+        if cached is None and self.runtime.state not in {SolverState.AVAILABLE, SolverState.QUERYABLE, SolverState.STABLE}:
             return PreflopRangeResponse(
                 spot=resolved_spot,
                 iteration=self.runtime.iteration,
@@ -1076,9 +1189,9 @@ class SolverService:
                     f"solver is in phase '{self.runtime.state.value if self.runtime.state else 'unknown'}'; "
                     "preflop range data is unavailable until min_iterations and stability are both satisfied"
                 ),
+                metadata=metadata,
             )
 
-        cached = self._preflop_range_cache.get(resolved_spot)
         if cached is not None:
             hands = []
             for hand_entry in cached.get("hands", []) or []:
@@ -1092,6 +1205,28 @@ class SolverService:
                         policy={str(action): float(prob) for action, prob in policy.items()},
                     )
                 )
+            reference_policy = cached.get("reference_policy")
+            if not hands and reference_policy is not None:
+                status = str(cached.get("status") or "fallback_seed")
+                if status == "fallback_seed":
+                    message = (
+                        f"preflop spot '{resolved_spot}' is materialized from the sibling aggregate checkpoint "
+                        "policy until exact hand rows are available"
+                    )
+                else:
+                    message = (
+                        f"preflop spot '{resolved_spot}' is materialized as a checkpoint reference "
+                        "with the default uniform action policy until exact hand rows are available"
+                    )
+                return PreflopRangeResponse(
+                    spot=resolved_spot,
+                    iteration=int(cached.get("iteration", self.runtime.iteration)),
+                    hands=[],
+                    hand_count=0,
+                    ready=True,
+                    message=message,
+                    metadata={**metadata, "prior_fold_mass": 0.0, "reference_policy": reference_policy},
+                )
             return PreflopRangeResponse(
                 spot=resolved_spot,
                 iteration=int(cached.get("iteration", self.runtime.iteration)),
@@ -1099,6 +1234,7 @@ class SolverService:
                 hand_count=len(hands),
                 ready=bool(cached.get("ready", bool(hands))),
                 message=cached.get("message") or "preflop range from latest checkpoint snapshot",
+                metadata={**metadata, "reference_policy": reference_policy},
             )
 
         current_ranges = getattr(self, "_current_ranges", {}) or {}
@@ -1127,13 +1263,8 @@ class SolverService:
                 hand_count=len(hands),
                 ready=True,
                 message="live preflop range from current in-memory policy",
+                metadata=metadata,
             )
-
-        selected_spec = None
-        for spec in getattr(self, "_selected_specs", []) or []:
-            if spec.get("name") == resolved_spot or spec.get("display_name") == resolved_spot:
-                selected_spec = spec
-                break
 
         return PreflopRangeResponse(
             spot=resolved_spot,
@@ -1145,6 +1276,7 @@ class SolverService:
                 f"preflop range for spot '{resolved_spot}' is unavailable because the exact-state lookup "
                 "has no materialized data; realtime sampled probes are intentionally disabled on this path"
             ),
+            metadata={**metadata, "prior_fold_mass": 0.0},
         )
 
     def get_preflop_spot(self, spot: str, hand: str) -> "SpotFrequencyResponse":

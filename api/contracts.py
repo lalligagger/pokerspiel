@@ -6,15 +6,13 @@ from typing import Any, Dict, List, Literal, Optional
 
 @dataclass
 class StabilitySummary:
-    """Compact convergence metadata for a node or a solver snapshot."""
+    """Compact convergence metadata for a solver snapshot."""
 
     passed: bool
     max_abs_delta: Optional[float] = None
     avg_abs_delta: Optional[float] = None
     threshold: Optional[float] = None
     consecutive_passes: Optional[int] = None
-    matched_nodes: Optional[int] = None
-    top_moving: List[Dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass
@@ -72,6 +70,7 @@ class PreflopRangeResponse:
     hand_count: int = 0
     ready: bool = True
     message: Optional[str] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
