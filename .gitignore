@@ -1,4 +1,5 @@
 /data/
+/app/
 /*.json
 !README.md
 !docs/**/*.md
