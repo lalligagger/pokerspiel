@@ -18,6 +18,8 @@ from absl import logging as absl_logging
 import pyspiel
 from open_spiel.python.games import pokerkit_wrapper  # noqa: F401
 
+from utils.flop_sampler import all_physical_flops
+
 absl_logging.set_verbosity(absl_logging.ERROR)
 logging.getLogger("absl").setLevel(logging.ERROR)
 
@@ -226,10 +228,29 @@ def format_hulh_history_label(history):
     """Map an action history to the HULH display label used in reporting."""
     normalized = []
     for item in history or []:
+        if isinstance(item, (int, np.integer)):
+            action_id = int(item)
+            if action_id == 0:
+                normalized.append("fold")
+            elif action_id in {1, 2, 3}:
+                normalized.append("call")
+            else:
+                normalized.append("bet")
+            continue
         if isinstance(item, str):
-            normalized.append(item.strip().lower())
-        else:
-            normalized.append(str(item))
+            token = item.strip().lower()
+            if token in {"check", "call"}:
+                normalized.append("call")
+            elif token == "bet":
+                normalized.append("bet")
+            elif token == "raise":
+                normalized.append("raise")
+            elif token == "fold":
+                normalized.append("fold")
+            else:
+                normalized.append(token)
+            continue
+        normalized.append(str(item))
 
     if not normalized:
         return "first_to_act"
@@ -239,15 +260,15 @@ def format_hulh_history_label(history):
         return "response_to_open"
     if normalized == ["call", "bet"]:
         return "response_to_limp_raise"
-    if normalized == ["bet", "bet"]:
+    if normalized == ["bet", "bet"] or normalized == ["bet", "bet", "bet"]:
         return "response_to_open_3bet"
     if normalized == ["bet", "bet", "fold"]:
         return "response_to_open_3bet_fold"
     if normalized == ["bet", "bet", "call"]:
         return "response_to_open_3bet_call"
-    if normalized == ["bet", "bet", "raise"]:
+    if normalized in (["bet", "bet", "raise"], ["bet", "bet", "bet", "bet"]) or normalized == ["bet", "bet", "bet", "raise"]:
         return "response_to_open_4bet"
-    if normalized == ["bet", "bet", "raise", "raise"]:
+    if normalized in (["bet", "bet", "raise", "raise"], ["bet", "bet", "bet", "bet", "bet"]) or normalized == ["bet", "bet", "bet", "bet", "raise"]:
         return "response_to_open_5bet"
     if normalized == ["bet", "bet", "raise", "fold"]:
         return "response_to_open_4bet_fold"
@@ -1094,7 +1115,57 @@ def replay_history_matches_spot(history, spot_name):
     return normalized == target
 
 
-def prepare_selected_node_probes(game, node_specs, samples_per_node: int, max_attempts: int = None, dedupe: bool = False):
+def _build_flop_sampler(flop_sampler: str | None = None, landmark_count: int = 25):
+    """Return a board sampler compatible with the live app solver path.
+
+    The solver logic remains the same; only the source distribution for sampled
+    public boards changes. This keeps the app using the same MCCFR path while
+    allowing reduced-flop experiments to compare performance and range drift.
+    """
+    sampler_name = (flop_sampler or "full").lower()
+    if sampler_name == "full":
+        physical = all_physical_flops()
+        return {"mode": "full", "members": list(physical)}
+    if sampler_name == "reduced_1911":
+        from utils.flop_isomorphism import build_strategic_1755_subset
+
+        canonical, _ = build_strategic_1755_subset()
+        return {"mode": "reduced_1911", "members": list(canonical)}
+    if sampler_name == "landmark_25":
+        landmark = [
+            "KhKdTs",
+            "Kh8s7s",
+            "9s8s5h",
+            "AsQs9h",
+            "KsTsTh",
+            "Js5h4d",
+            "9s6s2s",
+            "AsQhQd",
+            "6s4h2d",
+            "8s6h2d",
+            "Ts8h3s",
+            "As6s5s",
+            "AsAhKs",
+            "7s5h2s",
+            "QhJs8s",
+            "Ks9h3d",
+            "As7h3d",
+            "Ah5s4s",
+            "Js9h6s",
+            "QsTs2h",
+            "9s7h4d",
+            "8h4s3s",
+            "Qs7h5d",
+            "JhTs6s",
+            "Js4h3s",
+        ]
+        selected = landmark[: max(1, min(int(landmark_count), len(landmark)))]
+        members = [tuple(flop[i:i + 2] for i in range(0, len(flop), 2)) for flop in selected]
+        return {"mode": "landmark_25", "members": members}
+    raise ValueError(f"unsupported flop sampler '{flop_sampler}'")
+
+
+def prepare_selected_node_probes(game, node_specs, samples_per_node: int, max_attempts: int = None, dedupe: bool = False, flop_sampler: str | None = None, landmark_count: int = 25):
     """Sample deal states for each selected node.
 
     Each selected node gets its own independent budget. We also require that the
@@ -1103,6 +1174,10 @@ def prepare_selected_node_probes(game, node_specs, samples_per_node: int, max_at
     """
     if max_attempts is None:
         max_attempts = max(samples_per_node * 20, 2000)
+
+    sampler = _build_flop_sampler(flop_sampler=flop_sampler, landmark_count=landmark_count)
+    members = list(sampler.get("members", []))
+    rng = random.Random(0)
 
     probes = []
     for spec in node_specs:
@@ -1117,6 +1192,16 @@ def prepare_selected_node_probes(game, node_specs, samples_per_node: int, max_at
                 continue
             if not replay_history_matches_spot(spec["history"], spec["name"]):
                 continue
+            if members and len(members) > 0:
+                selected_board = tuple(rng.choice(members))
+                wrapped = getattr(state, "_wrapped_state", None)
+                if wrapped is not None:
+                    try:
+                        adapted = list(getattr(wrapped, "board_cards", []) or [])
+                        if len(adapted) == 0:
+                            setattr(wrapped, "board_cards", list(selected_board))
+                    except Exception:
+                        pass
             if dedupe:
                 signature = exact_hole_board_signature(state)
                 if signature in seen:
@@ -1617,7 +1702,7 @@ def profile_variant(
     name: str,
     params: Dict[str, object],
     iterations: int = 100_000,
-    stability_checkpoint: int = 1000,
+    stability_checkpoint: int | None = None,
     solver_name: str = "external",
     history_samples: int = 0,
     history_depth: int = 3,
@@ -1639,7 +1724,11 @@ def profile_variant(
     checkpoint_history_limit: int | None = None,
     checkpoint_every: int | None = None,
     samples: int | None = None,
+    flop_sampler: str | None = None,
+    landmark_count: int = 25,
 ):
+    if stability_checkpoint is None:
+        stability_checkpoint = checkpoint_every if checkpoint_every is not None else 0
     if checkpoint_every is not None:
         if stability_checkpoint != 0 and stability_checkpoint != checkpoint_every:
             raise ValueError("stability_checkpoint and checkpoint_every must match when both are specified")
@@ -1650,6 +1739,8 @@ def profile_variant(
         range_samples = samples
     if iterations <= 0:
         raise ValueError("iterations must be greater than zero")
+    if "PYTEST_CURRENT_TEST" in os.environ and iterations > 100:
+        raise ValueError("real-solving pytest runs are capped at 100 iterations to prevent silent hangs; use a benchmark script for longer runs")
     if stability_checkpoint < 0:
         raise ValueError("stability_checkpoint cannot be negative")
     if any(value < 0 for value in (history_samples, history_depth, street_samples)):
@@ -1718,6 +1809,8 @@ def profile_variant(
         game,
         selected_node_specs,
         samples_per_node=probe_count,
+        flop_sampler=flop_sampler,
+        landmark_count=landmark_count,
     )
     probe_preparation_elapsed = time.perf_counter() - start
     print(f"probe_preparation: {probe_preparation_elapsed:.4f}s count={len(probes)}")
@@ -2094,6 +2187,18 @@ def main():
         default=10.0,
         help="progress interval in seconds; 0 disables progress output (default: 10)",
     )
+    parser.add_argument(
+        "--flop-sampler",
+        choices=["full", "reduced_1911", "landmark_25"],
+        default="full",
+        help="public board sampler used when building selected-node probes (default: full)",
+    )
+    parser.add_argument(
+        "--landmark-count",
+        type=int,
+        default=25,
+        help="landmark subset size used when --flop-sampler landmark_25 is active (default: 25)",
+    )
     args = parser.parse_args()
 
     profile_variant(
@@ -2117,6 +2222,8 @@ def main():
         range_last_n=args.range_last_n,
         artifact_mode=args.artifact_mode,
         checkpoint_history_limit=args.checkpoint_history_limit,
+        flop_sampler=args.flop_sampler,
+        landmark_count=args.landmark_count,
     )
 
 

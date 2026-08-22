@@ -1,0 +1,1446 @@
+{
+  "range_rows": [
+    {
+      "infoset_key": "street=preflop|player=0|bucket=33",
+      "compact_label": "33",
+      "sample_count": 1,
+      "street": "preflop",
+      "pot_context": 6,
+      "player": 0,
+      "legal_actions": [
+        0,
+        1,
+        4
+      ],
+      "policy": {
+        "0": 0.3333333333333333,
+        "1": 0.3333333333333333,
+        "4": 0.3333333333333333
+      }
+    },
+    {
+      "infoset_key": "street=preflop|player=0|bucket=66",
+      "compact_label": "66",
+      "sample_count": 1,
+      "street": "preflop",
+      "pot_context": 6,
+      "player": 0,
+      "legal_actions": [
+        0,
+        1,
+        4
+      ],
+      "policy": {
+        "0": 0.3333333333333333,
+        "1": 0.3333333333333333,
+        "4": 0.3333333333333333
+      }
+    },
+    {
+      "infoset_key": "street=preflop|player=0|bucket=96o",
+      "compact_label": "96o",
+      "sample_count": 1,
+      "street": "preflop",
+      "pot_context": 14,
+      "player": 0,
+      "legal_actions": [
+        0,
+        1,
+        4
+      ],
+      "policy": {
+        "0": 0.3333333333333333,
+        "1": 0.3333333333333333,
+        "4": 0.3333333333333333
+      }
+    },
+    {
+      "infoset_key": "street=preflop|player=0|bucket=97o",
+      "compact_label": "97o",
+      "sample_count": 1,
+      "street": "preflop",
+      "pot_context": 4,
+      "player": 0,
+      "legal_actions": [
+        1,
+        4
+      ],
+      "policy": {
+        "1": 0.5,
+        "4": 0.5
+      }
+    },
+    {
+      "infoset_key": "street=preflop|player=0|bucket=A2o",
+      "compact_label": "A2o",
+      "sample_count": 1,
+      "street": "preflop",
+      "pot_context": 14,
+      "player": 0,
+      "legal_actions": [
+        0,
+        1,
+        4
+      ],
+      "policy": {
+        "0": 0.3333333333333333,
+        "1": 0.3333333333333333,
+        "4": 0.3333333333333333
+      }
+    },
+    {
+      "infoset_key": "street=preflop|player=0|bucket=A6o",
+      "compact_label": "A6o",
+      "sample_count": 1,
+      "street": "preflop",
+      "pot_context": 14,
+      "player": 0,
+      "legal_actions": [
+        0,
+        1,
+        4
+      ],
+      "policy": {
+        "0": 0.3333333333333333,
+        "1": 0.3333333333333333,
+        "4": 0.3333333333333333
+      }
+    },
+    {
+      "infoset_key": "street=preflop|player=0|bucket=A7o",
+      "compact_label": "A7o",
+      "sample_count": 1,
+      "street": "preflop",
+      "pot_context": 4,
+      "player": 0,
+      "legal_actions": [
+        1,
+        4
+      ],
+      "policy": {
+        "1": 0.5,
+        "4": 0.5
+      }
+    },
+    {
+      "infoset_key": "street=preflop|player=0|bucket=AQo",
+      "compact_label": "AQo",
+      "sample_count": 1,
+      "street": "preflop",
+      "pot_context": 14,
+      "player": 0,
+      "legal_actions": [
+        0,
+        1,
+        4
+      ],
+      "policy": {
+        "0": 0.3333333333333333,
+        "1": 0.3333333333333333,
+        "4": 0.3333333333333333
+      }
+    },
+    {
+      "infoset_key": "street=preflop|player=0|bucket=J8o",
+      "compact_label": "J8o",
+      "sample_count": 1,
+      "street": "preflop",
+      "pot_context": 4,
+      "player": 0,
+      "legal_actions": [
+        1,
+        4
+      ],
+      "policy": {
+        "1": 0.5,
+        "4": 0.5
+      }
+    },
+    {
+      "infoset_key": "street=preflop|player=0|bucket=J9o",
+      "compact_label": "J9o",
+      "sample_count": 1,
+      "street": "preflop",
+      "pot_context": 6,
+      "player": 0,
+      "legal_actions": [
+        0,
+        1,
+        4
+      ],
+      "policy": {
+        "0": 0.3333333333333333,
+        "1": 0.3333333333333333,
+        "4": 0.3333333333333333
+      }
+    },
+    {
+      "infoset_key": "street=preflop|player=0|bucket=JJ",
+      "compact_label": "JJ",
+      "sample_count": 1,
+      "street": "preflop",
+      "pot_context": 4,
+      "player": 0,
+      "legal_actions": [
+        1,
+        4
+      ],
+      "policy": {
+        "1": 0.5,
+        "4": 0.5
+      }
+    },
+    {
+      "infoset_key": "street=preflop|player=0|bucket=K3o",
+      "compact_label": "K3o",
+      "sample_count": 1,
+      "street": "preflop",
+      "pot_context": 6,
+      "player": 0,
+      "legal_actions": [
+        0,
+        1,
+        4
+      ],
+      "policy": {
+        "0": 0.3333333333333333,
+        "1": 0.3333333333333333,
+        "4": 0.3333333333333333
+      }
+    },
+    {
+      "infoset_key": "street=preflop|player=0|bucket=Q7o",
+      "compact_label": "Q7o",
+      "sample_count": 1,
+      "street": "preflop",
+      "pot_context": 14,
+      "player": 0,
+      "legal_actions": [
+        0,
+        1,
+        4
+      ],
+      "policy": {
+        "0": 0.3333333333333333,
+        "1": 0.3333333333333333,
+        "4": 0.3333333333333333
+      }
+    },
+    {
+      "infoset_key": "street=preflop|player=0|bucket=T7o",
+      "compact_label": "T7o",
+      "sample_count": 1,
+      "street": "preflop",
+      "pot_context": 4,
+      "player": 0,
+      "legal_actions": [
+        1,
+        4
+      ],
+      "policy": {
+        "1": 0.5,
+        "4": 0.5
+      }
+    },
+    {
+      "infoset_key": "street=preflop|player=0|bucket=T8o",
+      "compact_label": "T8o",
+      "sample_count": 1,
+      "street": "preflop",
+      "pot_context": 6,
+      "player": 0,
+      "legal_actions": [
+        0,
+        1,
+        4
+      ],
+      "policy": {
+        "0": 0.3333333333333333,
+        "1": 0.3333333333333333,
+        "4": 0.3333333333333333
+      }
+    },
+    {
+      "infoset_key": "street=preflop|player=1|bucket=43o",
+      "compact_label": "43o",
+      "sample_count": 1,
+      "street": "preflop",
+      "pot_context": 18,
+      "player": 1,
+      "legal_actions": [
+        0,
+        1
+      ],
+      "policy": {
+        "0": 0.5,
+        "1": 0.5
+      }
+    },
+    {
+      "infoset_key": "street=preflop|player=1|bucket=54o",
+      "compact_label": "54o",
+      "sample_count": 1,
+      "street": "preflop",
+      "pot_context": 10,
+      "player": 1,
+      "legal_actions": [
+        0,
+        1,
+        4
+      ],
+      "policy": {
+        "0": 0.3333333333333333,
+        "1": 0.3333333333333333,
+        "4": 0.3333333333333333
+      }
+    },
+    {
+      "infoset_key": "street=preflop|player=1|bucket=64s",
+      "compact_label": "64s",
+      "sample_count": 1,
+      "street": "preflop",
+      "pot_context": 6,
+      "player": 1,
+      "legal_actions": [
+        0,
+        1,
+        4
+      ],
+      "policy": {
+        "0": 0.3333333333333333,
+        "1": 0.3333333333333333,
+        "4": 0.3333333333333333
+      }
+    },
+    {
+      "infoset_key": "street=preflop|player=1|bucket=66",
+      "compact_label": "66",
+      "sample_count": 1,
+      "street": "preflop",
+      "pot_context": 18,
+      "player": 1,
+      "legal_actions": [
+        0,
+        1
+      ],
+      "policy": {
+        "0": 0.5,
+        "1": 0.5
+      }
+    },
+    {
+      "infoset_key": "street=preflop|player=1|bucket=73o",
+      "compact_label": "73o",
+      "sample_count": 1,
+      "street": "preflop",
+      "pot_context": 10,
+      "player": 1,
+      "legal_actions": [
+        0,
+        1,
+        4
+      ],
+      "policy": {
+        "0": 0.3333333333333333,
+        "1": 0.3333333333333333,
+        "4": 0.3333333333333333
+      }
+    },
+    {
+      "infoset_key": "street=preflop|player=1|bucket=74o",
+      "compact_label": "74o",
+      "sample_count": 1,
+      "street": "preflop",
+      "pot_context": 10,
+      "player": 1,
+      "legal_actions": [
+        0,
+        1,
+        4
+      ],
+      "policy": {
+        "0": 0.3333333333333333,
+        "1": 0.3333333333333333,
+        "4": 0.3333333333333333
+      }
+    },
+    {
+      "infoset_key": "street=preflop|player=1|bucket=84o",
+      "compact_label": "84o",
+      "sample_count": 1,
+      "street": "preflop",
+      "pot_context": 18,
+      "player": 1,
+      "legal_actions": [
+        0,
+        1
+      ],
+      "policy": {
+        "0": 0.5,
+        "1": 0.5
+      }
+    },
+    {
+      "infoset_key": "street=preflop|player=1|bucket=94o",
+      "compact_label": "94o",
+      "sample_count": 1,
+      "street": "preflop",
+      "pot_context": 3,
+      "player": 1,
+      "legal_actions": [
+        0,
+        1,
+        4
+      ],
+      "policy": {
+        "0": 0.3333333333333333,
+        "1": 0.3333333333333333,
+        "4": 0.3333333333333333
+      }
+    },
+    {
+      "infoset_key": "street=preflop|player=1|bucket=98s",
+      "compact_label": "98s",
+      "sample_count": 1,
+      "street": "preflop",
+      "pot_context": 3,
+      "player": 1,
+      "legal_actions": [
+        0,
+        1,
+        4
+      ],
+      "policy": {
+        "0": 0.3333333333333333,
+        "1": 0.3333333333333333,
+        "4": 0.3333333333333333
+      }
+    },
+    {
+      "infoset_key": "street=preflop|player=1|bucket=A8o",
+      "compact_label": "A8o",
+      "sample_count": 1,
+      "street": "preflop",
+      "pot_context": 6,
+      "player": 1,
+      "legal_actions": [
+        0,
+        1,
+        4
+      ],
+      "policy": {
+        "0": 0.3333333333333333,
+        "1": 0.3333333333333333,
+        "4": 0.3333333333333333
+      }
+    },
+    {
+      "infoset_key": "street=preflop|player=1|bucket=J7o",
+      "compact_label": "J7o",
+      "sample_count": 2,
+      "street": "preflop",
+      "pot_context": 6,
+      "player": 1,
+      "legal_actions": [
+        0,
+        1,
+        4
+      ],
+      "policy": {
+        "0": 0.3333333333333333,
+        "1": 0.3333333333333333,
+        "4": 0.3333333333333333
+      }
+    },
+    {
+      "infoset_key": "street=preflop|player=1|bucket=J8o",
+      "compact_label": "J8o",
+      "sample_count": 1,
+      "street": "preflop",
+      "pot_context": 10,
+      "player": 1,
+      "legal_actions": [
+        0,
+        1,
+        4
+      ],
+      "policy": {
+        "0": 0.3333333333333333,
+        "1": 0.3333333333333333,
+        "4": 0.3333333333333333
+      }
+    },
+    {
+      "infoset_key": "street=preflop|player=1|bucket=J9o",
+      "compact_label": "J9o",
+      "sample_count": 1,
+      "street": "preflop",
+      "pot_context": 18,
+      "player": 1,
+      "legal_actions": [
+        0,
+        1
+      ],
+      "policy": {
+        "0": 0.5,
+        "1": 0.5
+      }
+    },
+    {
+      "infoset_key": "street=preflop|player=1|bucket=K9o",
+      "compact_label": "K9o",
+      "sample_count": 1,
+      "street": "preflop",
+      "pot_context": 6,
+      "player": 1,
+      "legal_actions": [
+        0,
+        1,
+        4
+      ],
+      "policy": {
+        "0": 0.3333333333333333,
+        "1": 0.3333333333333333,
+        "4": 0.3333333333333333
+      }
+    },
+    {
+      "infoset_key": "street=preflop|player=1|bucket=K9s",
+      "compact_label": "K9s",
+      "sample_count": 1,
+      "street": "preflop",
+      "pot_context": 3,
+      "player": 1,
+      "legal_actions": [
+        0,
+        1,
+        4
+      ],
+      "policy": {
+        "0": 0.3333333333333333,
+        "1": 0.3333333333333333,
+        "4": 0.3333333333333333
+      }
+    },
+    {
+      "infoset_key": "street=preflop|player=1|bucket=KQs",
+      "compact_label": "KQs",
+      "sample_count": 1,
+      "street": "preflop",
+      "pot_context": 10,
+      "player": 1,
+      "legal_actions": [
+        0,
+        1,
+        4
+      ],
+      "policy": {
+        "0": 0.3333333333333333,
+        "1": 0.3333333333333333,
+        "4": 0.3333333333333333
+      }
+    },
+    {
+      "infoset_key": "street=preflop|player=1|bucket=T5s",
+      "compact_label": "T5s",
+      "sample_count": 1,
+      "street": "preflop",
+      "pot_context": 18,
+      "player": 1,
+      "legal_actions": [
+        0,
+        1
+      ],
+      "policy": {
+        "0": 0.5,
+        "1": 0.5
+      }
+    },
+    {
+      "infoset_key": "street=preflop|player=1|bucket=T8s",
+      "compact_label": "T8s",
+      "sample_count": 1,
+      "street": "preflop",
+      "pot_context": 3,
+      "player": 1,
+      "legal_actions": [
+        0,
+        1,
+        4
+      ],
+      "policy": {
+        "0": 0.3333333333333333,
+        "1": 0.3333333333333333,
+        "4": 0.3333333333333333
+      }
+    },
+    {
+      "infoset_key": "street=preflop|player=1|bucket=TT",
+      "compact_label": "TT",
+      "sample_count": 1,
+      "street": "preflop",
+      "pot_context": 3,
+      "player": 1,
+      "legal_actions": [
+        0,
+        1,
+        4
+      ],
+      "policy": {
+        "0": 0.3333333333333333,
+        "1": 0.3333333333333333,
+        "4": 0.3333333333333333
+      }
+    }
+  ],
+  "range_count": 34,
+  "unique_infosets": 34,
+  "preflop_flattened": {
+    "deck_ranks": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14
+    ],
+    "matrix_size": 13,
+    "cells": [
+      {
+        "matrix_coords": [
+          0,
+          12
+        ],
+        "rank_pair": [
+          2,
+          14
+        ],
+        "range_label": "A2o",
+        "count": 1.0
+      },
+      {
+        "matrix_coords": [
+          1,
+          1
+        ],
+        "rank_pair": [
+          3,
+          3
+        ],
+        "range_label": "33",
+        "count": 1.0
+      },
+      {
+        "matrix_coords": [
+          1,
+          2
+        ],
+        "rank_pair": [
+          3,
+          4
+        ],
+        "range_label": "43o",
+        "count": 1.0
+      },
+      {
+        "matrix_coords": [
+          1,
+          5
+        ],
+        "rank_pair": [
+          3,
+          7
+        ],
+        "range_label": "73o",
+        "count": 1.0
+      },
+      {
+        "matrix_coords": [
+          1,
+          11
+        ],
+        "rank_pair": [
+          3,
+          13
+        ],
+        "range_label": "K3o",
+        "count": 1.0
+      },
+      {
+        "matrix_coords": [
+          2,
+          3
+        ],
+        "rank_pair": [
+          4,
+          5
+        ],
+        "range_label": "54o",
+        "count": 1.0
+      },
+      {
+        "matrix_coords": [
+          2,
+          4
+        ],
+        "rank_pair": [
+          4,
+          6
+        ],
+        "range_label": "64s",
+        "count": 1.0
+      },
+      {
+        "matrix_coords": [
+          2,
+          5
+        ],
+        "rank_pair": [
+          4,
+          7
+        ],
+        "range_label": "74o",
+        "count": 1.0
+      },
+      {
+        "matrix_coords": [
+          2,
+          6
+        ],
+        "rank_pair": [
+          4,
+          8
+        ],
+        "range_label": "84o",
+        "count": 1.0
+      },
+      {
+        "matrix_coords": [
+          2,
+          7
+        ],
+        "rank_pair": [
+          4,
+          9
+        ],
+        "range_label": "94o",
+        "count": 1.0
+      },
+      {
+        "matrix_coords": [
+          3,
+          8
+        ],
+        "rank_pair": [
+          5,
+          10
+        ],
+        "range_label": "T5s",
+        "count": 1.0
+      },
+      {
+        "matrix_coords": [
+          4,
+          4
+        ],
+        "rank_pair": [
+          6,
+          6
+        ],
+        "range_label": "66",
+        "count": 2.0
+      },
+      {
+        "matrix_coords": [
+          4,
+          7
+        ],
+        "rank_pair": [
+          6,
+          9
+        ],
+        "range_label": "96o",
+        "count": 1.0
+      },
+      {
+        "matrix_coords": [
+          4,
+          12
+        ],
+        "rank_pair": [
+          6,
+          14
+        ],
+        "range_label": "A6o",
+        "count": 1.0
+      },
+      {
+        "matrix_coords": [
+          5,
+          7
+        ],
+        "rank_pair": [
+          7,
+          9
+        ],
+        "range_label": "97o",
+        "count": 1.0
+      },
+      {
+        "matrix_coords": [
+          5,
+          8
+        ],
+        "rank_pair": [
+          7,
+          10
+        ],
+        "range_label": "T7o",
+        "count": 1.0
+      },
+      {
+        "matrix_coords": [
+          5,
+          9
+        ],
+        "rank_pair": [
+          7,
+          11
+        ],
+        "range_label": "J7o",
+        "count": 2.0
+      },
+      {
+        "matrix_coords": [
+          5,
+          10
+        ],
+        "rank_pair": [
+          7,
+          12
+        ],
+        "range_label": "Q7o",
+        "count": 1.0
+      },
+      {
+        "matrix_coords": [
+          5,
+          12
+        ],
+        "rank_pair": [
+          7,
+          14
+        ],
+        "range_label": "A7o",
+        "count": 1.0
+      },
+      {
+        "matrix_coords": [
+          6,
+          7
+        ],
+        "rank_pair": [
+          8,
+          9
+        ],
+        "range_label": "98s",
+        "count": 1.0
+      },
+      {
+        "matrix_coords": [
+          6,
+          8
+        ],
+        "rank_pair": [
+          8,
+          10
+        ],
+        "range_label": "T8s",
+        "count": 2.0
+      },
+      {
+        "matrix_coords": [
+          6,
+          9
+        ],
+        "rank_pair": [
+          8,
+          11
+        ],
+        "range_label": "J8o",
+        "count": 2.0
+      },
+      {
+        "matrix_coords": [
+          6,
+          12
+        ],
+        "rank_pair": [
+          8,
+          14
+        ],
+        "range_label": "A8o",
+        "count": 1.0
+      },
+      {
+        "matrix_coords": [
+          7,
+          9
+        ],
+        "rank_pair": [
+          9,
+          11
+        ],
+        "range_label": "J9o",
+        "count": 2.0
+      },
+      {
+        "matrix_coords": [
+          7,
+          11
+        ],
+        "rank_pair": [
+          9,
+          13
+        ],
+        "range_label": "K9s",
+        "count": 2.0
+      },
+      {
+        "matrix_coords": [
+          8,
+          8
+        ],
+        "rank_pair": [
+          10,
+          10
+        ],
+        "range_label": "TT",
+        "count": 1.0
+      },
+      {
+        "matrix_coords": [
+          9,
+          9
+        ],
+        "rank_pair": [
+          11,
+          11
+        ],
+        "range_label": "JJ",
+        "count": 1.0
+      },
+      {
+        "matrix_coords": [
+          10,
+          11
+        ],
+        "rank_pair": [
+          12,
+          13
+        ],
+        "range_label": "KQs",
+        "count": 1.0
+      },
+      {
+        "matrix_coords": [
+          10,
+          12
+        ],
+        "rank_pair": [
+          12,
+          14
+        ],
+        "range_label": "AQo",
+        "count": 1.0
+      }
+    ]
+  },
+  "preflop_context_rows": [
+    {
+      "context_bucket": "preflop_facing_open|player=1|history_len=4",
+      "street": "preflop",
+      "player": 1,
+      "sample_count": 5,
+      "legal_actions": [
+        0,
+        1,
+        4
+      ],
+      "policy": {
+        "0": 0.3333333333333333,
+        "1": 0.3333333333333333,
+        "4": 0.3333333333333333
+      }
+    },
+    {
+      "context_bucket": "preflop_facing_open|player=1|history_len=6",
+      "street": "preflop",
+      "player": 1,
+      "sample_count": 10,
+      "legal_actions": [
+        0,
+        1,
+        4
+      ],
+      "policy": {
+        "0": 0.33333333333333337,
+        "1": 0.33333333333333337,
+        "4": 0.33333333333333337
+      }
+    },
+    {
+      "context_bucket": "preflop_facing_open|player=1|history_len=8",
+      "street": "preflop",
+      "player": 1,
+      "sample_count": 5,
+      "legal_actions": [
+        0,
+        1
+      ],
+      "policy": {
+        "0": 0.5,
+        "1": 0.5
+      }
+    },
+    {
+      "context_bucket": "preflop_respond_to_3bet|player=0|history_len=5",
+      "street": "preflop",
+      "player": 0,
+      "sample_count": 10,
+      "legal_actions": [
+        1,
+        4
+      ],
+      "policy": {
+        "0": 0.16666666666666666,
+        "1": 0.4166666666666667,
+        "4": 0.4166666666666667
+      }
+    },
+    {
+      "context_bucket": "preflop_respond_to_3bet|player=0|history_len=7",
+      "street": "preflop",
+      "player": 0,
+      "sample_count": 5,
+      "legal_actions": [
+        0,
+        1,
+        4
+      ],
+      "policy": {
+        "0": 0.3333333333333333,
+        "1": 0.3333333333333333,
+        "4": 0.3333333333333333
+      }
+    }
+  ],
+  "selected_node_ranges": {
+    "action_families": [
+      "fold",
+      "check_call",
+      "bet_raise"
+    ],
+    "nodes": [
+      {
+        "name": "first_to_act",
+        "display_name": "first_to_act",
+        "history": [
+          22,
+          46,
+          1,
+          30
+        ],
+        "history_label": "first_to_act",
+        "player": 1,
+        "street": "preflop",
+        "sample_count": 5,
+        "hand_count": 5,
+        "action_frequencies": {
+          "bet_raise": 0.3333333333333333,
+          "check_call": 0.3333333333333333,
+          "fold": 0.3333333333333333
+        },
+        "hands": [
+          {
+            "hand": "94o",
+            "sample_count": 1,
+            "policy": {
+              "bet_raise": 0.3333333333333333,
+              "check_call": 0.3333333333333333,
+              "fold": 0.3333333333333333
+            }
+          },
+          {
+            "hand": "98s",
+            "sample_count": 1,
+            "policy": {
+              "bet_raise": 0.3333333333333333,
+              "check_call": 0.3333333333333333,
+              "fold": 0.3333333333333333
+            }
+          },
+          {
+            "hand": "K9s",
+            "sample_count": 1,
+            "policy": {
+              "bet_raise": 0.3333333333333333,
+              "check_call": 0.3333333333333333,
+              "fold": 0.3333333333333333
+            }
+          },
+          {
+            "hand": "T8s",
+            "sample_count": 1,
+            "policy": {
+              "bet_raise": 0.3333333333333333,
+              "check_call": 0.3333333333333333,
+              "fold": 0.3333333333333333
+            }
+          },
+          {
+            "hand": "TT",
+            "sample_count": 1,
+            "policy": {
+              "bet_raise": 0.3333333333333333,
+              "check_call": 0.3333333333333333,
+              "fold": 0.3333333333333333
+            }
+          }
+        ]
+      },
+      {
+        "name": "response_to_limp_raise",
+        "display_name": "response_to_limp_raise",
+        "history": [
+          "call",
+          "bet"
+        ],
+        "history_label": "response_to_limp_raise",
+        "player": 1,
+        "street": "preflop",
+        "sample_count": 5,
+        "hand_count": 4,
+        "action_frequencies": {
+          "bet_raise": 0.3333333333333333,
+          "check_call": 0.3333333333333333,
+          "fold": 0.3333333333333333
+        },
+        "hands": [
+          {
+            "hand": "64s",
+            "sample_count": 1,
+            "policy": {
+              "bet_raise": 0.3333333333333333,
+              "check_call": 0.3333333333333333,
+              "fold": 0.3333333333333333
+            }
+          },
+          {
+            "hand": "A8o",
+            "sample_count": 1,
+            "policy": {
+              "bet_raise": 0.3333333333333333,
+              "check_call": 0.3333333333333333,
+              "fold": 0.3333333333333333
+            }
+          },
+          {
+            "hand": "J7o",
+            "sample_count": 2,
+            "policy": {
+              "bet_raise": 0.3333333333333333,
+              "check_call": 0.3333333333333333,
+              "fold": 0.3333333333333333
+            }
+          },
+          {
+            "hand": "K9o",
+            "sample_count": 1,
+            "policy": {
+              "bet_raise": 0.3333333333333333,
+              "check_call": 0.3333333333333333,
+              "fold": 0.3333333333333333
+            }
+          }
+        ]
+      },
+      {
+        "name": "response_to_limp",
+        "display_name": "response_to_limp",
+        "history": [
+          "call"
+        ],
+        "history_label": "response_to_limp",
+        "player": 0,
+        "street": "preflop",
+        "sample_count": 5,
+        "hand_count": 5,
+        "action_frequencies": {
+          "bet_raise": 0.5,
+          "check_call": 0.5
+        },
+        "hands": [
+          {
+            "hand": "97o",
+            "sample_count": 1,
+            "policy": {
+              "bet_raise": 0.5,
+              "check_call": 0.5
+            }
+          },
+          {
+            "hand": "A7o",
+            "sample_count": 1,
+            "policy": {
+              "bet_raise": 0.5,
+              "check_call": 0.5
+            }
+          },
+          {
+            "hand": "J8o",
+            "sample_count": 1,
+            "policy": {
+              "bet_raise": 0.5,
+              "check_call": 0.5
+            }
+          },
+          {
+            "hand": "JJ",
+            "sample_count": 1,
+            "policy": {
+              "bet_raise": 0.5,
+              "check_call": 0.5
+            }
+          },
+          {
+            "hand": "T7o",
+            "sample_count": 1,
+            "policy": {
+              "bet_raise": 0.5,
+              "check_call": 0.5
+            }
+          }
+        ]
+      },
+      {
+        "name": "response_to_open_3bet",
+        "display_name": "response_to_open_3bet",
+        "history": [
+          "bet",
+          "bet"
+        ],
+        "history_label": "response_to_open_3bet",
+        "player": 1,
+        "street": "preflop",
+        "sample_count": 5,
+        "hand_count": 5,
+        "action_frequencies": {
+          "bet_raise": 0.3333333333333333,
+          "check_call": 0.3333333333333333,
+          "fold": 0.3333333333333333
+        },
+        "hands": [
+          {
+            "hand": "54o",
+            "sample_count": 1,
+            "policy": {
+              "bet_raise": 0.3333333333333333,
+              "check_call": 0.3333333333333333,
+              "fold": 0.3333333333333333
+            }
+          },
+          {
+            "hand": "73o",
+            "sample_count": 1,
+            "policy": {
+              "bet_raise": 0.3333333333333333,
+              "check_call": 0.3333333333333333,
+              "fold": 0.3333333333333333
+            }
+          },
+          {
+            "hand": "74o",
+            "sample_count": 1,
+            "policy": {
+              "bet_raise": 0.3333333333333333,
+              "check_call": 0.3333333333333333,
+              "fold": 0.3333333333333333
+            }
+          },
+          {
+            "hand": "J8o",
+            "sample_count": 1,
+            "policy": {
+              "bet_raise": 0.3333333333333333,
+              "check_call": 0.3333333333333333,
+              "fold": 0.3333333333333333
+            }
+          },
+          {
+            "hand": "KQs",
+            "sample_count": 1,
+            "policy": {
+              "bet_raise": 0.3333333333333333,
+              "check_call": 0.3333333333333333,
+              "fold": 0.3333333333333333
+            }
+          }
+        ]
+      },
+      {
+        "name": "response_to_open",
+        "display_name": "response_to_open",
+        "history": [
+          "bet"
+        ],
+        "history_label": "response_to_open",
+        "player": 0,
+        "street": "preflop",
+        "sample_count": 5,
+        "hand_count": 5,
+        "action_frequencies": {
+          "bet_raise": 0.3333333333333333,
+          "check_call": 0.3333333333333333,
+          "fold": 0.3333333333333333
+        },
+        "hands": [
+          {
+            "hand": "33",
+            "sample_count": 1,
+            "policy": {
+              "bet_raise": 0.3333333333333333,
+              "check_call": 0.3333333333333333,
+              "fold": 0.3333333333333333
+            }
+          },
+          {
+            "hand": "66",
+            "sample_count": 1,
+            "policy": {
+              "bet_raise": 0.3333333333333333,
+              "check_call": 0.3333333333333333,
+              "fold": 0.3333333333333333
+            }
+          },
+          {
+            "hand": "J9o",
+            "sample_count": 1,
+            "policy": {
+              "bet_raise": 0.3333333333333333,
+              "check_call": 0.3333333333333333,
+              "fold": 0.3333333333333333
+            }
+          },
+          {
+            "hand": "K3o",
+            "sample_count": 1,
+            "policy": {
+              "bet_raise": 0.3333333333333333,
+              "check_call": 0.3333333333333333,
+              "fold": 0.3333333333333333
+            }
+          },
+          {
+            "hand": "T8o",
+            "sample_count": 1,
+            "policy": {
+              "bet_raise": 0.3333333333333333,
+              "check_call": 0.3333333333333333,
+              "fold": 0.3333333333333333
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "selected_node_count": 5,
+  "facing_open_ranges": [
+    {
+      "context_bucket": "preflop_facing_open|player=1|history_len=4",
+      "street": "preflop",
+      "player": 1,
+      "sample_count": 5,
+      "legal_actions": [
+        0,
+        1,
+        4
+      ],
+      "policy": {
+        "0": 0.3333333333333333,
+        "1": 0.3333333333333333,
+        "4": 0.3333333333333333
+      }
+    },
+    {
+      "context_bucket": "preflop_facing_open|player=1|history_len=6",
+      "street": "preflop",
+      "player": 1,
+      "sample_count": 10,
+      "legal_actions": [
+        0,
+        1,
+        4
+      ],
+      "policy": {
+        "0": 0.33333333333333337,
+        "1": 0.33333333333333337,
+        "4": 0.33333333333333337
+      }
+    },
+    {
+      "context_bucket": "preflop_facing_open|player=1|history_len=8",
+      "street": "preflop",
+      "player": 1,
+      "sample_count": 5,
+      "legal_actions": [
+        0,
+        1
+      ],
+      "policy": {
+        "0": 0.5,
+        "1": 0.5
+      }
+    }
+  ],
+  "respond_to_3bet_ranges": [
+    {
+      "context_bucket": "preflop_respond_to_3bet|player=0|history_len=5",
+      "street": "preflop",
+      "player": 0,
+      "sample_count": 10,
+      "legal_actions": [
+        1,
+        4
+      ],
+      "policy": {
+        "0": 0.16666666666666666,
+        "1": 0.4166666666666667,
+        "4": 0.4166666666666667
+      }
+    },
+    {
+      "context_bucket": "preflop_respond_to_3bet|player=0|history_len=7",
+      "street": "preflop",
+      "player": 0,
+      "sample_count": 5,
+      "legal_actions": [
+        0,
+        1,
+        4
+      ],
+      "policy": {
+        "0": 0.3333333333333333,
+        "1": 0.3333333333333333,
+        "4": 0.3333333333333333
+      }
+    }
+  ]
+}

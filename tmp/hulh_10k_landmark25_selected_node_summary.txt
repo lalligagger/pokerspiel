@@ -1,0 +1,9 @@
+final selected node summary @ iter 10000
+node                   | samples | fold  | check/call | bet/raise
+-----------------------+---------+-------+------------+----------
+first_to_act           | 5       | 0.333 | 0.333      | 0.333    
+response_to_limp_raise | 5       | 0.333 | 0.333      | 0.333    
+response_to_limp       | 5       | 0.000 | 0.500      | 0.500    
+response_to_open_3bet  | 5       | 0.333 | 0.333      | 0.333    
+response_to_open       | 5       | 0.333 | 0.333      | 0.333    
+stability: passed=False avg_abs_delta=0.0000 max_abs_delta=0.0000 matched_nodes=5

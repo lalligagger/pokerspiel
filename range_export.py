@@ -339,11 +339,11 @@ def format_node_label(node_name: Any, history: Iterable[Any] = ()) -> str:
         return "response_to_open"
     if name in {"response_to_limp_raise", "cr"} or history_tokens == ["call", "bet"]:
         return "response_to_limp_raise"
-    if name in {"response_to_open_3bet", "opener_response_to_3bet"} or history_tokens == ["bet", "bet"]:
+    if name in {"response_to_open_3bet", "opener_response_to_3bet"} or history_tokens in (["bet", "bet"], ["bet", "bet", "bet"]):
         return "response_to_open_3bet"
-    if name in {"response_to_open_4bet", "opener_response_to_4bet"} or history_tokens == ["bet", "bet", "raise"]:
+    if name in {"response_to_open_4bet", "opener_response_to_4bet"} or history_tokens in (["bet", "bet", "raise"], ["bet", "bet", "bet", "bet"], ["bet", "bet", "bet", "raise"]):
         return "response_to_open_4bet"
-    if name in {"response_to_open_5bet", "opener_response_to_5bet"} or history_tokens == ["bet", "bet", "raise", "raise"]:
+    if name in {"response_to_open_5bet", "opener_response_to_5bet"} or history_tokens in (["bet", "bet", "raise", "raise"], ["bet", "bet", "bet", "bet", "bet"], ["bet", "bet", "bet", "bet", "raise"]):
         return "response_to_open_5bet"
     return name or "selected_node"
 
@@ -365,7 +365,9 @@ def _normalize_history_token(token: Any) -> str | None:
     normalized = str(token).strip().lower()
     if normalized in {"check", "call"}:
         return "call"
-    if normalized in {"bet", "raise"}:
+    if normalized == "raise":
+        return "raise"
+    if normalized == "bet":
         return "bet"
     if normalized == "fold":
         return "fold"
@@ -414,7 +416,11 @@ def aggregate_selected_node_ranges(snapshots: Iterable[Dict[str, Any]]) -> Dict[
     grouped: Dict[str, Dict[str, List[Dict[str, Any]]]] = defaultdict(lambda: defaultdict(list))
     node_metadata: Dict[str, Dict[str, Any]] = {}
 
-    for snapshot in snapshots:
+    exact_infoset_collisions: Dict[str, List[int]] = defaultdict(list)
+    base_group_by_index: Dict[int, str] = {}
+    valid_indices: List[int] = []
+
+    for index, snapshot in enumerate(snapshots):
         if not isinstance(snapshot, dict):
             continue
 
@@ -422,10 +428,30 @@ def aggregate_selected_node_ranges(snapshots: Iterable[Dict[str, Any]]) -> Dict[
         history = list(snapshot.get("selected_history") or snapshot.get("history") or [])
         if not replay_history_matches_spot(history, node_name):
             continue
+
+        base_group = f"{node_name}|player={snapshot.get('player')}" if snapshot.get("player") is not None else node_name
+        base_group_by_index[index] = base_group
+        valid_indices.append(index)
+
+        exact_infoset_key = snapshot.get("exact_infoset_key")
+        if exact_infoset_key:
+            exact_infoset_collisions[str(exact_infoset_key).strip()].append(index)
+
+    for info_key, indices in exact_infoset_collisions.items():
+        if len(indices) <= 1:
+            continue
+        merged_group = f"exact_infoset={info_key}"
+        for index in indices:
+            base_group_by_index[index] = merged_group
+
+    for index in valid_indices:
+        snapshot = snapshots[index]
+        node_name = str(snapshot.get("node_name") or snapshot.get("normalized_name") or snapshot.get("label") or "node")
+        history = list(snapshot.get("selected_history") or snapshot.get("history") or [])
         label = format_node_label(node_name, history)
         compact_label = canonical_preflop_label(snapshot.get("hole_cards") or [])
         player = snapshot.get("player")
-        node_key = f"{node_name}|player={player}" if player is not None else node_name
+        node_key = base_group_by_index.get(index, node_name)
 
         grouped[node_key][compact_label or "unknown"].append(snapshot)
         node_metadata.setdefault(

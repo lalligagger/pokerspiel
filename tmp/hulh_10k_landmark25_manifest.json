@@ -1,0 +1,13 @@
+{
+  "artifacts": [
+    "/app/tmp/hulh_10k_landmark25.json",
+    "/app/tmp/hulh_10k_landmark25_ranges.json",
+    "/app/tmp/hulh_10k_landmark25_selected_node_summary.txt"
+  ],
+  "checkpoint_files": [],
+  "checkpoint_stability_path": null,
+  "range_path": "/app/tmp/hulh_10k_landmark25_ranges.json",
+  "report_path": "/app/tmp/hulh_10k_landmark25.json",
+  "selected_node_summary_path": "/app/tmp/hulh_10k_landmark25_selected_node_summary.txt",
+  "summary_path": "/app/tmp/hulh_10k_landmark25_selected_node_summary.txt"
+}

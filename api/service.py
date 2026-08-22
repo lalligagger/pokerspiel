@@ -195,6 +195,8 @@ class SolverService:
     def _record_flat_policy_state(self, state, history, policy) -> Optional[int]:
         if state is None:
             return None
+        if not hasattr(state, "current_player") or not hasattr(state, "legal_actions"):
+            return None
 
         player = int(state.current_player())
         state_index, tables = self._state_kernel_for_player(player)
@@ -658,13 +660,16 @@ class SolverService:
             self.runtime.state = SolverState.ERROR
             self.runtime.ready_for_queries = False
 
+    def _has_flat_kernel_data(self) -> bool:
+        return (
+            self._flat_state_index is not None
+            and self._flat_tables is not None
+            and self._flat_state_index.state_count > 0
+        )
+
     def request_probe(self, request: ProbeRequest) -> ProbeResponse:
         with self.lock:
-            flat_ready = (
-                self._flat_state_index is not None
-                and self._flat_tables is not None
-                and self._flat_state_index.state_count > 0
-            )
+            flat_ready = self._has_flat_kernel_data()
             if (self._solver is None or self._game is None) and not flat_ready:
                 return ProbeResponse(
                     iteration=self.runtime.iteration,
@@ -839,7 +844,7 @@ class SolverService:
 
     def _oom_block_reason(self) -> Optional[str]:
         """Return a runtime block reason only when memory pressure requires stopping."""
-        if self._solver is None or self._game is None:
+        if (self._solver is None or self._game is None) and not self._has_flat_kernel_data():
             return "live solver has not started yet"
         telemetry = self._refresh_memory_telemetry()
         if self._memory_stop_recommendation(telemetry):
@@ -847,8 +852,8 @@ class SolverService:
         return None
 
     def _postflop_access_block_reason(self, *, request_min_iteration: Optional[int] = None) -> Optional[str]:
-        """Return a blocking reason only when memory pressure requires stopping."""
-        if self._solver is None or self._game is None:
+        """Postflop access is monitoring-only; keep memory pressure as the only hard gate."""
+        if (self._solver is None or self._game is None) and not self._has_flat_kernel_data():
             return "live solver has not started yet"
 
         oom_block = self._oom_block_reason()
@@ -982,10 +987,14 @@ class SolverService:
     def _postflop_action_summary(self, state, policy):
         if state is None or policy is None:
             return None
+        if not hasattr(state, "current_player") or not hasattr(state, "legal_actions"):
+            return None
 
         wrapped = getattr(state, "_wrapped_state", None)
         player = int(state.current_player()) if hasattr(state, "current_player") else 0
         legal_actions = list(state.legal_actions())
+        if not hasattr(policy, "get_state_policy"):
+            return None
         raw_entries = policy.get_state_policy(state, player)
         entries = [(int(action), float(probability)) for action, probability in raw_entries]
         summary = {"player": player, "legal_actions": legal_actions, "entries": entries}

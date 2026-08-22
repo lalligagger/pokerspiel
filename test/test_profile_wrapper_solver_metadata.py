@@ -230,6 +230,20 @@ def test_root_selected_node_never_gets_filtered_out_by_exact_history_match():
     assert replay_history_matches_spot([], "root") is True
 
 
+def test_prepare_selected_node_probes_accepts_reduced_flop_sampler_mode():
+    game = pyspiel.load_game("python_pokerkit_wrapper", GAME_CONFIGS["hulh"])
+    probes = prepare_selected_node_probes(
+        game,
+        [{"name": "first_to_act", "history": []}],
+        samples_per_node=2,
+        flop_sampler="landmark_25",
+        landmark_count=25,
+    )
+
+    assert len(probes) >= 1
+    assert all(probe["node_name"] == "first_to_act" for probe in probes)
+
+
 def test_cached_preflop_ranges_are_served_while_solver_is_still_scoring():
     service = SolverService()
     service.runtime.state = SolverState.SCORING
@@ -639,7 +653,7 @@ def test_prepare_selected_node_probes_samples_each_node_independently(monkeypatc
     }
 
 
-def test_postflop_exact_is_blocked_until_min_iterations_and_stability(monkeypatch):
+def test_postflop_exact_is_monitoring_only_without_stability_blocking(monkeypatch):
     service = SolverService(min_iterations=100, checkpoint_every=10, stop_patience=1)
     service.runtime.iteration = 10
     service._last_stability = {"passed": False, "avg_abs_delta": 0.25, "max_abs_delta": 0.6, "threshold": 0.01, "matched_nodes": 1}
@@ -652,7 +666,7 @@ def test_postflop_exact_is_blocked_until_min_iterations_and_stability(monkeypatc
     )
 
     assert response.ready is False
-    assert "min_iteration" in response.message.lower() or "stability" in response.message.lower()
+    assert "no policy entries available" in response.message.lower()
 
 
 def test_checkpoint_every_zero_disables_checkpointing():
@@ -1193,3 +1207,9 @@ def test_profile_variant_reports_runtime_state_machine():
 def test_profile_variant_rejects_non_positive_iteration_count():
     with pytest.raises(ValueError, match="iterations must be greater than zero"):
         profile_variant("hulh", GAME_CONFIGS["hulh"], iterations=0)
+
+
+def test_profile_variant_caps_real_solving_in_pytest_runs(monkeypatch):
+    monkeypatch.setenv("PYTEST_CURRENT_TEST", "test_profile_variant_caps_real_solving_in_pytest_runs")
+    with pytest.raises(ValueError, match="100 iterations"):
+        profile_variant("hulh", GAME_CONFIGS["hulh"], iterations=101)

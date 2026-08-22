@@ -1,8 +1,23 @@
 import json
 import itertools
-from collections import Counter
 import numpy as np
 from pokerkit import Card
+
+RANK_TO_INDEX = {
+    '2': 0,
+    '3': 1,
+    '4': 2,
+    '5': 3,
+    '6': 4,
+    '7': 5,
+    '8': 6,
+    '9': 7,
+    'T': 8,
+    'J': 9,
+    'Q': 10,
+    'K': 11,
+    'A': 12,
+}
 
 # 1. Paste the raw 25-flop list you found
 RAW_25_FLOPS = [
@@ -34,30 +49,45 @@ RAW_25_FLOPS = [
 ]
 
 
+def parse_card(card_str: str):
+    """PokerKit's Card.parse returns a generator, so unwrap the single card result."""
+    return next(Card.parse(card_str))
+
+
+def normalize_cards(cards):
+    """Accept either a tuple/list of card strings or a concatenated flop string."""
+    if isinstance(cards, str):
+        if len(cards) != 6:
+            raise ValueError(f"Expected 3-card flop string with 6 chars, got {cards!r}")
+        return [cards[i:i + 2] for i in range(0, len(cards), 2)]
+    return list(cards)
+
+
 def extract_features(cards: tuple) -> np.ndarray:
     """
     Extracts numerical features from a 3-card flop to place it in vector space.
     Features: [HighRank, MidRank, LowRank, IsMonotone, IsTwoTone, IsPaired, TotalGaps]
     """
-    pk_cards = [Card.parse(c) for c in cards]
-    
-    # Ranks (PokerKit index: 0 for '2' up to 12 for 'A')
-    ranks = sorted([c.rank.index for c in pk_cards], reverse=True)
-    
+    normalized = normalize_cards(cards)
+    pk_cards = [parse_card(c) for c in normalized]
+
+    # Ranks (PokerKit returns enum members; map to an integer scale using card value)
+    ranks = sorted([RANK_TO_INDEX[c.rank.value] for c in pk_cards], reverse=True)
+
     # Suit pattern
-    suits = [str(c.suit) for c in pk_cards]
+    suits = [c.suit.value for c in pk_cards]
     max_suit_count = max(suits.count(s) for s in suits)
     is_monotone = 1.0 if max_suit_count == 3 else 0.0
     is_twotone = 1.0 if max_suit_count == 2 else 0.0
-    
+
     # Pairing status
     is_paired = 1.0 if len(set(ranks)) < 3 else 0.0
-    
+
     # Straight connectivity (gaps between sorted cards)
     gap1 = max(0, ranks[0] - ranks[1] - 1)
     gap2 = max(0, ranks[1] - ranks[2] - 1)
     total_gaps = float(gap1 + gap2)
-    
+
     # Return numerical array for distance math
     return np.array([
         float(ranks[0]), float(ranks[1]), float(ranks[2]),
