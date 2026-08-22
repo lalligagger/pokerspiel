@@ -276,6 +276,16 @@ def render_html(
       #node-table th, #node-table td {{ border: 1px solid #d9dde3; padding: 6px 8px; text-align: left; }}
       #node-table th {{ background: #f3f6fa; }}
       #error {{ width: 900px; margin: 0 auto 16px auto; font-size: 12px; color: #9f1239; }}
+      .collapsible-header {{
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
+        user-select: none;
+      }}
+      .collapsible-body.collapsed {{
+        display: none;
+      }}
     </style>
   </head>
   <body>
@@ -284,14 +294,46 @@ def render_html(
       <select id="spot-select"></select>
       <span id="status" class="status"></span>
     </div>
-    <div id="plot"></div>
-    <div id="node-table-wrap">
-      <h3 style="margin: 0 0 8px 0; font-size: 14px;">Observed preflop nodes</h3>
-      <table id="node-table">
-        <thead><tr><th>node</th><th>count</th><th>fold</th><th>check/call</th><th>bet/raise</th></tr></thead>
-        <tbody></tbody>
-      </table>
+
+    <div id="summary-panel" style="width: 900px; margin: 16px auto 0 auto;">
+      <div class="summary-grid" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 12px;">
+        <div class="card" style="border: 1px solid #d9dde3; border-radius: 8px; background: #f7f9fc; padding: 12px;">
+          <h3 style="margin: 0 0 8px 0; font-size: 13px;">Current stability</h3>
+          <div id="stability-summary" class="metric-block" style="font-size: 12px; line-height: 1.6; color: #2d3748;"></div>
+        </div>
+        <div class="card" style="border: 1px solid #d9dde3; border-radius: 8px; background: #f7f9fc; padding: 12px;">
+          <h3 style="margin: 0 0 8px 0; font-size: 13px;">Memory utilization</h3>
+          <div id="memory-summary" class="metric-block" style="font-size: 12px; line-height: 1.6; color: #2d3748;"></div>
+        </div>
+        <div class="card" style="border: 1px solid #d9dde3; border-radius: 8px; background: #f7f9fc; padding: 12px;">
+          <h3 style="margin: 0 0 8px 0; font-size: 13px;">Root starting hands</h3>
+          <div id="root-summary" class="metric-block" style="font-size: 12px; line-height: 1.6; color: #2d3748;"></div>
+        </div>
+      </div>
+
+      <div class="card" style="border: 1px solid #d9dde3; border-radius: 8px; background: white; padding: 12px; margin-bottom: 16px;">
+        <h3 style="margin: 0 0 8px 0; font-size: 14px;">Historical stability</h3>
+        <div id="stability-history" style="width: 100%; height: 220px;"></div>
+      </div>
     </div>
+
+    <div id="plot"></div>
+
+    <div id="node-summary-panel" style="width: 900px; margin: 0 auto 24px auto;">
+      <div class="card" style="border: 1px solid #d9dde3; border-radius: 8px; background: white; padding: 12px;">
+        <div id="node-summary-toggle" class="collapsible-header" aria-expanded="false">
+          <h3 style="margin: 0; font-size: 14px;">Node summary</h3>
+          <span id="node-summary-toggle-label">Show</span>
+        </div>
+        <div id="node-summary-body" class="collapsible-body collapsed" style="margin-top: 12px;">
+          <table id="node-table" style="border-collapse: collapse; width: 100%; font-size: 12px;">
+            <thead><tr><th style="text-align: left; border: 1px solid #d9dde3; padding: 6px 8px;">node</th><th style="text-align: left; border: 1px solid #d9dde3; padding: 6px 8px;">count</th><th style="text-align: left; border: 1px solid #d9dde3; padding: 6px 8px;">fold</th><th style="text-align: left; border: 1px solid #d9dde3; padding: 6px 8px;">check/call</th><th style="text-align: left; border: 1px solid #d9dde3; padding: 6px 8px;">bet/raise</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <div id="error"></div>
 
     <script>
@@ -299,16 +341,64 @@ def render_html(
       const defaultSpot = {default_spot_json};
       const refreshMs = {max(1, int(interval_seconds))} * 1000;
       const requestTimeoutMs = {max(1, int(request_timeout_seconds))} * 1000;
+      const STORAGE_KEY = 'pokerspiel_dashboard_status_history';
+      const SPOT_KEY = 'pokerspiel_dashboard_selected_spot';
+
+      function loadStatusHistory() {{
+        try {{
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return [];
+          const parsed = JSON.parse(raw);
+          return Array.isArray(parsed) ? parsed : [];
+        }} catch (err) {{
+          return [];
+        }}
+      }}
+
+      function persistStatusHistory(history) {{
+        try {{
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+        }} catch (err) {{
+          // ignore storage failures in privacy-restricted browsers
+        }}
+      }}
+
+      function loadSelectedSpot(defaultValue) {{
+        try {{
+          const saved = localStorage.getItem(SPOT_KEY);
+          if (saved && spots.includes(saved)) return saved;
+        }} catch (err) {{
+          // ignore storage failures in privacy-restricted browsers
+        }}
+        return defaultValue;
+      }}
+
+      function persistSelectedSpot(spot) {{
+        try {{
+          localStorage.setItem(SPOT_KEY, spot);
+        }} catch (err) {{
+          // ignore storage failures in privacy-restricted browsers
+        }}
+      }}
+
+      const statusHistory = loadStatusHistory();
+      let rootStartingHands = 0;
 
       const spotSelect = document.getElementById('spot-select');
       const statusEl = document.getElementById('status');
       const errorEl = document.getElementById('error');
+      const stabilitySummaryEl = document.getElementById('stability-summary');
+      const memorySummaryEl = document.getElementById('memory-summary');
+      const rootSummaryEl = document.getElementById('root-summary');
+      const nodeSummaryToggleEl = document.getElementById('node-summary-toggle');
+      const nodeSummaryBodyEl = document.getElementById('node-summary-body');
+      const nodeSummaryToggleLabelEl = document.getElementById('node-summary-toggle-label');
 
       for (const spot of spots) {{
         const opt = document.createElement('option');
         opt.value = spot;
         opt.textContent = spot;
-        if (spot === defaultSpot) opt.selected = true;
+        if (spot === loadSelectedSpot(defaultSpot)) opt.selected = true;
         spotSelect.appendChild(opt);
       }}
 
@@ -326,26 +416,130 @@ def render_html(
         return number.toFixed(3);
       }}
 
-      function renderNodeTable(summaryRows) {{
+      function formatPct(value) {{
+        const number = Number(value ?? 0);
+        if (!Number.isFinite(number)) return 'n/a';
+        return `${{(number * 100).toFixed(1)}}%`;
+      }}
+
+      function renderStabilityStatus(statusPayload) {{
+        const stability = statusPayload && statusPayload.stability ? statusPayload.stability : null;
+        const passed = stability && stability.passed !== undefined ? stability.passed : 'n/a';
+        const avg = stability && stability.avg_abs_delta !== undefined ? Number(stability.avg_abs_delta) : null;
+        const max = stability && stability.max_abs_delta !== undefined ? Number(stability.max_abs_delta) : null;
+        const threshold = stability && stability.threshold !== undefined ? Number(stability.threshold) : null;
+        const matched = stability && stability.matched_nodes !== undefined ? Number(stability.matched_nodes) : null;
+
+        stabilitySummaryEl.innerHTML = (
+          '<div><strong>passed:</strong> ' + String(passed) + '</div>' +
+          '<div><strong>avg abs delta:</strong> ' + (avg === null ? 'n/a' : avg.toFixed(4)) + '</div>' +
+          '<div><strong>max abs delta:</strong> ' + (max === null ? 'n/a' : max.toFixed(4)) + '</div>' +
+          '<div><strong>threshold:</strong> ' + (threshold === null ? 'n/a' : threshold.toFixed(4)) + '</div>' +
+          '<div><strong>matched nodes:</strong> ' + (matched === null ? 'n/a' : matched) + '</div>'
+        );
+      }}
+
+      function renderMemoryStatus(statusPayload) {{
+        const telemetry = statusPayload && statusPayload.telemetry ? statusPayload.telemetry : null;
+        if (!telemetry) {{
+          memorySummaryEl.innerHTML = '<div>no telemetry yet</div>';
+          return;
+        }}
+
+        const total = Number(telemetry.total_memory_mb || 0);
+        const used = Number(telemetry.used_memory_mb || 0);
+        const availableRatio = Number(telemetry.memory_available_ratio || 0);
+        const usedPct = total > 0 ? (used / total) * 100 : 0;
+
+        memorySummaryEl.innerHTML = (
+          '<div><strong>used:</strong> ' + used.toFixed(1) + ' / ' + total.toFixed(1) + ' MB</div>' +
+          '<div><strong>utilization:</strong> ' + usedPct.toFixed(1) + '%</div>' +
+          '<div><strong>available ratio:</strong> ' + formatPct(availableRatio) + '</div>'
+        );
+      }}
+
+      function renderRootSummary(count) {{
+        const value = Number(count || 0);
+        rootSummaryEl.innerHTML = (
+          '<div><strong>starting hands:</strong> ' + (Number.isFinite(value) && value > 0 ? value : 'n/a') + '</div>' +
+          '<div><strong>spot:</strong> ' + defaultSpot + '</div>'
+        );
+      }}
+
+      function renderHistoricalStability(statusHistoryArray) {{
+        if (!Array.isArray(statusHistoryArray) || statusHistoryArray.length === 0) {{
+          document.getElementById('stability-history').innerHTML = '<div style="font-size:12px; color:#5c6c80;">no stability history yet</div>';
+          return;
+        }}
+
+        const xs = statusHistoryArray.map(entry => Number(entry.iteration || 0));
+        const avg = statusHistoryArray.map(entry => Number(entry.avg ?? 0));
+        const max = statusHistoryArray.map(entry => Number(entry.max ?? 0));
+
+        const traceAvg = {{
+          type: 'scatter',
+          mode: 'lines+markers',
+          x: xs,
+          y: avg,
+          name: 'avg abs delta',
+          line: {{ color: '#3b82f6', width: 2 }},
+          marker: {{ size: 5 }},
+        }};
+
+        const traceMax = {{
+          type: 'scatter',
+          mode: 'lines+markers',
+          x: xs,
+          y: max,
+          name: 'max abs delta',
+          line: {{ color: '#ef4444', width: 2, dash: 'dot' }},
+          marker: {{ size: 5 }},
+        }};
+
+        const layout = {{
+          margin: {{ l: 40, r: 20, t: 10, b: 35 }},
+          paper_bgcolor: 'white',
+          plot_bgcolor: '#fafbfc',
+          legend: {{ orientation: 'h', y: 1.15 }},
+          xaxis: {{ title: 'iteration' }},
+          yaxis: {{ title: 'delta' }},
+        }};
+
+        Plotly.newPlot('stability-history', [traceAvg, traceMax], layout, {{ responsive: true, displayModeBar: false }});
+      }}
+
+      function renderNodeSummaryTable(summaryRows) {{
         const tbody = document.querySelector('#node-table tbody');
         tbody.innerHTML = '';
+
         if (!Array.isArray(summaryRows) || summaryRows.length === 0) {{
-          tbody.innerHTML = '<tr><td colspan="5">range data is sourced from /preflop/&lt;spot&gt;/range only</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="5" style="padding: 8px; color: #4a5563;">no node summaries available yet</td></tr>';
           return;
         }}
 
         for (const row of summaryRows) {{
-          const freqs = row && row.policy ? row.policy : {{}};
+          const freqs = row && row.action_frequencies ? row.action_frequencies : (row && row.policy ? row.policy : {{}});
+          const nodeName = row && row.node_name ? row.node_name : (row && row.hand ? row.hand : 'n/a');
+          const sampleCount = Number(row && row.sample_count !== undefined ? row.sample_count : (row && row.count !== undefined ? row.count : 0));
           const tr = document.createElement('tr');
           tr.innerHTML = (
-            '<td>' + (row.hand || 'hand') + '</td>' +
-            '<td>' + Number(row.hand ? 1 : 0) + '</td>' +
-            '<td>' + formatFreq(freqs.fold) + '</td>' +
-            '<td>' + formatFreq(freqs['check_call']) + '</td>' +
-            '<td>' + formatFreq(freqs['bet_raise']) + '</td>'
+            '<td style="border: 1px solid #d9dde3; padding: 6px 8px;">' + nodeName + '</td>' +
+            '<td style="border: 1px solid #d9dde3; padding: 6px 8px;">' + sampleCount + '</td>' +
+            '<td style="border: 1px solid #d9dde3; padding: 6px 8px;">' + formatFreq(freqs.fold) + '</td>' +
+            '<td style="border: 1px solid #d9dde3; padding: 6px 8px;">' + formatFreq(freqs['check_call']) + '</td>' +
+            '<td style="border: 1px solid #d9dde3; padding: 6px 8px;">' + formatFreq(freqs['bet_raise']) + '</td>'
           );
           tbody.appendChild(tr);
         }}
+      }}
+
+      function categoryMapFromGridLabels(labels) {{
+        const map = new Map();
+        for (const entry of labels || []) {{
+          const key = String(entry.i) + ':' + String(entry.j);
+          map.set(key, entry.label);
+        }}
+        return map;
       }}
 
       function buildFigure(payload) {{
@@ -354,10 +548,9 @@ def render_html(
         const C = payload.matrices && payload.matrices.C ? payload.matrices.C : Array.from({{ length: 13 }}, () => Array(13).fill(0));
         const R = payload.matrices && payload.matrices.R ? payload.matrices.R : Array.from({{ length: 13 }}, () => Array(13).fill(0));
         const metadata = payload.metadata || {{}};
-        const priorFoldMass = Number(metadata.prior_fold_mass || 0);
         const zeroMeansNotInRange = metadata.zero_means_not_in_range !== false;
         const shapeLabels = Array.isArray(payload.grid_labels) ? payload.grid_labels : [];
-        const labelMap = new Map(shapeLabels.map(entry => [String(entry.i) + ':' + String(entry.j), entry.label]));
+        const labelMap = categoryMapFromGridLabels(shapeLabels);
         const shapes = [];
         const annotations = [];
 
@@ -399,6 +592,9 @@ def render_html(
             }}
 
             const norm = f + c + r;
+            if (norm <= 0) {{
+              continue;
+            }}
             f /= norm;
             c /= norm;
             r /= norm;
@@ -407,13 +603,11 @@ def render_html(
             const callEnd = y0 + (y1 - y0) * (f + c);
 
             if (f > 0) {{
-              const fy0 = y0 + innerPad;
-              const fy1 = (c === 0 && r === 0) ? (y1 - innerPad) : foldEnd;
               shapes.push({{
                 type: 'rect',
                 xref: 'x', yref: 'y',
                 x0: x0 + innerPad, x1: x1 - innerPad,
-                y0: fy0, y1: fy1,
+                y0: y0 + innerPad, y1: Math.min(y1 - innerPad, foldEnd),
                 fillcolor: '#dfeefe',
                 line: {{ color: 'rgba(0,0,0,0.12)', width: 0.3 }},
                 layer: 'below',
@@ -421,13 +615,11 @@ def render_html(
             }}
 
             if (c > 0) {{
-              const cy0 = Math.max(y0 + innerPad, foldEnd);
-              const cy1 = r === 0 ? (y1 - innerPad) : callEnd;
               shapes.push({{
                 type: 'rect',
                 xref: 'x', yref: 'y',
                 x0: x0 + innerPad, x1: x1 - innerPad,
-                y0: cy0, y1: cy1,
+                y0: Math.max(y0 + innerPad, foldEnd), y1: Math.min(y1 - innerPad, callEnd),
                 fillcolor: '#b9e4b9',
                 line: {{ color: 'rgba(0,0,0,0.12)', width: 0.3 }},
                 layer: 'below',
@@ -435,12 +627,11 @@ def render_html(
             }}
 
             if (r > 0) {{
-              const ry0 = Math.max(y0 + innerPad, callEnd);
               shapes.push({{
                 type: 'rect',
                 xref: 'x', yref: 'y',
                 x0: x0 + innerPad, x1: x1 - innerPad,
-                y0: ry0, y1: y1 - innerPad,
+                y0: Math.max(y0 + innerPad, callEnd), y1: y1 - innerPad,
                 fillcolor: '#ff6b6b',
                 line: {{ color: 'rgba(0,0,0,0.12)', width: 0.3 }},
                 layer: 'below',
@@ -502,6 +693,34 @@ def render_html(
         Plotly.newPlot('plot', [trace], layout, {{ responsive: true, displayModeBar: false }});
       }}
 
+      async function refreshStatus() {{
+        try {{
+          const resp = await fetch('/status');
+          const status = await resp.json();
+          renderStabilityStatus(status);
+          renderMemoryStatus(status);
+
+          if (status && status.stability) {{
+            const avg = Number(status.stability.avg_abs_delta ?? 0);
+            const max = Number(status.stability.max_abs_delta ?? 0);
+            const iteration = Number(status.iteration || 0);
+            const last = statusHistory[statusHistory.length - 1];
+            if (!last || last.iteration !== iteration || last.avg !== avg || last.max !== max) {{
+              statusHistory.push({{ iteration, avg, max }});
+            }}
+            if (statusHistory.length > 25) statusHistory.shift();
+            persistStatusHistory(statusHistory);
+            renderHistoricalStability(statusHistory);
+          }}
+
+          if (Array.isArray(status.selected_node_summary) && status.selected_node_summary.length) {{
+            renderNodeSummaryTable(status.selected_node_summary);
+          }}
+        }} catch (err) {{
+          console.warn('status refresh failed', err);
+        }}
+      }}
+
       async function refreshSpot() {{
         const spot = spotSelect.value;
         statusEl.textContent = `loading ${{spot}}...`;
@@ -518,7 +737,13 @@ def render_html(
           const summaryRows = Array.isArray(payload.range && payload.range.hands)
             ? payload.range.hands
             : [];
-          renderNodeTable(summaryRows);
+          if (Number(payload.range && payload.range.hand_count) > 0) {{
+            rootStartingHands = Number(payload.range.hand_count);
+          }} else if (Array.isArray(payload.range && payload.range.hands)) {{
+            rootStartingHands = payload.range.hands.length;
+          }}
+          renderRootSummary(rootStartingHands);
+          renderNodeSummaryTable(summaryRows);
           const iter = payload.status && payload.status.iteration !== undefined ? payload.status.iteration : 'n/a';
           const ready = payload.status && payload.status.ready_for_queries !== undefined ? payload.status.ready_for_queries : false;
           statusEl.textContent = `iteration=${{iter}} ready=${{ready}} source=/preflop/${{encodeURIComponent(spot)}}/range fetched=${{new Date(payload.fetched_at * 1000).toLocaleTimeString()}}`;
@@ -527,18 +752,44 @@ def render_html(
           const detail = err && err.name === 'AbortError' ? `request timed out after ${{timeoutLabel}}s` : (err.message || String(err));
           errorEl.textContent = `Error: ${{detail}}`;
           statusEl.textContent = 'request failed';
-          renderNodeTable([]);
+          renderNodeSummaryTable([]);
         }} finally {{
           clearTimeout(timer);
         }}
       }}
 
       spotSelect.addEventListener('change', () => {{
+        persistSelectedSpot(spotSelect.value);
         refreshSpot();
       }});
 
+      const restoredSelection = loadSelectedSpot(defaultSpot);
+      if (restoredSelection && spots.includes(restoredSelection)) {{
+        spotSelect.value = restoredSelection;
+      }}
+
+      function toggleNodeSummary(forceOpen) {{
+        const willOpen = typeof forceOpen === 'boolean' ? forceOpen : nodeSummaryBodyEl.classList.contains('collapsed');
+        nodeSummaryBodyEl.classList.toggle('collapsed', !willOpen);
+        nodeSummaryToggleEl.setAttribute('aria-expanded', String(willOpen));
+        nodeSummaryToggleLabelEl.textContent = willOpen ? 'Hide' : 'Show';
+      }}
+
+      nodeSummaryToggleEl.addEventListener('click', () => toggleNodeSummary());
+
+      renderRootSummary(rootStartingHands);
+      renderStabilityStatus(null);
+      renderMemoryStatus(null);
+      renderNodeSummaryTable([]);
+      renderHistoricalStability(statusHistory);
+      toggleNodeSummary(false);
+
+      refreshStatus();
       refreshSpot();
-      setInterval(refreshSpot, refreshMs);
+      setInterval(async () => {{
+        await refreshStatus();
+        await refreshSpot();
+      }}, refreshMs);
     </script>
   </body>
 </html>
@@ -584,6 +835,22 @@ class DashboardHTTPServer:
                     self.send_header("Content-Type", "text/html; charset=utf-8")
                     self.end_headers()
                     self.wfile.write(html.encode("utf-8"))
+                    return
+
+                if parsed.path == "/status":
+                    try:
+                        payload = http_json(
+                            parent.api_base_url.rstrip("/") + "/status",
+                            timeout=max(1, int(parent.request_timeout_seconds)),
+                        )
+                    except Exception as exc:
+                        payload = {"error": str(exc), "solver": None, "iteration": None, "stable": False}
+                    body = json.dumps(payload).encode("utf-8")
+                    self.send_response(200 if "error" not in payload else 502)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Cache-Control", "no-store")
+                    self.end_headers()
+                    self.wfile.write(body)
                     return
 
                 if parsed.path == "/grid-data":
