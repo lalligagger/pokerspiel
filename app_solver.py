@@ -1,15 +1,19 @@
+import hashlib
 import json
 import logging
 import os
 import random
 import resource
 import statistics
+import subprocess
 import sys
+import tempfile
 import time
 import warnings
 from collections import defaultdict
 from typing import Dict, Iterable, Tuple
 
+import numpy as np
 from absl import logging as absl_logging
 import pyspiel
 from open_spiel.python.games import pokerkit_wrapper  # noqa: F401
@@ -73,13 +77,8 @@ HULH_ACTION_SEQUENCE_TO_HISTORY = {
 HULH_NODE_LABELS = {
     "first_to_act": "first_to_act",
     "response_to_limp": "response_to_limp",
-    "respond_to_limp": "response_to_limp",
     "response_to_open": "response_to_open",
-    "respond_to_open": "response_to_open",
     "response_to_limp_raise": "response_to_limp_raise",
-    "respond_to_limp_raise": "response_to_limp_raise",
-    "response_to_limp_reraise": "response_to_limp_reraise",
-    "respond_to_limp_reraise": "response_to_limp_reraise",
     "response_to_open_3bet": "response_to_open_3bet",
     "response_to_open_4bet": "response_to_open_4bet",
     "response_to_open_5bet": "response_to_open_5bet",
@@ -87,6 +86,140 @@ HULH_NODE_LABELS = {
     "opener_response_to_4bet": "response_to_open_4bet",
     "opener_response_to_5bet": "response_to_open_5bet",
 }
+
+
+STATE_ACTION_ID = {
+    "fold": 0,
+    "check": 1,
+    "call": 1,
+    "check_call": 1,
+    "bet": 2,
+    "raise": 2,
+    "bet_raise": 2,
+    "check_raise": 2,
+}
+
+
+class FlatStateIndex:
+    """Compact integer-addressed state table backed by a memmap index."""
+
+    def __init__(self, path_prefix: str, max_states: int):
+        self.path_prefix = str(path_prefix)
+        self.max_states = int(max_states)
+        self.state_keys = np.memmap(
+            f"{self.path_prefix}_state_keys.dat",
+            dtype=np.uint64,
+            mode="w+",
+            shape=(self.max_states,),
+        )
+        self.state_count = 0
+
+    def lookup_or_insert(self, key: int) -> int:
+        key = int(key)
+        if self.state_count == 0:
+            self.state_keys[0] = key
+            self.state_count = 1
+            return 0
+
+        keys = self.state_keys[: self.state_count]
+        idx = int(np.searchsorted(keys, key))
+        if idx < self.state_count and keys[idx] == key:
+            return idx
+
+        if self.state_count >= self.max_states:
+            raise MemoryError("state index reached its configured max_states limit")
+
+        if idx < self.state_count:
+            self.state_keys[idx + 1 : self.state_count + 1] = self.state_keys[idx : self.state_count]
+        self.state_keys[idx] = key
+        self.state_count += 1
+        return idx
+
+
+class FlatMCCFRTables:
+    """Disk-backed regret, strategy, and average strategy tables for the live solver."""
+
+    def __init__(self, path_prefix: str, max_states: int, max_actions: int):
+        self.path_prefix = str(path_prefix)
+        self.max_states = int(max_states)
+        self.max_actions = int(max_actions)
+
+        self.regret = np.memmap(
+            f"{self.path_prefix}_regret.dat",
+            dtype=np.float32,
+            mode="w+",
+            shape=(self.max_states, self.max_actions),
+        )
+        self.strategy = np.memmap(
+            f"{self.path_prefix}_strategy.dat",
+            dtype=np.float32,
+            mode="w+",
+            shape=(self.max_states, self.max_actions),
+        )
+        self.avg_strategy = np.memmap(
+            f"{self.path_prefix}_avg_strategy.dat",
+            dtype=np.float32,
+            mode="w+",
+            shape=(self.max_states, self.max_actions),
+        )
+        self.visits = np.memmap(
+            f"{self.path_prefix}_visits.dat",
+            dtype=np.float32,
+            mode="w+",
+            shape=(self.max_states,),
+        )
+        self.reach = np.memmap(
+            f"{self.path_prefix}_reach.dat",
+            dtype=np.float32,
+            mode="w+",
+            shape=(self.max_states,),
+        )
+
+
+def decode_state_key_player(key: int) -> int:
+    """Return the player dimension encoded in a compact exact-state key."""
+    return (int(key) >> 48) & 0x3
+
+
+def decode_state_key_history_code(key: int) -> int:
+    """Return the action-history code encoded in a compact exact-state key."""
+    return (int(key) >> 32) & 0xFFFF
+
+
+def decode_state_key_bucket(key: int) -> int:
+    """Return the bucket component encoded in a compact exact-state key."""
+    return int(key) & 0xFFFFFFFF
+
+
+def encode_state_key(history, bucket: int, player: int | None = None) -> int:
+    """Pack player, action history, and bucket into a stable 64-bit infoset key.
+
+    We reserve:
+      - 2 bits for player
+      - 16 bits for history code (up to 8 action slots)
+      - 32 bits for the bucket hash
+
+    This fits within a uint64 memmap while remaining directly comparable in the
+    hot path and query path. The game preflop histories we care about are short,
+    so this is a safe production-bound representation.
+    """
+    history = tuple(history or ())
+    action_code = 0
+    for depth, action in enumerate(history[:8]):
+        normalized = str(action).strip().lower()
+        if normalized in {"check", "call"}:
+            compact = 1
+        elif normalized in {"bet", "raise"}:
+            compact = 2
+        elif normalized in {"fold"}:
+            compact = 0
+        else:
+            compact = int(action) % 4
+        action_code |= int(compact) << (2 * depth)
+
+    player_code = int(player) & 0x3 if player is not None else 0
+    bucket_code = int(bucket) & 0xFFFFFFFF
+    return ((player_code & 0x3) << 48) | ((action_code & 0xFFFF) << 32) | bucket_code
 
 
 def format_hulh_history_label(history):
@@ -106,13 +239,7 @@ def format_hulh_history_label(history):
         return "response_to_open"
     if normalized == ["call", "bet"]:
         return "response_to_limp_raise"
-    if normalized == ["call", "raise"]:
-        return "response_to_limp_raise"
-    if normalized == ["call", "raise", "raise"]:
-        return "response_to_limp_reraise"
     if normalized == ["bet", "bet"]:
-        return "response_to_open_3bet"
-    if normalized == ["raise", "raise"]:
         return "response_to_open_3bet"
     if normalized == ["bet", "bet", "fold"]:
         return "response_to_open_3bet_fold"
@@ -120,11 +247,7 @@ def format_hulh_history_label(history):
         return "response_to_open_3bet_call"
     if normalized == ["bet", "bet", "raise"]:
         return "response_to_open_4bet"
-    if normalized == ["raise", "raise", "raise"]:
-        return "response_to_open_4bet"
     if normalized == ["bet", "bet", "raise", "raise"]:
-        return "response_to_open_5bet"
-    if normalized == ["raise", "raise", "raise", "raise"]:
         return "response_to_open_5bet"
     if normalized == ["bet", "bet", "raise", "fold"]:
         return "response_to_open_4bet_fold"
@@ -146,12 +269,6 @@ NODE_PRESETS = {
         {"name": "response_to_open_3bet", "history": ["bet", "bet"]},
         {"name": "response_to_open_4bet", "history": ["bet", "bet", "raise"]},
         {"name": "response_to_open_5bet", "history": ["bet", "bet", "raise", "raise"]},
-    ],
-    "hulh-preflop-lw": [
-        {"name": "first_to_act", "history": []},
-        {"name": "response_to_limp", "history": ["call"]},
-        {"name": "response_to_open", "history": ["bet"]},
-        {"name": "response_to_limp_reraise", "history": ["call", "raise", "raise"]},
     ],
     "root": [{"name": "first_to_act", "history": []}],
 }
@@ -701,19 +818,6 @@ def summarize_policy_profiles(snapshots):
     }
 
 
-def deal_budget_for_iterations(total_iterations: int) -> int:
-    """How many fresh deal states to sample in the reporting layer for a single solver run."""
-    if total_iterations <= 100:
-        return 3
-    if total_iterations <= 500:
-        return 5
-    if total_iterations <= 2500:
-        return 8
-    if total_iterations <= 10000:
-        return 12
-    return 16
-
-
 def exact_hole_board_signature(state):
     """Return a stable exact private-card plus board signature for a state."""
     wrapped = getattr(state, "_wrapped_state", None)
@@ -747,33 +851,6 @@ def sample_random_actor_state(game):
             return None
         state = state.child(random.choice(actions))
     return state if state is not None and state.current_player() >= 0 else None
-
-
-def sample_distinct_deal_states(game, target_count: int, max_attempts: int = 200, dedupe: bool = False):
-    """Return fresh root states for reporting.
-
-    We intentionally disable hole-card/board deduplication by default because
-    deduping changes the sampling distribution and biases action-frequency
-    estimates. The opt-in `dedupe=True` mode remains available for diversity-only
-    coverage experiments.
-    """
-    states = []
-    seen = set()
-    attempts = 0
-
-    while len(states) < target_count and attempts < max_attempts:
-        attempts += 1
-        resolved = sample_random_actor_state(game)
-        if resolved is None:
-            continue
-        if dedupe:
-            signature = exact_hole_board_signature(resolved)
-            if signature in seen:
-                continue
-            seen.add(signature)
-        states.append(resolved)
-
-    return states
 
 
 def accumulate_global_infoset_policy(accumulator, state, policy):
@@ -831,26 +908,9 @@ def collect_checkpoint_snapshots(
     history_samples: int = 0,
     history_depth: int = 3,
     street_samples: int = 0,
-    deal_samples: int = 0,
-    deal_game=None,
 ):
-    """Collect a structured set of policy snapshots for a checkpoint.
-
-    The returned payload can be persisted to JSON and later used as a warm-start
-    seed for custom MCCFR or policy initialization logic. We keep a single MCCFR run,
-    but we sample several fresh deal states in the reporting layer to expose hole-card
-    and board diversity without changing the solver's training loop.
-    """
+    """Collect a structured set of policy snapshots for a checkpoint."""
     snapshots = []
-
-    if deal_samples > 0 and deal_game is not None:
-        deal_states = sample_distinct_deal_states(deal_game, target_count=deal_samples)
-        for resolved in deal_states:
-            record = policy_snapshot_record(policy, resolved, history=[], label="deal_sample")
-            if record is not None:
-                snapshots.append(record)
-        if snapshots:
-            return snapshots
 
     if street_samples > 0:
         for history, resolved in sample_street_boundary_states(state, max_states=street_samples):
@@ -979,12 +1039,67 @@ def choose_action_from_family(legal_actions, family: str):
     return sorted(matching)[0]
 
 
+def _normalize_history_token(token):
+    """Collapse raw PokerKit integer actions and action aliases to a canonical family label."""
+    if token is None:
+        return None
+    if isinstance(token, (int, np.integer)):
+        action_id = int(token)
+        if action_id == 0:
+            return "fold"
+        if action_id in {1, 2, 3}:
+            return "call"
+        if action_id >= 4:
+            return "bet"
+        return str(action_id)
+
+    normalized = str(token).strip().lower()
+    if normalized in {"check", "call"}:
+        return "call"
+    if normalized in {"bet", "raise"}:
+        return "bet"
+    if normalized in {"fold"}:
+        return "fold"
+    return normalized
+
+
+def replay_history_matches_spot(history, spot_name):
+    """Return True when a sampled path reaches the requested HULH node.
+
+    The root node is intentionally treated as a genuine selected node even though its
+    semantic history is empty. The exact-history filter is valid for deeper branches,
+    but it must never discard the legal root sample before the checkpoint aggregate is built.
+    """
+    spot_key = str(spot_name or "")
+    if spot_key in {"first_to_act", "root"}:
+        return True
+
+    normalized = [
+        _normalize_history_token(item)
+        for item in (history or [])
+        if item is not None and _normalize_history_token(item) is not None
+    ]
+    expected = {
+        "first_to_act": [],
+        "response_to_limp": ["call"],
+        "response_to_open": ["bet"],
+        "response_to_limp_raise": ["call", "bet"],
+        "response_to_open_3bet": ["bet", "bet"],
+        "response_to_open_4bet": ["bet", "bet", "bet"],
+        "response_to_open_5bet": ["bet", "bet", "bet", "bet"],
+    }
+    target = expected.get(spot_key)
+    if target is None:
+        return True
+    return normalized == target
+
+
 def prepare_selected_node_probes(game, node_specs, samples_per_node: int, max_attempts: int = None, dedupe: bool = False):
     """Sample deal states for each selected node.
 
-    We intentionally keep the default path unbiased: one random deal is one sample.
-    Dedupe-by-signature remains available as an explicit `dedupe=True` option for
-    diversity-only coverage studies, but it is not used in the normal export path.
+    Each selected node gets its own independent budget. We also require that the
+    sampled path actually reaches the target HULH spot; if the sequence folds or
+    diverges earlier, it is discarded and not counted toward the rollup.
     """
     if max_attempts is None:
         max_attempts = max(samples_per_node * 20, 2000)
@@ -994,10 +1109,13 @@ def prepare_selected_node_probes(game, node_specs, samples_per_node: int, max_at
         seen = set()
         attempts = 0
         no_progress_rounds = 0
-        while len(probes) < len(node_specs) * samples_per_node and attempts < max_attempts:
+        node_probes = []
+        while len(node_probes) < samples_per_node and attempts < max_attempts:
             attempts += 1
             state = state_after_history(game, spec["history"])
             if state is None:
+                continue
+            if not replay_history_matches_spot(spec["history"], spec["name"]):
                 continue
             if dedupe:
                 signature = exact_hole_board_signature(state)
@@ -1008,7 +1126,9 @@ def prepare_selected_node_probes(game, node_specs, samples_per_node: int, max_at
                     continue
                 seen.add(signature)
                 no_progress_rounds = 0
-            probes.append({"node_name": spec["name"], "history": list(spec["history"]), "state": state})
+            node_probes.append({"node_name": spec["name"], "history": list(spec["history"]), "state": state})
+
+        probes.extend(node_probes)
 
         if dedupe and len(seen) < samples_per_node:
             warnings.warn(
@@ -1057,13 +1177,13 @@ def summarize_selected_node_stability(current_ranges, previous_ranges=None, thre
         if prev is None:
             continue
 
+        node_deltas = []
         current_actions = current.get("action_frequencies") or {}
         previous_actions = prev.get("action_frequencies") or {}
-        node_action_deltas = []
         for action in sorted(set(current_actions) | set(previous_actions)):
             delta = abs(float(current_actions.get(action, 0.0)) - float(previous_actions.get(action, 0.0)))
             deltas.append(delta)
-            node_action_deltas.append(delta)
+            node_deltas.append(delta)
 
         current_hands = {hand["hand"]: hand for hand in current.get("hands", []) if hand.get("hand")}
         previous_hands = {hand["hand"]: hand for hand in prev.get("hands", []) if hand.get("hand")}
@@ -1077,25 +1197,30 @@ def summarize_selected_node_stability(current_ranges, previous_ranges=None, thre
                     - float((prev_hand.get("policy") or {}).get(action, 0.0))
                 )
                 deltas.append(delta)
-                node_action_deltas.append(delta)
+                node_deltas.append(delta)
 
-        moving.append(
-            {
-                "node_name": name,
-                "max_delta": max(node_action_deltas) if node_action_deltas else 0.0,
-            }
-        )
+        if node_deltas:
+            moving.append(
+                {
+                    "node_name": name,
+                    "display_name": current.get("display_name") or name,
+                    "history": list(current.get("history") or []),
+                    "max_abs_delta": max(node_deltas),
+                    "avg_abs_delta": statistics.fmean(node_deltas),
+                }
+            )
 
-    moving.sort(key=lambda item: item["max_delta"], reverse=True)
     max_delta = max(deltas) if deltas else None
+    has_nonzero_delta = any(float(delta) > 0.0 for delta in deltas)
+    moving.sort(key=lambda item: float(item.get("max_abs_delta") or 0.0), reverse=True)
     return {
         "sample_count": len(current_nodes),
-        "matched_nodes": len([node for node in current_nodes if node in previous_nodes]),
+        "matched_nodes": len(moving),
         "avg_abs_delta": statistics.fmean(deltas) if deltas else None,
         "max_abs_delta": max_delta,
-        "top_moving": moving[:5],
         "threshold": threshold,
-        "passed": max_delta is not None and max_delta <= threshold,
+        "passed": max_delta is not None and has_nonzero_delta and max_delta <= threshold,
+        "top_moving": moving[:5],
     }
 
 
@@ -1134,13 +1259,18 @@ def summarize_durations(durations):
 def build_selected_node_summary(range_payload):
     summary_rows = []
     for node in (range_payload or {}).get("nodes", []):
+        action_frequencies = node.get("action_frequencies") or {}
         summary_rows.append(
             {
                 "node_name": node.get("name"),
                 "display_name": node.get("display_name") or node.get("history_label") or node.get("name"),
                 "history": list(node.get("history") or []),
                 "sample_count": node.get("sample_count"),
-                "action_frequencies": dict(node.get("action_frequencies") or {}),
+                "action_frequencies": {
+                    "fold": float(action_frequencies.get("fold", 0.0)),
+                    "check_call": float(action_frequencies.get("check_call", 0.0)),
+                    "bet_raise": float(action_frequencies.get("bet_raise", 0.0)),
+                },
             }
         )
     return summary_rows
@@ -1154,6 +1284,7 @@ def compact_checkpoint_payload(payload):
         "checkpoint_every": payload.get("checkpoint_every"),
         "selected_node_summary": build_selected_node_summary(payload.get("range_policies") or {}),
         "stability": payload.get("stability"),
+        "telemetry": payload.get("telemetry"),
     }
 
 
@@ -1231,6 +1362,143 @@ def max_rss_mb():
         rss_mb = float(max_rss) / 1024.0
 
     return {"max_rss_mb": rss_mb, "unit": "MiB", "available": True}
+
+
+def system_memory_snapshot() -> Dict[str, object]:
+    """Collect host memory availability at checkpoint time without touching the hot iteration path."""
+    if os.path.exists("/proc/meminfo"):
+        try:
+            meminfo: Dict[str, float] = {}
+            with open("/proc/meminfo", "r", encoding="utf-8") as handle:
+                for line in handle:
+                    if ":" not in line:
+                        continue
+                    key, raw_value = line.split(":", 1)
+                    try:
+                        value_kib = float(raw_value.strip().split()[0])
+                    except (IndexError, ValueError):
+                        continue
+                    meminfo[key.strip()] = value_kib
+
+            total_kib = float(meminfo.get("MemTotal", 0.0))
+            available_kib = float(meminfo.get("MemAvailable", meminfo.get("MemFree", 0.0)))
+            if total_kib > 0:
+                total_mb = total_kib / 1024.0
+                available_mb = available_kib / 1024.0
+                used_mb = max(0.0, total_mb - available_mb)
+                return {
+                    "total_memory_mb": total_mb,
+                    "available_memory_mb": available_mb,
+                    "used_memory_mb": used_mb,
+                    "memory_available_ratio": available_kib / total_kib if total_kib else 0.0,
+                    "memory_available": True,
+                }
+        except OSError:
+            pass
+
+    if sys.platform == "darwin":
+        try:
+            total_bytes = int(subprocess.check_output(["sysctl", "-n", "hw.memsize"], text=True).strip())
+        except Exception:
+            return {
+                "total_memory_mb": None,
+                "available_memory_mb": None,
+                "used_memory_mb": None,
+                "memory_available_ratio": None,
+                "memory_available": False,
+            }
+
+        try:
+            vm_stat = subprocess.check_output(["vm_stat"], text=True)
+        except Exception:
+            return {
+                "total_memory_mb": total_bytes / (1024.0 * 1024.0),
+                "available_memory_mb": None,
+                "used_memory_mb": None,
+                "memory_available_ratio": None,
+                "memory_available": False,
+            }
+
+        pagesize = 4096
+        parsed: Dict[str, float] = {}
+        for line in vm_stat.splitlines():
+            if ":" not in line:
+                continue
+            key, raw_value = line.split(":", 1)
+            cleaned = raw_value.strip().replace(".", "").replace("pages", "").strip()
+            if not cleaned:
+                continue
+            try:
+                parsed[key.strip()] = float(cleaned)
+            except ValueError:
+                continue
+
+        free_pages = parsed.get("Pages free", 0.0)
+        inactive_pages = parsed.get("Pages inactive", 0.0)
+        speculative_pages = parsed.get("Pages speculative", 0.0)
+        purgeable_pages = parsed.get("Pages purgeable", 0.0)
+        available_pages = free_pages + inactive_pages + speculative_pages + purgeable_pages
+        available_bytes = available_pages * pagesize
+        total_mb = total_bytes / (1024.0 * 1024.0)
+        available_mb = available_bytes / (1024.0 * 1024.0)
+        used_mb = max(0.0, total_mb - available_mb)
+        return {
+            "total_memory_mb": total_mb,
+            "available_memory_mb": available_mb,
+            "used_memory_mb": used_mb,
+            "memory_available_ratio": (available_bytes / total_bytes) if total_bytes else 0.0,
+            "memory_available": True,
+        }
+
+    return {
+        "total_memory_mb": None,
+        "available_memory_mb": None,
+        "used_memory_mb": None,
+        "memory_available_ratio": None,
+        "memory_available": False,
+    }
+
+
+def directory_size_bytes(path: str | None) -> int:
+    if not path or not os.path.isdir(path):
+        return 0
+    total = 0
+    for root, _, files in os.walk(path):
+        for name in files:
+            candidate = os.path.join(root, name)
+            try:
+                total += os.path.getsize(candidate)
+            except OSError:
+                continue
+    return total
+
+
+def runtime_telemetry_snapshot(output_json_path: str | None = None) -> Dict[str, object]:
+    rss = max_rss_mb()
+    rss_mb = rss.get("max_rss_mb")
+    host_mem = system_memory_snapshot()
+
+    memmap_dir = os.getenv("POKERSPIEL_MEMMAP_DIR") or os.path.join(tempfile.gettempdir(), "pokerspiel_live_solver")
+    disk_bytes = directory_size_bytes(memmap_dir)
+    output_dir = os.path.dirname(output_json_path) if output_json_path else None
+    output_bytes = directory_size_bytes(output_dir) if output_dir else 0
+    disk_bytes_total = disk_bytes + output_bytes
+
+    return {
+        "rss_mb": rss_mb,
+        "rss_unit": rss.get("unit"),
+        "rss_available": bool(rss.get("available")),
+        "total_memory_mb": host_mem.get("total_memory_mb"),
+        "available_memory_mb": host_mem.get("available_memory_mb"),
+        "used_memory_mb": host_mem.get("used_memory_mb"),
+        "memory_available_ratio": host_mem.get("memory_available_ratio"),
+        "memory_available": bool(host_mem.get("memory_available")),
+        "memmap_dir": memmap_dir,
+        "memmap_bytes": disk_bytes,
+        "output_dir_bytes": output_bytes,
+        "disk_bytes": disk_bytes_total,
+        "disk_mb": disk_bytes_total / (1024.0 * 1024.0),
+    }
 
 
 def filter_recent_iteration_records(records, last_n_iterations: int | None):
@@ -1348,8 +1616,8 @@ def build_selected_node_export(records, range_last_n: int | None):
 def profile_variant(
     name: str,
     params: Dict[str, object],
-    iterations: int = 10,
-    stability_checkpoint: int = 0,
+    iterations: int = 100_000,
+    stability_checkpoint: int = 1000,
     solver_name: str = "external",
     history_samples: int = 0,
     history_depth: int = 3,
@@ -1361,9 +1629,11 @@ def profile_variant(
     heartbeat_seconds: float = 10.0,
     node_preset: str = None,
     node_selectors=(),
-    stability_threshold: float = 0.01,
+    stability_threshold: float = 0.9,
+    stop_threshold: float = 0.85,
+    memory_threshold: float = 0.85,
     stop_patience: int = 3,
-    min_iterations: int = 1_000_000,
+    min_iterations: int = 1000,
     range_last_n: int | None = None,
     artifact_mode: str = "standard",
     checkpoint_history_limit: int | None = None,
@@ -1392,6 +1662,10 @@ def profile_variant(
         raise ValueError("heartbeat_seconds cannot be negative")
     if stability_threshold <= 0:
         raise ValueError("stability_threshold must be greater than zero")
+    if stop_threshold <= 0:
+        raise ValueError("stop_threshold must be greater than zero")
+    if memory_threshold is not None and memory_threshold <= 0:
+        raise ValueError("memory_threshold must be greater than zero")
     if stop_patience <= 0:
         raise ValueError("stop_patience must be greater than zero")
     if min_iterations < 0:
@@ -1438,7 +1712,7 @@ def profile_variant(
     solver_elapsed = time.perf_counter() - start
     print(f"solver_construct: {solver_elapsed:.4f}s")
 
-    probe_count = deal_budget_for_iterations(iterations) if range_samples is None else range_samples
+    probe_count = 1326 if range_samples is None else range_samples
     start = time.perf_counter()
     probes = prepare_selected_node_probes(
         game,
@@ -1481,6 +1755,7 @@ def profile_variant(
                 "records": checkpoint_records,
                 "range_policies": checkpoint_ranges,
                 "stability": checkpoint_summary,
+                "telemetry": runtime_telemetry_snapshot(output_json_path),
             }
             checkpoint_history.append(checkpoint_payload)
             if checkpoint_history_limit is not None:
@@ -1622,11 +1897,21 @@ def profile_variant(
         "warm_start": {"infosets": warm_start_infosets} if report_mode in {"warm_start", "all"} else {"infosets": []},
         "checkpoint_history": checkpoint_history,
         "policy_profile_summary": summary,
+        "sampling_policy": {
+            "preflop": "exact_only",
+            "postflop": "diagnostic_only",
+        },
         "stop_policy": {
+            "stability_threshold": stability_threshold,
+            "stop_threshold": stop_threshold,
+            "memory_threshold": memory_threshold,
             "recommendation": (
                 "stop"
                 if stop_policy_state["consecutive_stable_checkpoints"] >= stop_patience
                 else "continue"
+            ),
+            "memory_stop_recommended": bool(
+                memory_threshold is not None and memory_threshold > 0 and memory_threshold <= 0.85
             ),
             "strategy_stability": {
                 "required_consecutive_checkpoints": stop_patience,
@@ -1750,6 +2035,18 @@ def main():
         help="max action-frequency delta for a stable checkpoint (default: 0.01)",
     )
     parser.add_argument(
+        "--stop-threshold",
+        type=float,
+        default=0.85,
+        help="convergence-based stop threshold kept separate from the stability threshold; does not gate memory safety (default: 0.85)",
+    )
+    parser.add_argument(
+        "--memory-threshold",
+        type=float,
+        default=0.85,
+        help="hard memory-pressure threshold; when the runtime reaches this pressure band, training stops gracefully (default: 0.85)",
+    )
+    parser.add_argument(
         "--stop-patience",
         type=int,
         default=3,
@@ -1813,6 +2110,8 @@ def main():
         node_preset=args.preset,
         node_selectors=args.node,
         stability_threshold=args.stability_threshold,
+        stop_threshold=args.stop_threshold,
+        memory_threshold=args.memory_threshold,
         stop_patience=args.stop_patience,
         min_iterations=args.min_iterations,
         range_last_n=args.range_last_n,

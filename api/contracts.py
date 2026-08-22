@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Literal, Optional
 
 @dataclass
 class StabilitySummary:
-    """Compact convergence metadata for a node or a solver snapshot."""
+    """Compact convergence metadata for a solver snapshot."""
 
     passed: bool
     max_abs_delta: Optional[float] = None
@@ -72,6 +72,7 @@ class PreflopRangeResponse:
     hand_count: int = 0
     ready: bool = True
     message: Optional[str] = None
+    metadata: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -173,4 +174,12 @@ class SolverStatusResponse:
     last_probe_at: Optional[int] = None
     min_iteration: Optional[int] = None
     probe_budget_remaining: Optional[int] = None
+    postflop_samples: Optional[int] = None
     selected_node_summary: List[Dict[str, Any]] = field(default_factory=list)
+    telemetry: Optional[Dict[str, Any]] = None
+    sampling_policy: Optional[Dict[str, str]] = None
+    stability_threshold: Optional[float] = None
+    stop_threshold: Optional[float] = None
+    memory_threshold: Optional[float] = None
+    stop_recommended: Optional[bool] = None
+    memory_stop_recommended: Optional[bool] = None

@@ -1,15 +1,17 @@
 {
+  "name": "local-template",
+  "deploy": "local",
   "mode": "hulh",
   "solver": "external",
   "preset": "hulh-preflop",
-  "iterations": 250000,
-  "checkpoint_every": 5000,
+  "iterations": 10000,
+  "checkpoint_every": 1000,
   "min_iterations": 1000,
-  "range_samples": 1326,
+  "range_samples": 100,
   "postflop_samples": 32,
   "memory_threshold": 0.85,
   "report_mode": "summary",
   "artifact_mode": "lightweight",
   "checkpoint_history_limit": 2,
-  "output_json": "./app/data/solve_light/report.json"
+  "output_json": "./app/data/debug/report.json"
 }

@@ -57,9 +57,10 @@ DEFAULT_SPOTS = [
 
 DEFAULT_INTERVAL_SECONDS = 300
 DEFAULT_SAMPLES = 1326
+DEFAULT_REQUEST_TIMEOUT_SECONDS = 30
 
 
-def http_json(url: str, payload: Optional[Dict[str, Any]] = None, timeout: int = 90) -> Dict[str, Any]:
+def http_json(url: str, payload: Optional[Dict[str, Any]] = None, timeout: int = 15) -> Dict[str, Any]:
     data = None if payload is None else json.dumps(payload).encode("utf-8")
     request = Request(
         url,
@@ -75,21 +76,22 @@ def http_json(url: str, payload: Optional[Dict[str, Any]] = None, timeout: int =
 
 
 def hand_to_category(hand: str) -> Optional[str]:
-    text = str(hand or "").strip().upper()
+    text = str(hand or "").strip()
     if not text:
         return None
 
-    if len(text) == 2 and text[0] in RANK_IDX and text[1] in RANK_IDX:
-        if text[0] == text[1]:
-            return text
-        hi, lo = sorted((text[0], text[1]), key=lambda r: RANK_IDX[r], reverse=True)
+    upper = text.upper()
+    if len(upper) == 2 and upper[0] in RANK_IDX and upper[1] in RANK_IDX:
+        if upper[0] == upper[1]:
+            return upper
+        hi, lo = sorted((upper[0], upper[1]), key=lambda r: RANK_IDX[r])
         return f"{hi}{lo}"
 
-    if len(text) == 3 and text[0] in RANK_IDX and text[1] in RANK_IDX and text[2] in {"S", "O"}:
-        if text[0] == text[1]:
-            return text[:2]
-        hi, lo = sorted((text[0], text[1]), key=lambda r: RANK_IDX[r], reverse=True)
-        return f"{hi}{lo}{text[2]}"
+    if len(upper) == 3 and upper[0] in RANK_IDX and upper[1] in RANK_IDX and upper[2] in {"S", "O"}:
+        if upper[0] == upper[1]:
+            return upper[:2]
+        hi, lo = sorted((upper[0], upper[1]), key=lambda r: RANK_IDX[r])
+        return f"{hi}{lo}{upper[2]}"
 
     return None
 
@@ -98,30 +100,38 @@ def category_to_cell(category: str) -> Optional[Tuple[int, int]]:
     cat = hand_to_category(category)
     if cat is None:
         return None
-    if len(cat) == 2 and cat[0] == cat[1] and cat[0] in RANK_IDX:
-        idx = RANK_IDX[cat[0]]
+    normalized = cat.upper()
+    if len(normalized) == 2 and normalized[0] == normalized[1] and normalized[0] in RANK_IDX:
+        idx = RANK_IDX[normalized[0]]
         return idx, idx
-    if len(cat) == 3 and cat[0] in RANK_IDX and cat[1] in RANK_IDX and cat[2] in {"S", "O"}:
-        if cat[0] == cat[1]:
-            return RANK_IDX[cat[0]], RANK_IDX[cat[1]]
-        i = RANK_IDX[cat[0]]
-        j = RANK_IDX[cat[1]]
-        if cat[2] == "S":
+    if len(normalized) == 3 and normalized[0] in RANK_IDX and normalized[1] in RANK_IDX and normalized[2] in {"S", "O"}:
+        if normalized[0] == normalized[1]:
+            return RANK_IDX[normalized[0]], RANK_IDX[normalized[1]]
+        i = RANK_IDX[normalized[0]]
+        j = RANK_IDX[normalized[1]]
+        if normalized[2] == "S":
             return i, j
         return j, i
     return None
 
 
-def probe_to_matrices(probe_payload: Dict[str, Any]) -> Dict[str, List[List[float]]]:
-    fold = [[1.0 for _ in range(13)] for _ in range(13)]
+def range_hands_to_matrices(range_payload: Dict[str, Any]) -> Dict[str, List[List[float]]]:
+    """Return action matrices keyed by the 13x13 grid.
+
+    Unseen cells remain at zero mass so the plotting layer can render them as
+    "not in range" rather than implicitly defaulting to a full fold bucket.
+    The API may also attach explicit prior_fold_mass metadata for the selected spot.
+    """
+    fold = [[0.0 for _ in range(13)] for _ in range(13)]
     call = [[0.0 for _ in range(13)] for _ in range(13)]
     raise_ = [[0.0 for _ in range(13)] for _ in range(13)]
 
     totals: Dict[str, Dict[str, float]] = {}
     counts: Dict[str, int] = {}
 
-    for hand_record in (probe_payload.get("hands") or []):
-        category = hand_to_category(str(hand_record.get("hand") or ""))
+    for hand_record in (range_payload.get("hands") or []):
+        hand_name = str(hand_record.get("hand") or "")
+        category = hand_to_category(hand_name)
         if category is None:
             continue
         policy = hand_record.get("policy") or {}
@@ -146,7 +156,7 @@ def probe_to_matrices(probe_payload: Dict[str, Any]) -> Dict[str, List[List[floa
         r_val = sums["r"] / n
         total = f_val + c_val + r_val
         if total <= 0:
-            f_val, c_val, r_val = 1.0, 0.0, 0.0
+            f_val, c_val, r_val = 0.0, 0.0, 0.0
         else:
             f_val, c_val, r_val = f_val / total, c_val / total, r_val / total
         fold[i][j] = max(0.0, min(1.0, f_val))
@@ -156,23 +166,16 @@ def probe_to_matrices(probe_payload: Dict[str, Any]) -> Dict[str, List[List[floa
     return {"F": fold, "C": call, "R": raise_}
 
 
-def fetch_spot_payload(api_base_url: str, spot: str, samples: int) -> Dict[str, Any]:
-    status_url = api_base_url.rstrip("/") + "/status"
+def fetch_spot_payload(
+    api_base_url: str,
+    spot: str,
+    samples: int,
+    request_timeout_seconds: int = DEFAULT_REQUEST_TIMEOUT_SECONDS,
+) -> Dict[str, Any]:
     range_url = api_base_url.rstrip("/") + f"/preflop/{spot}/range"
 
-    status: Dict[str, Any]
     try:
-        status = http_json(status_url, timeout=90)
-    except Exception as exc:
-        return {
-            "ok": False,
-            "error": f"status fetch failed: {exc}",
-            "status": {},
-            "spot": spot,
-        }
-
-    try:
-        range_payload = http_json(range_url, timeout=90)
+        range_payload = http_json(range_url, timeout=max(1, int(request_timeout_seconds)))
     except HTTPError as exc:
         try:
             detail = json.loads(exc.read().decode("utf-8"))
@@ -181,14 +184,14 @@ def fetch_spot_payload(api_base_url: str, spot: str, samples: int) -> Dict[str, 
         return {
             "ok": False,
             "error": detail,
-            "status": status,
+            "status": {"iteration": None, "ready_for_queries": False},
             "spot": spot,
         }
     except Exception as exc:
         return {
             "ok": False,
-            "error": f"preflop range fetch failed: {exc}",
-            "status": status,
+            "error": f"preflop range fetch timed out or failed: {exc}",
+            "status": {"iteration": None, "ready_for_queries": False},
             "spot": spot,
         }
 
@@ -196,24 +199,43 @@ def fetch_spot_payload(api_base_url: str, spot: str, samples: int) -> Dict[str, 
         return {
             "ok": False,
             "error": range_payload.get("message") or f"preflop range for {spot} is not ready",
-            "status": status,
+            "status": {
+                "iteration": range_payload.get("iteration"),
+                "ready_for_queries": False,
+            },
             "spot": spot,
         }
 
-    matrices = probe_to_matrices({"hands": range_payload.get("hands", [])})
+    matrices = range_hands_to_matrices(range_payload)
+    metadata = range_payload.get("metadata") or {}
+    prior_fold_mass = float(metadata.get("prior_fold_mass", 0.0) or 0.0)
     return {
         "ok": True,
         "spot": spot,
-        "status": status,
-        "probe": range_payload,
+        "status": {
+            "iteration": range_payload.get("iteration"),
+            "ready_for_queries": bool(range_payload.get("ready")),
+        },
+        "range": range_payload,
         "matrices": matrices,
+        "metadata": {
+            "prior_fold_mass": prior_fold_mass,
+            "branch_valid": bool(metadata.get("branch_valid", True)),
+            "zero_means_not_in_range": bool(metadata.get("zero_means_not_in_range", True)),
+            "branch_model": metadata.get("branch_model", "conditional_after_prior_folds"),
+        },
         "ranks": RANKS,
         "grid_labels": build_grid_labels(),
         "fetched_at": int(time.time()),
     }
 
 
-def render_html(spots: List[str], default_spot: str, interval_seconds: int) -> str:
+def render_html(
+    spots: List[str],
+    default_spot: str,
+    interval_seconds: int,
+    request_timeout_seconds: int = DEFAULT_REQUEST_TIMEOUT_SECONDS,
+) -> str:
     spots_json = json.dumps(spots)
     default_spot_json = json.dumps(default_spot)
     return f"""
@@ -248,223 +270,144 @@ def render_html(spots: List[str], default_spot: str, interval_seconds: int) -> s
         background: white;
       }}
       .status {{ font-size: 12px; color: #5c6c80; }}
-      .panel {{
-        width: 1000px;
-        margin: 16px auto 0 auto;
-        border: 1px solid #d9dde3;
-        border-radius: 10px;
-        background: #fff;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.03);
-      }}
-      .panel-header {{
-        background: #f7f9fc;
-        border-bottom: 1px solid #d9dde3;
-        padding: 10px 14px;
-        font-size: 13px;
-        font-weight: 700;
-      }}
-      .panel-body {{
-        padding: 12px 14px 14px 14px;
-      }}
-      .metrics-grid {{
-        display: grid;
-        grid-template-columns: repeat(5, minmax(90px, 1fr));
-        gap: 10px;
-        margin-bottom: 14px;
-      }}
-      .metric {{
-        border: 1px solid #d9dde3;
-        background: #f9fbff;
-        border-radius: 8px;
-        padding: 8px 10px;
-      }}
-      .metric-label {{
-        font-size: 10px;
-        color: #58667a;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-      }}
-      .metric-value {{
-        margin-top: 5px;
-        font-size: 18px;
-        font-weight: 700;
-      }}
-      .metric-value.good {{ color: #166534; }}
-      .metric-value.warn {{ color: #92400e; }}
-      .metric-value.bad {{ color: #9f1239; }}
-      #stability-plot {{ width: 100%; height: 260px; }}
-      #plot {{ width: 1000px; height: 900px; margin: 16px auto 0 auto; }}
-      #node-table-wrap {{ width: 1000px; margin: 0 auto 24px auto; }}
+      #plot {{ width: 900px; height: 900px; margin: 12px auto; }}
+      #node-table-wrap {{ width: 900px; margin: 0 auto 24px auto; }}
       #node-table {{ border-collapse: collapse; width: 100%; font-size: 12px; }}
       #node-table th, #node-table td {{ border: 1px solid #d9dde3; padding: 6px 8px; text-align: left; }}
       #node-table th {{ background: #f3f6fa; }}
-      #error {{ width: 1000px; margin: 0 auto 16px auto; font-size: 12px; color: #9f1239; }}
+      #error {{ width: 900px; margin: 0 auto 16px auto; font-size: 12px; color: #9f1239; }}
+      .collapsible-header {{
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
+        user-select: none;
+      }}
+      .collapsible-body.collapsed {{
+        display: none;
+      }}
     </style>
   </head>
   <body>
     <div class="topbar">
       <span class="label">Spot</span>
       <select id="spot-select"></select>
+      <span class="label" style="margin-left: 8px;">Checkpoint</span>
+      <select id="checkpoint-select">
+        <option value="latest">latest</option>
+      </select>
       <span id="status" class="status"></span>
     </div>
 
-    <div class="panel">
-      <div class="panel-header">Solver stability monitor</div>
-      <div class="panel-body">
-        <div class="metrics-grid">
-          <div class="metric">
-            <div class="metric-label">Status</div>
-            <div id="metric-status" class="metric-value">—</div>
-          </div>
-          <div class="metric">
-            <div class="metric-label">Iteration</div>
-            <div id="metric-iteration" class="metric-value">—</div>
-          </div>
-          <div class="metric">
-            <div class="metric-label">Max Δ</div>
-            <div id="metric-max-delta" class="metric-value">—</div>
-          </div>
-          <div class="metric">
-            <div class="metric-label">Avg Δ</div>
-            <div id="metric-avg-delta" class="metric-value">—</div>
-          </div>
-          <div class="metric">
-            <div class="metric-label">Threshold</div>
-            <div id="metric-threshold" class="metric-value">—</div>
-          </div>
+    <div id="summary-panel" style="width: 900px; margin: 16px auto 0 auto;">
+      <div class="summary-grid" style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 12px;">
+        <div class="card" style="border: 1px solid #d9dde3; border-radius: 8px; background: #f7f9fc; padding: 12px;">
+          <h3 style="margin: 0 0 8px 0; font-size: 13px;">Current stability</h3>
+          <div id="stability-summary" class="metric-block" style="font-size: 12px; line-height: 1.6; color: #2d3748;"></div>
         </div>
-        <div id="stability-plot"></div>
+        <div class="card" style="border: 1px solid #d9dde3; border-radius: 8px; background: #f7f9fc; padding: 12px;">
+          <h3 style="margin: 0 0 8px 0; font-size: 13px;">Memory utilization</h3>
+          <div id="memory-summary" class="metric-block" style="font-size: 12px; line-height: 1.6; color: #2d3748;"></div>
+        </div>
+        <div class="card" style="border: 1px solid #d9dde3; border-radius: 8px; background: #f7f9fc; padding: 12px;">
+          <h3 style="margin: 0 0 8px 0; font-size: 13px;">Root starting hands</h3>
+          <div id="root-summary" class="metric-block" style="font-size: 12px; line-height: 1.6; color: #2d3748;"></div>
+        </div>
+      </div>
+
+      <div class="card" style="border: 1px solid #d9dde3; border-radius: 8px; background: white; padding: 12px; margin-bottom: 16px;">
+        <h3 style="margin: 0 0 8px 0; font-size: 14px;">Historical stability</h3>
+        <div id="stability-history" style="width: 100%; height: 220px;"></div>
       </div>
     </div>
 
     <div id="plot"></div>
-    <div id="node-table-wrap">
-      <h3 style="margin: 0 0 8px 0; font-size: 14px;">Observed preflop nodes</h3>
-      <table id="node-table">
-        <thead><tr><th>node</th><th>count</th><th>fold</th><th>check/call</th><th>bet/raise</th></tr></thead>
-        <tbody></tbody>
-      </table>
+
+    <div id="node-summary-panel" style="width: 900px; margin: 0 auto 24px auto;">
+      <div class="card" style="border: 1px solid #d9dde3; border-radius: 8px; background: white; padding: 12px;">
+        <div id="node-summary-toggle" class="collapsible-header" aria-expanded="false">
+          <h3 style="margin: 0; font-size: 14px;">Node summary</h3>
+          <span id="node-summary-toggle-label">Show</span>
+        </div>
+        <div id="node-summary-body" class="collapsible-body collapsed" style="margin-top: 12px;">
+          <table id="node-table" style="border-collapse: collapse; width: 100%; font-size: 12px;">
+            <thead><tr><th style="text-align: left; border: 1px solid #d9dde3; padding: 6px 8px;">node</th><th style="text-align: left; border: 1px solid #d9dde3; padding: 6px 8px;">count</th><th style="text-align: left; border: 1px solid #d9dde3; padding: 6px 8px;">fold</th><th style="text-align: left; border: 1px solid #d9dde3; padding: 6px 8px;">check/call</th><th style="text-align: left; border: 1px solid #d9dde3; padding: 6px 8px;">bet/raise</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
     </div>
+
     <div id="error"></div>
 
     <script>
       const spots = {spots_json};
       const defaultSpot = {default_spot_json};
       const refreshMs = {max(1, int(interval_seconds))} * 1000;
-      const stabilityHistory = [];
+      const requestTimeoutMs = {max(1, int(request_timeout_seconds))} * 1000;
+      const STORAGE_KEY = 'pokerspiel_dashboard_status_history';
+      const SPOT_KEY = 'pokerspiel_dashboard_selected_spot';
+
+      function loadStatusHistory() {{
+        try {{
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return [];
+          const parsed = JSON.parse(raw);
+          return Array.isArray(parsed) ? parsed : [];
+        }} catch (err) {{
+          return [];
+        }}
+      }}
+
+      function persistStatusHistory(history) {{
+        try {{
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+        }} catch (err) {{
+          // ignore storage failures in privacy-restricted browsers
+        }}
+      }}
+
+      function loadSelectedSpot(defaultValue) {{
+        try {{
+          const saved = localStorage.getItem(SPOT_KEY);
+          if (saved && spots.includes(saved)) return saved;
+        }} catch (err) {{
+          // ignore storage failures in privacy-restricted browsers
+        }}
+        return defaultValue;
+      }}
+
+      function persistSelectedSpot(spot) {{
+        try {{
+          localStorage.setItem(SPOT_KEY, spot);
+        }} catch (err) {{
+          // ignore storage failures in privacy-restricted browsers
+        }}
+      }}
+
+      const statusHistory = loadStatusHistory();
+      let rootStartingHands = 0;
 
       const spotSelect = document.getElementById('spot-select');
+      const checkpointSelect = document.getElementById('checkpoint-select');
       const statusEl = document.getElementById('status');
       const errorEl = document.getElementById('error');
-      const metricStatusEl = document.getElementById('metric-status');
-      const metricIterationEl = document.getElementById('metric-iteration');
-      const metricMaxDeltaEl = document.getElementById('metric-max-delta');
-      const metricAvgDeltaEl = document.getElementById('metric-avg-delta');
-      const metricThresholdEl = document.getElementById('metric-threshold');
+      const stabilitySummaryEl = document.getElementById('stability-summary');
+      const memorySummaryEl = document.getElementById('memory-summary');
+      const rootSummaryEl = document.getElementById('root-summary');
+      const nodeSummaryToggleEl = document.getElementById('node-summary-toggle');
+      const nodeSummaryBodyEl = document.getElementById('node-summary-body');
+      const nodeSummaryToggleLabelEl = document.getElementById('node-summary-toggle-label');
+      const checkpointHistoryCache = {{}};
+      let currentSpotRangePayload = null;
+      let selectedCheckpointValue = 'latest';
 
       for (const spot of spots) {{
         const opt = document.createElement('option');
         opt.value = spot;
         opt.textContent = spot;
-        if (spot === defaultSpot) opt.selected = true;
+        if (spot === loadSelectedSpot(defaultSpot)) opt.selected = true;
         spotSelect.appendChild(opt);
-      }}
-
-      function formatMetricNumber(value, digits = 4) {{
-        if (value === null || value === undefined || Number.isNaN(Number(value))) return '—';
-        return Number(value).toFixed(digits);
-      }}
-
-      function applyMetricStatusClass(node, passed) {{
-        node.classList.remove('good', 'warn', 'bad');
-        if (passed === true) node.classList.add('good');
-        else if (passed === false) node.classList.add('warn');
-      }}
-
-      function updateStabilityMetrics(status) {{
-        const stability = status && status.stability ? status.stability : null;
-        const passed = !!(stability && stability.passed);
-        const iteration = status && status.iteration !== undefined ? Number(status.iteration) : null;
-        const maxDelta = stability && stability.max_abs_delta !== undefined ? Number(stability.max_abs_delta) : null;
-        const avgDelta = stability && stability.avg_abs_delta !== undefined ? Number(stability.avg_abs_delta) : null;
-        const threshold = stability && stability.threshold !== undefined ? Number(stability.threshold) : null;
-        const matched = stability && stability.matched_nodes !== undefined ? Number(stability.matched_nodes) : null;
-
-        metricStatusEl.textContent = passed ? 'stable' : 'warming';
-        metricStatusEl.classList.remove('good', 'warn', 'bad');
-        metricStatusEl.classList.add(passed ? 'good' : 'warn');
-        metricIterationEl.textContent = iteration === null ? '—' : String(iteration);
-        metricMaxDeltaEl.textContent = maxDelta === null ? '—' : formatMetricNumber(maxDelta, 4);
-        metricAvgDeltaEl.textContent = avgDelta === null ? '—' : formatMetricNumber(avgDelta, 4);
-        metricThresholdEl.textContent = threshold === null ? '—' : formatMetricNumber(threshold, 3);
-
-        if (stability) {{
-          const point = {{
-            time: Date.now(),
-            iteration: iteration,
-            max: maxDelta,
-            avg: avgDelta,
-            threshold: threshold,
-            passed: passed,
-            matched: matched,
-          }};
-          stabilityHistory.push(point);
-          if (stabilityHistory.length > 80) stabilityHistory.shift();
-          drawStabilityChart();
-        }}
-      }}
-
-      function drawStabilityChart() {{
-        if (!stabilityHistory.length) {{
-          Plotly.purge('stability-plot');
-          return;
-        }}
-
-        const x = stabilityHistory.map(p => p.iteration !== null ? p.iteration : 0);
-        const maxSeries = stabilityHistory.map(p => p.max === null ? null : p.max);
-        const avgSeries = stabilityHistory.map(p => p.avg === null ? null : p.avg);
-        const thresholdSeries = stabilityHistory.map(p => p.threshold === null ? null : p.threshold);
-
-        const traces = [
-          {{
-            type: 'scatter',
-            mode: 'lines+markers',
-            name: 'max Δ',
-            x: x,
-            y: maxSeries,
-            line: {{ color: '#2563eb', width: 2 }},
-            marker: {{ size: 6 }},
-          }},
-          {{
-            type: 'scatter',
-            mode: 'lines',
-            name: 'avg Δ',
-            x: x,
-            y: avgSeries,
-            line: {{ color: '#16a34a', width: 2, dash: 'dot' }},
-            marker: {{ size: 5 }},
-          }},
-          {{
-            type: 'scatter',
-            mode: 'lines',
-            name: 'threshold',
-            x: x,
-            y: thresholdSeries,
-            line: {{ color: '#a16207', width: 1.5, dash: 'dash' }},
-            marker: {{ size: 4 }},
-          }}
-        ];
-
-        const layout = {{
-          margin: {{ l: 42, r: 16, t: 20, b: 40 }},
-          paper_bgcolor: 'white',
-          plot_bgcolor: '#f9fbff',
-          showlegend: true,
-          xaxis: {{ title: 'iteration', tickfont: {{ size: 11 }} }},
-          yaxis: {{ title: 'delta', tickfont: {{ size: 11 }}, rangemode: 'tozero' }},
-        }};
-
-        Plotly.newPlot('stability-plot', traces, layout, {{ responsive: true, displayModeBar: false }});
       }}
 
       function category(i, j, ranks) {{
@@ -481,35 +424,239 @@ def render_html(spots: List[str], default_spot: str, interval_seconds: int) -> s
         return number.toFixed(3);
       }}
 
-      function renderNodeTable(summaryRows) {{
+      function formatPct(value) {{
+        const number = Number(value ?? 0);
+        if (!Number.isFinite(number)) return 'n/a';
+        return `${{(number * 100).toFixed(1)}}%`;
+      }}
+
+      function renderStabilityStatus(statusPayload) {{
+        const stability = statusPayload && statusPayload.stability ? statusPayload.stability : null;
+        const passed = stability && stability.passed !== undefined ? stability.passed : 'n/a';
+        const avg = stability && stability.avg_abs_delta !== undefined ? Number(stability.avg_abs_delta) : null;
+        const max = stability && stability.max_abs_delta !== undefined ? Number(stability.max_abs_delta) : null;
+        const threshold = stability && stability.threshold !== undefined ? Number(stability.threshold) : null;
+        const matched = stability && stability.matched_nodes !== undefined ? Number(stability.matched_nodes) : null;
+
+        stabilitySummaryEl.innerHTML = (
+          '<div><strong>passed:</strong> ' + String(passed) + '</div>' +
+          '<div><strong>avg abs delta:</strong> ' + (avg === null ? 'n/a' : avg.toFixed(4)) + '</div>' +
+          '<div><strong>max abs delta:</strong> ' + (max === null ? 'n/a' : max.toFixed(4)) + '</div>' +
+          '<div><strong>threshold:</strong> ' + (threshold === null ? 'n/a' : threshold.toFixed(4)) + '</div>' +
+          '<div><strong>matched nodes:</strong> ' + (matched === null ? 'n/a' : matched) + '</div>'
+        );
+      }}
+
+      function renderMemoryStatus(statusPayload) {{
+        const telemetry = statusPayload && statusPayload.telemetry ? statusPayload.telemetry : null;
+        if (!telemetry) {{
+          memorySummaryEl.innerHTML = '<div>no telemetry yet</div>';
+          return;
+        }}
+
+        const total = Number(telemetry.total_memory_mb || 0);
+        const used = Number(telemetry.used_memory_mb || 0);
+        const availableRatio = Number(telemetry.memory_available_ratio || 0);
+        const usedPct = total > 0 ? (used / total) * 100 : 0;
+
+        memorySummaryEl.innerHTML = (
+          '<div><strong>used:</strong> ' + used.toFixed(1) + ' / ' + total.toFixed(1) + ' MB</div>' +
+          '<div><strong>utilization:</strong> ' + usedPct.toFixed(1) + '%</div>' +
+          '<div><strong>available ratio:</strong> ' + formatPct(availableRatio) + '</div>'
+        );
+      }}
+
+      function renderRootSummary(count) {{
+        const value = Number(count || 0);
+        rootSummaryEl.innerHTML = (
+          '<div><strong>starting hands:</strong> ' + (Number.isFinite(value) && value > 0 ? value : 'n/a') + '</div>' +
+          '<div><strong>spot:</strong> ' + defaultSpot + '</div>'
+        );
+      }}
+
+      function clearStoredDashboardState() {{
+        try {{
+          localStorage.removeItem(STORAGE_KEY);
+        }} catch (err) {{
+          // ignore storage failures in privacy-restricted browsers
+        }}
+        try {{
+          localStorage.removeItem(SPOT_KEY);
+        }} catch (err) {{
+          // ignore storage failures in privacy-restricted browsers
+        }}
+        statusHistory.length = 0;
+      }}
+
+      function clearStabilityHistoryPlot() {{
+        try {{
+          Plotly.purge('stability-history');
+        }} catch (err) {{
+          // ignore if Plotly is not ready yet
+        }}
+        document.getElementById('stability-history').innerHTML = '<div style="font-size:12px; color:#5c6c80;">no stability history yet</div>';
+      }}
+
+      function resetRuntimeCards() {{
+        clearStoredDashboardState();
+        renderStabilityStatus(null);
+        renderMemoryStatus(null);
+        renderRootSummary(0);
+        renderNodeSummaryTable([]);
+        clearStabilityHistoryPlot();
+      }}
+
+      function renderHistoricalStability(statusHistoryArray) {{
+        if (!Array.isArray(statusHistoryArray) || statusHistoryArray.length === 0) {{
+          clearStabilityHistoryPlot();
+          return;
+        }}
+
+        const xs = statusHistoryArray.map(entry => Number(entry.iteration || 0));
+        const avg = statusHistoryArray.map(entry => Number(entry.avg ?? 0));
+        const max = statusHistoryArray.map(entry => Number(entry.max ?? 0));
+
+        const traceAvg = {{
+          type: 'scatter',
+          mode: 'lines+markers',
+          x: xs,
+          y: avg,
+          name: 'avg abs delta',
+          line: {{ color: '#3b82f6', width: 2 }},
+          marker: {{ size: 5 }},
+        }};
+
+        const traceMax = {{
+          type: 'scatter',
+          mode: 'lines+markers',
+          x: xs,
+          y: max,
+          name: 'max abs delta',
+          line: {{ color: '#ef4444', width: 2, dash: 'dot' }},
+          marker: {{ size: 5 }},
+        }};
+
+        const layout = {{
+          margin: {{ l: 40, r: 20, t: 10, b: 35 }},
+          paper_bgcolor: 'white',
+          plot_bgcolor: '#fafbfc',
+          legend: {{ orientation: 'h', y: 1.15 }},
+          xaxis: {{ title: 'iteration' }},
+          yaxis: {{ title: 'delta' }},
+        }};
+
+        Plotly.newPlot('stability-history', [traceAvg, traceMax], layout, {{ responsive: true, displayModeBar: false }});
+      }}
+
+      function renderNodeSummaryTable(summaryRows) {{
         const tbody = document.querySelector('#node-table tbody');
         tbody.innerHTML = '';
+
         if (!Array.isArray(summaryRows) || summaryRows.length === 0) {{
-          tbody.innerHTML = '<tr><td colspan="5">no in-memory preflop nodes observed yet</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="5" style="padding: 8px; color: #4a5563;">no node summaries available yet</td></tr>';
           return;
         }}
 
         for (const row of summaryRows) {{
-          const freqs = row && row.action_frequencies ? row.action_frequencies : {{}};
+          const freqs = row && row.action_frequencies ? row.action_frequencies : (row && row.policy ? row.policy : {{}});
+          const nodeName = row && row.node_name ? row.node_name : (row && row.hand ? row.hand : 'n/a');
+          const sampleCount = Number(row && row.sample_count !== undefined ? row.sample_count : (row && row.count !== undefined ? row.count : 0));
           const tr = document.createElement('tr');
           tr.innerHTML = (
-            '<td>' + (row.display_name || row.node_name || 'node') + '</td>' +
-            '<td>' + Number(row.sample_count || 0) + '</td>' +
-            '<td>' + formatFreq(freqs.fold) + '</td>' +
-            '<td>' + formatFreq(freqs['check_call']) + '</td>' +
-            '<td>' + formatFreq(freqs['bet_raise']) + '</td>'
+            '<td style="border: 1px solid #d9dde3; padding: 6px 8px;">' + nodeName + '</td>' +
+            '<td style="border: 1px solid #d9dde3; padding: 6px 8px;">' + sampleCount + '</td>' +
+            '<td style="border: 1px solid #d9dde3; padding: 6px 8px;">' + formatFreq(freqs.fold) + '</td>' +
+            '<td style="border: 1px solid #d9dde3; padding: 6px 8px;">' + formatFreq(freqs['check_call']) + '</td>' +
+            '<td style="border: 1px solid #d9dde3; padding: 6px 8px;">' + formatFreq(freqs['bet_raise']) + '</td>'
           );
           tbody.appendChild(tr);
         }}
       }}
 
+      function updateCheckpointOptions(spot) {{
+        const entries = checkpointHistoryCache[spot] || {{}};
+        const iterations = Object.keys(entries).map(Number).sort((a, b) => b - a);
+        const currentValue = selectedCheckpointValue === 'latest' || iterations.includes(Number(selectedCheckpointValue)) ? selectedCheckpointValue : 'latest';
+        checkpointSelect.innerHTML = '<option value="latest">latest</option>';
+        for (const iteration of iterations) {{
+          const option = document.createElement('option');
+          option.value = String(iteration);
+          option.textContent = 'iter ' + String(iteration);
+          if (String(iteration) === String(currentValue)) {{
+            option.selected = true;
+          }}
+          checkpointSelect.appendChild(option);
+        }}
+        checkpointSelect.value = currentValue;
+        selectedCheckpointValue = currentValue;
+      }}
+
+      function renderEmptyPlot(message) {{
+        const layout = {{
+          title: message || 'waiting for first checkpoint',
+          width: 900,
+          height: 900,
+          margin: {{ l: 40, r: 20, t: 60, b: 40 }},
+          paper_bgcolor: 'white',
+          plot_bgcolor: '#fafbfc',
+          xaxis: {{ visible: false }},
+          yaxis: {{ visible: false }},
+          showlegend: false,
+        }};
+        Plotly.newPlot('plot', [{{
+          type: 'scatter',
+          mode: 'markers',
+          x: [],
+          y: [],
+          marker: {{ opacity: 0 }},
+          hoverinfo: 'skip',
+          showlegend: false,
+        }}], layout, {{ responsive: true, displayModeBar: false }});
+      }}
+
+      function renderSelectedSnapshot(payload) {{
+        if (!payload || !payload.ok) {{
+          renderEmptyPlot('waiting for first checkpoint');
+          renderRootSummary(0);
+          renderNodeSummaryTable([]);
+          statusEl.textContent = 'waiting for first checkpoint';
+          return;
+        }}
+        buildFigure(payload);
+        const summaryRows = Array.isArray(payload.range && payload.range.hands)
+          ? payload.range.hands
+          : [];
+        if (Number(payload.range && payload.range.hand_count) > 0) {{
+          rootStartingHands = Number(payload.range.hand_count);
+        }} else if (Array.isArray(payload.range && payload.range.hands)) {{
+          rootStartingHands = payload.range.hands.length;
+        }}
+        renderRootSummary(rootStartingHands);
+        renderNodeSummaryTable(summaryRows);
+        const iter = payload.status && payload.status.iteration !== undefined ? payload.status.iteration : 'n/a';
+        const ready = payload.status && payload.status.ready_for_queries !== undefined ? payload.status.ready_for_queries : false;
+        const label = selectedCheckpointValue === 'latest' ? 'latest' : 'checkpoint ' + String(selectedCheckpointValue);
+        statusEl.textContent = 'iteration=' + String(iter) + ' ready=' + String(ready) + ' snapshot=' + String(label) + ' fetched=' + new Date(payload.fetched_at * 1000).toLocaleTimeString();
+      }}
+
+      function categoryMapFromGridLabels(labels) {{
+        const map = new Map();
+        for (const entry of labels || []) {{
+          const key = String(entry.i) + ':' + String(entry.j);
+          map.set(key, entry.label);
+        }}
+        return map;
+      }}
+
       function buildFigure(payload) {{
         const ranks = payload.ranks;
-        const F = payload.matrices.F;
-        const C = payload.matrices.C;
-        const R = payload.matrices.R;
+        const F = payload.matrices && payload.matrices.F ? payload.matrices.F : Array.from({{ length: 13 }}, () => Array(13).fill(0));
+        const C = payload.matrices && payload.matrices.C ? payload.matrices.C : Array.from({{ length: 13 }}, () => Array(13).fill(0));
+        const R = payload.matrices && payload.matrices.R ? payload.matrices.R : Array.from({{ length: 13 }}, () => Array(13).fill(0));
+        const metadata = payload.metadata || {{}};
+        const zeroMeansNotInRange = metadata.zero_means_not_in_range !== false;
         const shapeLabels = Array.isArray(payload.grid_labels) ? payload.grid_labels : [];
-        const labelMap = new Map(shapeLabels.map(entry => [String(entry.i) + ':' + String(entry.j), entry.label]));
+        const labelMap = categoryMapFromGridLabels(shapeLabels);
         const shapes = [];
         const annotations = [];
 
@@ -523,41 +670,50 @@ def render_html(spots: List[str], default_spot: str, interval_seconds: int) -> s
             let c = Number(C[i][j] || 0);
             let r = Number(R[i][j] || 0);
             const total = f + c + r;
-            if (total <= 0) {{
-              f = 1.0;
-              c = 0.0;
-              r = 0.0;
-            }}
-            const norm = f + c + r;
-            f /= norm;
-            c /= norm;
-            r /= norm;
-
             const x0 = j + xPad;
             const x1 = j + 1.0 - xPad;
             const y0 = i + yPad;
             const y1 = i + 1.0 - yPad;
 
+            const isOutOfRange = total <= 0 && zeroMeansNotInRange;
             shapes.push({{
               type: 'rect',
               xref: 'x', yref: 'y',
               x0: x0, x1: x1, y0: y0, y1: y1,
-              fillcolor: 'white',
+              fillcolor: isOutOfRange ? '#ededed' : 'white',
               line: {{ color: 'rgba(0,0,0,0.22)', width: 0.6 }},
               layer: 'below',
             }});
+
+            if (isOutOfRange) {{
+              annotations.push({{
+                x: j + 0.5,
+                y: i + 0.5,
+                xref: 'x', yref: 'y',
+                text: labelMap.get(String(i) + ':' + String(j)) || category(i, j, ranks),
+                showarrow: false,
+                font: {{ size: 9, color: '#7a7a7a', family: 'monospace' }},
+              }});
+              continue;
+            }}
+
+            const norm = f + c + r;
+            if (norm <= 0) {{
+              continue;
+            }}
+            f /= norm;
+            c /= norm;
+            r /= norm;
 
             const foldEnd = y0 + (y1 - y0) * f;
             const callEnd = y0 + (y1 - y0) * (f + c);
 
             if (f > 0) {{
-              const fy0 = y0 + innerPad;
-              const fy1 = (c === 0 && r === 0) ? (y1 - innerPad) : foldEnd;
               shapes.push({{
                 type: 'rect',
                 xref: 'x', yref: 'y',
                 x0: x0 + innerPad, x1: x1 - innerPad,
-                y0: fy0, y1: fy1,
+                y0: y0 + innerPad, y1: Math.min(y1 - innerPad, foldEnd),
                 fillcolor: '#dfeefe',
                 line: {{ color: 'rgba(0,0,0,0.12)', width: 0.3 }},
                 layer: 'below',
@@ -565,13 +721,11 @@ def render_html(spots: List[str], default_spot: str, interval_seconds: int) -> s
             }}
 
             if (c > 0) {{
-              const cy0 = Math.max(y0 + innerPad, foldEnd);
-              const cy1 = r === 0 ? (y1 - innerPad) : callEnd;
               shapes.push({{
                 type: 'rect',
                 xref: 'x', yref: 'y',
                 x0: x0 + innerPad, x1: x1 - innerPad,
-                y0: cy0, y1: cy1,
+                y0: Math.max(y0 + innerPad, foldEnd), y1: Math.min(y1 - innerPad, callEnd),
                 fillcolor: '#b9e4b9',
                 line: {{ color: 'rgba(0,0,0,0.12)', width: 0.3 }},
                 layer: 'below',
@@ -579,12 +733,11 @@ def render_html(spots: List[str], default_spot: str, interval_seconds: int) -> s
             }}
 
             if (r > 0) {{
-              const ry0 = Math.max(y0 + innerPad, callEnd);
               shapes.push({{
                 type: 'rect',
                 xref: 'x', yref: 'y',
                 x0: x0 + innerPad, x1: x1 - innerPad,
-                y0: ry0, y1: y1 - innerPad,
+                y0: Math.max(y0 + innerPad, callEnd), y1: y1 - innerPad,
                 fillcolor: '#ff6b6b',
                 line: {{ color: 'rgba(0,0,0,0.12)', width: 0.3 }},
                 layer: 'below',
@@ -613,8 +766,8 @@ def render_html(spots: List[str], default_spot: str, interval_seconds: int) -> s
         }};
 
         const layout = {{
-          title: `${{payload.spot}} action split`,
-          width: 1000,
+          title: payload.spot + ' action split',
+          width: 900,
           height: 900,
           margin: {{ l: 40, r: 20, t: 60, b: 40 }},
           plot_bgcolor: 'white',
@@ -646,43 +799,140 @@ def render_html(spots: List[str], default_spot: str, interval_seconds: int) -> s
         Plotly.newPlot('plot', [trace], layout, {{ responsive: true, displayModeBar: false }});
       }}
 
+      async function refreshStatus() {{
+        try {{
+          const resp = await fetch('/status');
+          const status = await resp.json();
+          const hasTelemetry = status && status.telemetry && typeof status.telemetry === 'object';
+          const hasIteration = status && status.iteration !== null && status.iteration !== undefined && Number(status.iteration) >= 0;
+
+          if (!hasTelemetry || !hasIteration) {{
+            renderStabilityStatus(null);
+            renderMemoryStatus(null);
+            renderHistoricalStability([]);
+            return;
+          }}
+
+          if (!status || !status.stability) {{
+            renderStabilityStatus(null);
+            renderMemoryStatus(null);
+            renderHistoricalStability([]);
+            return;
+          }}
+
+          renderStabilityStatus(status);
+          renderMemoryStatus(status);
+
+          if (status && status.stability) {{
+            const avg = Number(status.stability.avg_abs_delta ?? 0);
+            const max = Number(status.stability.max_abs_delta ?? 0);
+            const iteration = Number(status.iteration || 0);
+            const last = statusHistory[statusHistory.length - 1];
+            if (!last || last.iteration !== iteration || last.avg !== avg || last.max !== max) {{
+              statusHistory.push({{ iteration, avg, max }});
+            }}
+            if (statusHistory.length > 25) statusHistory.shift();
+            persistStatusHistory(statusHistory);
+            renderHistoricalStability(statusHistory);
+          }}
+
+          if (Array.isArray(status.selected_node_summary) && status.selected_node_summary.length) {{
+            renderNodeSummaryTable(status.selected_node_summary);
+          }}
+        }} catch (err) {{
+          console.warn('status refresh failed', err);
+          renderStabilityStatus(null);
+          renderMemoryStatus(null);
+          renderHistoricalStability([]);
+        }}
+      }}
+
       async function refreshSpot() {{
         const spot = spotSelect.value;
-        statusEl.textContent = `loading ${{spot}}...`;
+        statusEl.textContent = 'loading ' + String(spot) + '...';
         errorEl.textContent = '';
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), requestTimeoutMs);
         try {{
-          const resp = await fetch(`/grid-data?spot=${{encodeURIComponent(spot)}}`);
+          const resp = await fetch('/grid-data?spot=' + encodeURIComponent(spot), {{ signal: controller.signal }});
           const payload = await resp.json();
           if (!payload.ok) {{
             throw new Error(typeof payload.error === 'string' ? payload.error : JSON.stringify(payload.error));
           }}
-          buildFigure(payload);
-          const summaryRows = Array.isArray(payload.status && payload.status.selected_node_summary)
-            ? payload.status.selected_node_summary
-            : [];
-          renderNodeTable(summaryRows);
-          updateStabilityMetrics(payload.status || {{}});
-          const iter = payload.status && payload.status.iteration !== undefined ? payload.status.iteration : 'n/a';
-          const ready = payload.status && payload.status.ready_for_queries !== undefined ? payload.status.ready_for_queries : false;
-          statusEl.textContent = `iteration=${{iter}} ready=${{ready}} fetched=${{new Date(payload.fetched_at * 1000).toLocaleTimeString()}}`;
+          currentSpotRangePayload = payload;
+          const iter = payload.status && payload.status.iteration !== undefined ? Number(payload.status.iteration) : null;
+          if (Number.isFinite(iter) && iter > 0) {{
+            const perSpot = checkpointHistoryCache[spot] || {{}};
+            perSpot[iter] = payload;
+            checkpointHistoryCache[spot] = perSpot;
+            updateCheckpointOptions(spot);
+          }}
+          if (selectedCheckpointValue === 'latest' || !selectedCheckpointValue) {{
+            renderSelectedSnapshot(payload);
+          }} else if (checkpointHistoryCache[spot] && checkpointHistoryCache[spot][Number(selectedCheckpointValue)]) {{
+            renderSelectedSnapshot(checkpointHistoryCache[spot][Number(selectedCheckpointValue)]);
+          }} else {{
+            renderSelectedSnapshot(payload);
+            selectedCheckpointValue = 'latest';
+            updateCheckpointOptions(spot);
+          }}
         }} catch (err) {{
-          errorEl.textContent = `Error: ${{err.message || err}}`;
+          const timeoutLabel = Number(requestTimeoutMs / 1000).toFixed(0);
+          const detail = err && err.name === 'AbortError' ? 'request timed out after ' + String(timeoutLabel) + 's' : (err.message || String(err));
+          errorEl.textContent = 'Error: ' + String(detail);
           statusEl.textContent = 'request failed';
-          renderNodeTable([]);
+          renderEmptyPlot('waiting for first checkpoint');
+          renderNodeSummaryTable([]);
+        }} finally {{
+          clearTimeout(timer);
         }}
       }}
 
       spotSelect.addEventListener('change', () => {{
+        persistSelectedSpot(spotSelect.value);
+        selectedCheckpointValue = 'latest';
+        updateCheckpointOptions(spotSelect.value);
         refreshSpot();
       }});
 
-      window.addEventListener('resize', () => {{
-        if (stabilityHistory.length) Plotly.Plots.resize('stability-plot');
+      checkpointSelect.addEventListener('change', () => {{
+        selectedCheckpointValue = checkpointSelect.value;
+        const spot = spotSelect.value;
+        const snapshot = selectedCheckpointValue === 'latest'
+          ? currentSpotRangePayload
+          : (checkpointHistoryCache[spot] || {{}})[Number(selectedCheckpointValue)];
+        if (snapshot) {{
+          renderSelectedSnapshot(snapshot);
+        }}
       }});
 
-      drawStabilityChart();
+      const restoredSelection = loadSelectedSpot(defaultSpot);
+      if (restoredSelection && spots.includes(restoredSelection)) {{
+        spotSelect.value = restoredSelection;
+      }}
+
+      function toggleNodeSummary(forceOpen) {{
+        const willOpen = typeof forceOpen === 'boolean' ? forceOpen : nodeSummaryBodyEl.classList.contains('collapsed');
+        nodeSummaryBodyEl.classList.toggle('collapsed', !willOpen);
+        nodeSummaryToggleEl.setAttribute('aria-expanded', String(willOpen));
+        nodeSummaryToggleLabelEl.textContent = willOpen ? 'Hide' : 'Show';
+      }}
+
+      nodeSummaryToggleEl.addEventListener('click', () => toggleNodeSummary());
+
+      resetRuntimeCards();
+      renderEmptyPlot('waiting for first checkpoint');
+      renderRootSummary(rootStartingHands);
+      renderHistoricalStability(statusHistory);
+      updateCheckpointOptions(defaultSpot);
+      toggleNodeSummary(false);
+
+      refreshStatus();
       refreshSpot();
-      setInterval(refreshSpot, refreshMs);
+      setInterval(async () => {{
+        await refreshStatus();
+        await refreshSpot();
+      }}, refreshMs);
     </script>
   </body>
 </html>
@@ -699,6 +949,7 @@ class DashboardHTTPServer:
         interval_seconds: int,
         host: str,
         port: int,
+        request_timeout_seconds: int = DEFAULT_REQUEST_TIMEOUT_SECONDS,
     ) -> None:
         self.api_base_url = api_base_url
         self.spots = list(spots)
@@ -707,6 +958,7 @@ class DashboardHTTPServer:
         self.interval_seconds = int(interval_seconds)
         self.host = host
         self.port = port
+        self.request_timeout_seconds = max(1, int(request_timeout_seconds))
         self._server: Optional[ThreadingHTTPServer] = None
 
     def serve(self) -> None:
@@ -716,18 +968,47 @@ class DashboardHTTPServer:
             def do_GET(self):
                 parsed = urlparse(self.path)
                 if parsed.path in {"/", "/index.html"}:
-                    html = render_html(parent.spots, parent.default_spot, parent.interval_seconds)
+                    html = render_html(
+                        parent.spots,
+                        parent.default_spot,
+                        parent.interval_seconds,
+                        parent.request_timeout_seconds,
+                    )
                     self.send_response(200)
                     self.send_header("Content-Type", "text/html; charset=utf-8")
+                    self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+                    self.send_header("Pragma", "no-cache")
+                    self.send_header("Expires", "0")
                     self.end_headers()
                     self.wfile.write(html.encode("utf-8"))
+                    return
+
+                if parsed.path == "/status":
+                    try:
+                        payload = http_json(
+                            parent.api_base_url.rstrip("/") + "/status",
+                            timeout=max(1, int(parent.request_timeout_seconds)),
+                        )
+                    except Exception as exc:
+                        payload = {"error": str(exc), "solver": None, "iteration": None, "stable": False}
+                    body = json.dumps(payload).encode("utf-8")
+                    self.send_response(200 if "error" not in payload else 502)
+                    self.send_header("Content-Type", "application/json")
+                    self.send_header("Cache-Control", "no-store")
+                    self.end_headers()
+                    self.wfile.write(body)
                     return
 
                 if parsed.path == "/grid-data":
                     query = parse_qs(parsed.query)
                     requested = (query.get("spot") or [parent.default_spot])[0]
                     spot = requested if requested in parent.spots else parent.default_spot
-                    payload = fetch_spot_payload(parent.api_base_url, spot, parent.samples)
+                    payload = fetch_spot_payload(
+                        parent.api_base_url,
+                        spot,
+                        parent.samples,
+                        parent.request_timeout_seconds,
+                    )
                     body = json.dumps(payload).encode("utf-8")
                     self.send_response(200)
                     self.send_header("Content-Type", "application/json")
@@ -766,6 +1047,12 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_INTERVAL_SECONDS,
         help="Auto-refresh interval in seconds (default 300).",
     )
+    parser.add_argument(
+        "--request-timeout",
+        type=int,
+        default=DEFAULT_REQUEST_TIMEOUT_SECONDS,
+        help="API request timeout in seconds for dashboard range fetches (default 30).",
+    )
     parser.add_argument("--serve-host", default="127.0.0.1", help="Host for local viewer server.")
     parser.add_argument("--serve-port", type=int, default=8765, help="Port for local viewer server.")
     parser.add_argument("--open-browser", action="store_true", help="Open browser automatically.")
@@ -791,6 +1078,7 @@ def main() -> None:
         interval_seconds=max(1, int(args.interval)),
         host=args.serve_host,
         port=args.serve_port,
+        request_timeout_seconds=max(1, int(args.request_timeout)),
     )
 
     try:

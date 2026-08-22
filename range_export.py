@@ -348,26 +348,94 @@ def format_node_label(node_name: Any, history: Iterable[Any] = ()) -> str:
     return name or "selected_node"
 
 
+def _normalize_history_token(token: Any) -> str | None:
+    """Normalize raw action IDs and display aliases into a canonical HULH family token."""
+    if token is None:
+        return None
+    if isinstance(token, (int, float)):
+        action_id = int(token)
+        if action_id == 0:
+            return "fold"
+        if action_id in {1, 2, 3}:
+            return "call"
+        if action_id >= 4:
+            return "bet"
+        return str(action_id)
+
+    normalized = str(token).strip().lower()
+    if normalized in {"check", "call"}:
+        return "call"
+    if normalized in {"bet", "raise"}:
+        return "bet"
+    if normalized == "fold":
+        return "fold"
+    return normalized
+
+
+def replay_history_matches_spot(history: Iterable[Any], spot_name: Any) -> bool:
+    """Return True when the path actually reaches the selected HULH spot.
+
+    The root node is not a branch history; it is the base preflop acting state. Exact
+    matching for deeper response paths is still preserved, but the root node must never be
+    filtered out before the checkpoint aggregate is built.
+    """
+    spot_key = str(spot_name or "")
+    if spot_key in {"first_to_act", "root"}:
+        return True
+
+    normalized = [
+        item
+        for item in (_normalize_history_token(entry) for entry in (history or []))
+        if item is not None
+    ]
+    expected = {
+        "first_to_act": [],
+        "response_to_limp": ["call"],
+        "response_to_open": ["bet"],
+        "response_to_limp_raise": ["call", "bet"],
+        "response_to_open_3bet": ["bet", "bet"],
+        "response_to_open_4bet": ["bet", "bet", "bet"],
+        "response_to_open_5bet": ["bet", "bet", "bet", "bet"],
+    }
+    target = expected.get(spot_key)
+    if target is None:
+        return True
+    return normalized == target
+
+
 def aggregate_selected_node_ranges(snapshots: Iterable[Dict[str, Any]]) -> Dict[str, Any]:
-    """Aggregate average-strategy samples by selected node and starting-hand class."""
+    """Aggregate average-strategy samples by selected node, regardless of exact hand infoset.
+
+    Each selected node is an atomic reporting spot. We only roll up a sample if it
+    actually reaches that spot's historical betting path; states that folded earlier
+    or diverged from the expected action sequence are discarded before aggregation.
+    """
+    snapshots = list(snapshots or [])
     grouped: Dict[str, Dict[str, List[Dict[str, Any]]]] = defaultdict(lambda: defaultdict(list))
     node_metadata: Dict[str, Dict[str, Any]] = {}
-    for snapshot in snapshots or []:
-        node_name = str(snapshot.get("node_name") or snapshot.get("label") or "node")
-        compact_label = canonical_preflop_label(snapshot.get("hole_cards") or [])
-        if compact_label is None:
+
+    for snapshot in snapshots:
+        if not isinstance(snapshot, dict):
             continue
-        grouped[node_name][compact_label].append(snapshot)
+
+        node_name = str(snapshot.get("node_name") or snapshot.get("normalized_name") or snapshot.get("label") or "node")
         history = list(snapshot.get("selected_history") or snapshot.get("history") or [])
+        if not replay_history_matches_spot(history, node_name):
+            continue
         label = format_node_label(node_name, history)
+        compact_label = canonical_preflop_label(snapshot.get("hole_cards") or [])
+        player = snapshot.get("player")
+        node_key = f"{node_name}|player={player}" if player is not None else node_name
+
+        grouped[node_key][compact_label or "unknown"].append(snapshot)
         node_metadata.setdefault(
-            node_name,
+            node_key,
             {
                 "name": node_name,
                 "display_name": label,
                 "history": history,
                 "history_label": label,
-                "player": snapshot.get("player"),
+                "player": player,
                 "street": snapshot.get("street"),
             },
         )
@@ -377,7 +445,10 @@ def aggregate_selected_node_ranges(snapshots: Iterable[Dict[str, Any]]) -> Dict[
         hand_rows = []
         node_action_totals: Dict[str, float] = defaultdict(float)
         node_sample_count = 0
+
         for compact_label, items in sorted(hands.items()):
+            if compact_label == "unknown":
+                continue
             action_totals: Dict[str, float] = defaultdict(float)
             for item in items:
                 for entry in item.get("action_probabilities") or []:
@@ -396,6 +467,9 @@ def aggregate_selected_node_ranges(snapshots: Iterable[Dict[str, Any]]) -> Dict[
                     },
                 }
             )
+
+        if node_sample_count == 0:
+            continue
 
         metadata = node_metadata[node_name]
         nodes.append(

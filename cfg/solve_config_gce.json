@@ -1,9 +1,15 @@
 {
+  "name": "gce-template",
+  "deploy": "gce",
+  "project": "<gcp-project-id>",
+  "zone": "us-west1-b",
+  "instance": "<instance-name>",
+  "branch": "<branch-or-commit>",
   "mode": "hulh",
   "solver": "external",
   "preset": "hulh-preflop",
-  "iterations": 250000,
-  "checkpoint_every": 5000,
+  "iterations": 100000,
+  "checkpoint_every": 10000,
   "min_iterations": 1000,
   "range_samples": 1326,
   "postflop_samples": 32,
@@ -11,5 +17,5 @@
   "report_mode": "summary",
   "artifact_mode": "lightweight",
   "checkpoint_history_limit": 2,
-  "output_json": "./app/data/solve_light/report.json"
+  "output_json": "./app/data/debug/report.json"
 }
