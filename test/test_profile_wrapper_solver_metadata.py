@@ -194,7 +194,7 @@ def test_preflop_spot_aliases_normalize_to_canonical_labels():
         assert service._normalize_preflop_spot(alias) == canonical
 
 
-def test_first_to_act_reference_fallback_uses_sibling_aggregate_not_uniform_seed():
+def test_first_to_act_unmaterialized_range_reports_not_ready_without_fallbacks():
     service = SolverService()
     service.runtime.state = SolverState.SCORING
     service._solver = object()
@@ -204,22 +204,21 @@ def test_first_to_act_reference_fallback_uses_sibling_aggregate_not_uniform_seed
         "first_to_act": {
             "spot": "first_to_act",
             "iteration": 2000,
-            "status": "fallback_seed",
+            "status": "not_materialized",
             "hands": [],
             "hand_count": 0,
-            "ready": True,
-            "message": "checkpoint preflop range snapshot",
-            "reference_policy": {"fold": 0.2, "check_call": 0.3, "bet_raise": 0.5},
+            "ready": False,
+            "message": "preflop spot 'first_to_act' has no materialized hand rows yet",
+            "reference_policy": None,
         }
     }
 
     response = service.get_preflop_range("first_to_act")
 
-    assert response.ready is True
+    assert response.ready is False
     assert response.hands == []
-    assert response.metadata["reference_policy"] == {"fold": 0.2, "check_call": 0.3, "bet_raise": 0.5}
-    assert "uniform action policy" not in response.message.lower()
-    assert "sibling aggregate" in response.message.lower()
+    assert response.metadata.get("reference_policy") is None
+    assert "no materialized hand rows yet" in response.message.lower()
 
 
 def test_root_selected_node_never_gets_filtered_out_by_exact_history_match():
@@ -559,7 +558,7 @@ def test_get_preflop_range_rejects_sampled_probe_fallbacks():
     assert "realtime sampled probes are intentionally disabled" in response.message
 
 
-def test_materialize_selected_preflop_spots_creates_reference_policy_for_empty_checkpoint():
+def test_materialize_selected_preflop_spots_does_not_create_empty_fallbacks():
     service = SolverService()
     service.runtime.iteration = 5000
     service._selected_specs = [{"name": "first_to_act", "display_name": "first_to_act", "history": []}]
@@ -570,15 +569,14 @@ def test_materialize_selected_preflop_spots_creates_reference_policy_for_empty_c
     materialized = service._materialize_selected_preflop_reference()
 
     assert "first_to_act" in materialized
-    assert materialized["first_to_act"]["status"] == "uniform_seed"
-    assert materialized["first_to_act"]["ready"] is True
+    assert materialized["first_to_act"]["status"] == "not_materialized"
+    assert materialized["first_to_act"]["ready"] is False
     assert materialized["first_to_act"]["hand_count"] == 0
-    policy = materialized["first_to_act"]["reference_policy"]
-    assert set(policy) == {"fold", "check_call", "bet_raise"}
-    assert abs(sum(policy.values()) - 1.0) < 1e-9
+    assert materialized["first_to_act"]["reference_policy"] is None
+    assert "no materialized hand rows yet" in materialized["first_to_act"]["message"].lower()
 
 
-def test_materialize_selected_preflop_spots_uses_populated_sibling_policy_for_first_to_act():
+def test_materialize_selected_preflop_spots_does_not_use_sibling_fallbacks_for_empty_nodes():
     service = SolverService()
     service.runtime.iteration = 5000
     service._selected_specs = [
@@ -605,12 +603,9 @@ def test_materialize_selected_preflop_spots_uses_populated_sibling_policy_for_fi
     materialized = service._materialize_selected_preflop_reference()
 
     assert "first_to_act" in materialized
-    assert materialized["first_to_act"]["status"] == "fallback_seed"
-    policy = materialized["first_to_act"]["reference_policy"]
-    assert policy["fold"] > 0.0
-    assert policy["check_call"] > 0.0
-    assert policy["bet_raise"] > 0.0
-    assert abs(policy["bet_raise"] - 0.6) < 0.2
+    assert materialized["first_to_act"]["status"] == "not_materialized"
+    assert materialized["first_to_act"]["ready"] is False
+    assert materialized["first_to_act"]["reference_policy"] is None
 
 
 def test_prepare_selected_node_probes_samples_each_node_independently(monkeypatch):
