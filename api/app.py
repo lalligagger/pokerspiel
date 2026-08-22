@@ -25,6 +25,21 @@ def custom_openapi() -> Dict[str, Any]:
     return app.openapi_schema
 
 
+@app.get("/summary")
+def summary() -> Dict[str, Any]:
+    status = service.status()
+    return {
+        "solver": status.solver,
+        "iteration": status.iteration,
+        "stable": status.stable,
+        "ready_for_queries": status.ready_for_queries,
+        "status": "ok",
+        "summary_url": "http://0.0.0.0:8080/summary",
+        "api_docs": "http://0.0.0.0:8080/docs",
+        "dashboard": "http://0.0.0.0:8765",
+    }
+
+
 @app.on_event("startup")
 def startup_event() -> None:
     service.start()

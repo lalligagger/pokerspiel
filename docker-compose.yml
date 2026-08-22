@@ -6,6 +6,8 @@ services:
       - .:/app
     ports:
       - "8080:8080"
+      - "8765:8765"
     environment:
       CONFIG_PATH: /app/cfg/solve_config_local.json
+      DASHBOARD_PORT: "8765"
     entrypoint: ["/bin/bash", "/app/docker-entrypoint.sh"]
