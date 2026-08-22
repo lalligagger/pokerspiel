@@ -292,6 +292,10 @@ def render_html(
     <div class="topbar">
       <span class="label">Spot</span>
       <select id="spot-select"></select>
+      <span class="label" style="margin-left: 8px;">Checkpoint</span>
+      <select id="checkpoint-select">
+        <option value="latest">latest</option>
+      </select>
       <span id="status" class="status"></span>
     </div>
 
@@ -385,6 +389,7 @@ def render_html(
       let rootStartingHands = 0;
 
       const spotSelect = document.getElementById('spot-select');
+      const checkpointSelect = document.getElementById('checkpoint-select');
       const statusEl = document.getElementById('status');
       const errorEl = document.getElementById('error');
       const stabilitySummaryEl = document.getElementById('stability-summary');
@@ -393,6 +398,9 @@ def render_html(
       const nodeSummaryToggleEl = document.getElementById('node-summary-toggle');
       const nodeSummaryBodyEl = document.getElementById('node-summary-body');
       const nodeSummaryToggleLabelEl = document.getElementById('node-summary-toggle-label');
+      const checkpointHistoryCache = {{}};
+      let currentSpotRangePayload = null;
+      let selectedCheckpointValue = 'latest';
 
       for (const spot of spots) {{
         const opt = document.createElement('option');
@@ -466,9 +474,41 @@ def render_html(
         );
       }}
 
+      function clearStoredDashboardState() {{
+        try {{
+          localStorage.removeItem(STORAGE_KEY);
+        }} catch (err) {{
+          // ignore storage failures in privacy-restricted browsers
+        }}
+        try {{
+          localStorage.removeItem(SPOT_KEY);
+        }} catch (err) {{
+          // ignore storage failures in privacy-restricted browsers
+        }}
+        statusHistory.length = 0;
+      }}
+
+      function clearStabilityHistoryPlot() {{
+        try {{
+          Plotly.purge('stability-history');
+        }} catch (err) {{
+          // ignore if Plotly is not ready yet
+        }}
+        document.getElementById('stability-history').innerHTML = '<div style="font-size:12px; color:#5c6c80;">no stability history yet</div>';
+      }}
+
+      function resetRuntimeCards() {{
+        clearStoredDashboardState();
+        renderStabilityStatus(null);
+        renderMemoryStatus(null);
+        renderRootSummary(0);
+        renderNodeSummaryTable([]);
+        clearStabilityHistoryPlot();
+      }}
+
       function renderHistoricalStability(statusHistoryArray) {{
         if (!Array.isArray(statusHistoryArray) || statusHistoryArray.length === 0) {{
-          document.getElementById('stability-history').innerHTML = '<div style="font-size:12px; color:#5c6c80;">no stability history yet</div>';
+          clearStabilityHistoryPlot();
           return;
         }}
 
@@ -531,6 +571,72 @@ def render_html(
           );
           tbody.appendChild(tr);
         }}
+      }}
+
+      function updateCheckpointOptions(spot) {{
+        const entries = checkpointHistoryCache[spot] || {{}};
+        const iterations = Object.keys(entries).map(Number).sort((a, b) => b - a);
+        const currentValue = selectedCheckpointValue === 'latest' || iterations.includes(Number(selectedCheckpointValue)) ? selectedCheckpointValue : 'latest';
+        checkpointSelect.innerHTML = '<option value="latest">latest</option>';
+        for (const iteration of iterations) {{
+          const option = document.createElement('option');
+          option.value = String(iteration);
+          option.textContent = 'iter ' + String(iteration);
+          if (String(iteration) === String(currentValue)) {{
+            option.selected = true;
+          }}
+          checkpointSelect.appendChild(option);
+        }}
+        checkpointSelect.value = currentValue;
+        selectedCheckpointValue = currentValue;
+      }}
+
+      function renderEmptyPlot(message) {{
+        const layout = {{
+          title: message || 'waiting for first checkpoint',
+          width: 900,
+          height: 900,
+          margin: {{ l: 40, r: 20, t: 60, b: 40 }},
+          paper_bgcolor: 'white',
+          plot_bgcolor: '#fafbfc',
+          xaxis: {{ visible: false }},
+          yaxis: {{ visible: false }},
+          showlegend: false,
+        }};
+        Plotly.newPlot('plot', [{{
+          type: 'scatter',
+          mode: 'markers',
+          x: [],
+          y: [],
+          marker: {{ opacity: 0 }},
+          hoverinfo: 'skip',
+          showlegend: false,
+        }}], layout, {{ responsive: true, displayModeBar: false }});
+      }}
+
+      function renderSelectedSnapshot(payload) {{
+        if (!payload || !payload.ok) {{
+          renderEmptyPlot('waiting for first checkpoint');
+          renderRootSummary(0);
+          renderNodeSummaryTable([]);
+          statusEl.textContent = 'waiting for first checkpoint';
+          return;
+        }}
+        buildFigure(payload);
+        const summaryRows = Array.isArray(payload.range && payload.range.hands)
+          ? payload.range.hands
+          : [];
+        if (Number(payload.range && payload.range.hand_count) > 0) {{
+          rootStartingHands = Number(payload.range.hand_count);
+        }} else if (Array.isArray(payload.range && payload.range.hands)) {{
+          rootStartingHands = payload.range.hands.length;
+        }}
+        renderRootSummary(rootStartingHands);
+        renderNodeSummaryTable(summaryRows);
+        const iter = payload.status && payload.status.iteration !== undefined ? payload.status.iteration : 'n/a';
+        const ready = payload.status && payload.status.ready_for_queries !== undefined ? payload.status.ready_for_queries : false;
+        const label = selectedCheckpointValue === 'latest' ? 'latest' : 'checkpoint ' + String(selectedCheckpointValue);
+        statusEl.textContent = 'iteration=' + String(iter) + ' ready=' + String(ready) + ' snapshot=' + String(label) + ' fetched=' + new Date(payload.fetched_at * 1000).toLocaleTimeString();
       }}
 
       function categoryMapFromGridLabels(labels) {{
@@ -660,7 +766,7 @@ def render_html(
         }};
 
         const layout = {{
-          title: `${{payload.spot}} action split`,
+          title: payload.spot + ' action split',
           width: 900,
           height: 900,
           margin: {{ l: 40, r: 20, t: 60, b: 40 }},
@@ -697,6 +803,23 @@ def render_html(
         try {{
           const resp = await fetch('/status');
           const status = await resp.json();
+          const hasTelemetry = status && status.telemetry && typeof status.telemetry === 'object';
+          const hasIteration = status && status.iteration !== null && status.iteration !== undefined && Number(status.iteration) >= 0;
+
+          if (!hasTelemetry || !hasIteration) {{
+            renderStabilityStatus(null);
+            renderMemoryStatus(null);
+            renderHistoricalStability([]);
+            return;
+          }}
+
+          if (!status || !status.stability) {{
+            renderStabilityStatus(null);
+            renderMemoryStatus(null);
+            renderHistoricalStability([]);
+            return;
+          }}
+
           renderStabilityStatus(status);
           renderMemoryStatus(status);
 
@@ -718,40 +841,47 @@ def render_html(
           }}
         }} catch (err) {{
           console.warn('status refresh failed', err);
+          renderStabilityStatus(null);
+          renderMemoryStatus(null);
+          renderHistoricalStability([]);
         }}
       }}
 
       async function refreshSpot() {{
         const spot = spotSelect.value;
-        statusEl.textContent = `loading ${{spot}}...`;
+        statusEl.textContent = 'loading ' + String(spot) + '...';
         errorEl.textContent = '';
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), requestTimeoutMs);
         try {{
-          const resp = await fetch(`/grid-data?spot=${{encodeURIComponent(spot)}}`, {{ signal: controller.signal }});
+          const resp = await fetch('/grid-data?spot=' + encodeURIComponent(spot), {{ signal: controller.signal }});
           const payload = await resp.json();
           if (!payload.ok) {{
             throw new Error(typeof payload.error === 'string' ? payload.error : JSON.stringify(payload.error));
           }}
-          buildFigure(payload);
-          const summaryRows = Array.isArray(payload.range && payload.range.hands)
-            ? payload.range.hands
-            : [];
-          if (Number(payload.range && payload.range.hand_count) > 0) {{
-            rootStartingHands = Number(payload.range.hand_count);
-          }} else if (Array.isArray(payload.range && payload.range.hands)) {{
-            rootStartingHands = payload.range.hands.length;
+          currentSpotRangePayload = payload;
+          const iter = payload.status && payload.status.iteration !== undefined ? Number(payload.status.iteration) : null;
+          if (Number.isFinite(iter) && iter > 0) {{
+            const perSpot = checkpointHistoryCache[spot] || {{}};
+            perSpot[iter] = payload;
+            checkpointHistoryCache[spot] = perSpot;
+            updateCheckpointOptions(spot);
           }}
-          renderRootSummary(rootStartingHands);
-          renderNodeSummaryTable(summaryRows);
-          const iter = payload.status && payload.status.iteration !== undefined ? payload.status.iteration : 'n/a';
-          const ready = payload.status && payload.status.ready_for_queries !== undefined ? payload.status.ready_for_queries : false;
-          statusEl.textContent = `iteration=${{iter}} ready=${{ready}} source=/preflop/${{encodeURIComponent(spot)}}/range fetched=${{new Date(payload.fetched_at * 1000).toLocaleTimeString()}}`;
+          if (selectedCheckpointValue === 'latest' || !selectedCheckpointValue) {{
+            renderSelectedSnapshot(payload);
+          }} else if (checkpointHistoryCache[spot] && checkpointHistoryCache[spot][Number(selectedCheckpointValue)]) {{
+            renderSelectedSnapshot(checkpointHistoryCache[spot][Number(selectedCheckpointValue)]);
+          }} else {{
+            renderSelectedSnapshot(payload);
+            selectedCheckpointValue = 'latest';
+            updateCheckpointOptions(spot);
+          }}
         }} catch (err) {{
           const timeoutLabel = Number(requestTimeoutMs / 1000).toFixed(0);
-          const detail = err && err.name === 'AbortError' ? `request timed out after ${{timeoutLabel}}s` : (err.message || String(err));
-          errorEl.textContent = `Error: ${{detail}}`;
+          const detail = err && err.name === 'AbortError' ? 'request timed out after ' + String(timeoutLabel) + 's' : (err.message || String(err));
+          errorEl.textContent = 'Error: ' + String(detail);
           statusEl.textContent = 'request failed';
+          renderEmptyPlot('waiting for first checkpoint');
           renderNodeSummaryTable([]);
         }} finally {{
           clearTimeout(timer);
@@ -760,7 +890,20 @@ def render_html(
 
       spotSelect.addEventListener('change', () => {{
         persistSelectedSpot(spotSelect.value);
+        selectedCheckpointValue = 'latest';
+        updateCheckpointOptions(spotSelect.value);
         refreshSpot();
+      }});
+
+      checkpointSelect.addEventListener('change', () => {{
+        selectedCheckpointValue = checkpointSelect.value;
+        const spot = spotSelect.value;
+        const snapshot = selectedCheckpointValue === 'latest'
+          ? currentSpotRangePayload
+          : (checkpointHistoryCache[spot] || {{}})[Number(selectedCheckpointValue)];
+        if (snapshot) {{
+          renderSelectedSnapshot(snapshot);
+        }}
       }});
 
       const restoredSelection = loadSelectedSpot(defaultSpot);
@@ -777,11 +920,11 @@ def render_html(
 
       nodeSummaryToggleEl.addEventListener('click', () => toggleNodeSummary());
 
+      resetRuntimeCards();
+      renderEmptyPlot('waiting for first checkpoint');
       renderRootSummary(rootStartingHands);
-      renderStabilityStatus(null);
-      renderMemoryStatus(null);
-      renderNodeSummaryTable([]);
       renderHistoricalStability(statusHistory);
+      updateCheckpointOptions(defaultSpot);
       toggleNodeSummary(false);
 
       refreshStatus();
@@ -833,6 +976,9 @@ class DashboardHTTPServer:
                     )
                     self.send_response(200)
                     self.send_header("Content-Type", "text/html; charset=utf-8")
+                    self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+                    self.send_header("Pragma", "no-cache")
+                    self.send_header("Expires", "0")
                     self.end_headers()
                     self.wfile.write(html.encode("utf-8"))
                     return
