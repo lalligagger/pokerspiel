@@ -35,6 +35,7 @@ print(cfg.get('instance', cfg.get('instance_name', 'instance-20260818-234442')))
 PY
 )}"
 APP_PORT="${APP_PORT:-8080}"
+DASHBOARD_PORT="${DASHBOARD_PORT:-8765}"
 IMAGE_NAME="${IMAGE_NAME:-pokerspiel-live}"
 REPO_DIR="${REPO_DIR:-$HOME/pokerspiel}"
 BRANCH="${BRANCH:-$(python3 - "${1:-${CONFIG_PATH:-}}" <<'PY'
@@ -108,7 +109,8 @@ BRANCH="${BRANCH:-postflop-redux}"
 REMOTE_NAME="${REMOTE_NAME:-origin}"
 IMAGE_NAME="${IMAGE_NAME:-pokerspiel-live}"
 APP_PORT="${APP_PORT:-8080}"
-export BRANCH REMOTE_NAME IMAGE_NAME APP_PORT
+DASHBOARD_PORT="${DASHBOARD_PORT:-8765}"
+export BRANCH REMOTE_NAME IMAGE_NAME APP_PORT DASHBOARD_PORT
 
 sudo apt-get update
 sudo apt-get install -y git docker.io
@@ -140,8 +142,11 @@ docker build -t "\$IMAGE_NAME" .
 
 docker rm -f "\$IMAGE_NAME" >/dev/null 2>&1 || true
 
-# Remove any other container already publishing this port so the app can restart cleanly.
+# Remove any other container already publishing these ports so the app can restart cleanly.
 docker ps --filter "publish=\${APP_PORT}" -q | while read -r cid; do
+  [ -n "\$cid" ] && docker rm -f "\$cid" >/dev/null 2>&1 || true
+done
+docker ps --filter "publish=\${DASHBOARD_PORT}" -q | while read -r cid; do
   [ -n "\$cid" ] && docker rm -f "\$cid" >/dev/null 2>&1 || true
 done
 
@@ -149,19 +154,25 @@ if ss -lnt 2>/dev/null | grep -Eq "(:|\[::\]):\${APP_PORT} "; then
   echo "Port \${APP_PORT} is occupied by another process. Stop it or set APP_PORT to a free port." >&2
   exit 1
 fi
+if ss -lnt 2>/dev/null | grep -Eq "(:|\[::\]):\${DASHBOARD_PORT} "; then
+  echo "Port \${DASHBOARD_PORT} is occupied by another process. Stop it or set DASHBOARD_PORT to a free port." >&2
+  exit 1
+fi
 
 docker run -d \
   --name "\$IMAGE_NAME" \
   --restart unless-stopped \
   -p "\$APP_PORT:\$APP_PORT" \
+  -p "\$DASHBOARD_PORT:\$DASHBOARD_PORT" \
   ${DOCKER_ENV_ARGS} \
   -v "\$HOME/pokerspiel:/app" \
   -w /app \
   "\$IMAGE_NAME" \
-  uvicorn api.app:app --host 0.0.0.0 --port "\$APP_PORT"
+  bash -lc "set -eux; CONFIG_PATH=\${CONFIG_PATH:-./cfg/solve_config_local.json}; if [ -f \"\$CONFIG_PATH\" ]; then echo '==> as-run settings'; python3 -m json.tool \"\$CONFIG_PATH\"; eval \"\$(python3 /app/config_env.py --config \"\$CONFIG_PATH\" --format shell)\"; fi; python3 /app/solver_live_dashboard.py --api-base-url http://0.0.0.0:${APP_PORT} --interval 300 --request-timeout 120 --serve-host 0.0.0.0 --serve-port ${DASHBOARD_PORT} > /tmp/pokerspiel-dashboard.log 2>&1 & DASHBOARD_PID=\$!; trap 'kill \"\$DASHBOARD_PID\" >/dev/null 2>&1 || true' EXIT; printf '\nsummary: http://0.0.0.0:${APP_PORT}/summary\n'; printf 'api docs: http://0.0.0.0:${APP_PORT}/docs\n'; printf 'dashboard: http://0.0.0.0:${DASHBOARD_PORT}\n'; exec uvicorn api.app:app --host 0.0.0.0 --port ${APP_PORT}"
 
 echo "==> container started on localhost:\$APP_PORT"
 echo "==> check: curl http://127.0.0.1:\$APP_PORT/status"
+echo "==> dashboard: http://127.0.0.1:\$DASHBOARD_PORT"
 REMOTE_BLOCK
 REMOTE
 )
@@ -177,8 +188,10 @@ EXTERNAL_IP="$(gcloud compute instances describe "$INSTANCE_NAME" \
   --format='value(networkInterfaces[0].accessConfigs[0].natIP)')"
 
 echo
+printf 'SUMMARY_URL=http://%s:%s/summary\n' "$EXTERNAL_IP" "$APP_PORT"
 printf 'STATUS_URL=http://%s:%s/status\n' "$EXTERNAL_IP" "$APP_PORT"
 printf 'DOCS_URL=http://%s:%s/docs\n' "$EXTERNAL_IP" "$APP_PORT"
+printf 'DASHBOARD_URL=http://%s:%s\n' "$EXTERNAL_IP" "$DASHBOARD_PORT"
 
 echo
 echo "==> App started. Next step: ./deploy/2_api_ip_config.sh"
