@@ -1,0 +1,102 @@
+
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Legacy preflop dashboard: respond_to_3bet</title>
+    <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+    <style>
+      body { font-family: Menlo, Monaco, Consolas, monospace; margin: 0; background: #fff; color: #111; }
+      #plot { width: 920px; height: 920px; margin: 20px auto; }
+      .meta { padding: 12px 20px 0 20px; font-size: 12px; color: #445; }
+      table { width: 900px; margin: 0 auto 32px auto; border-collapse: collapse; font-size: 12px; }
+      th, td { border: 1px solid #d0d7e2; padding: 6px 8px; text-align: left; }
+      th { background: #f5f7fb; }
+    </style>
+  </head>
+  <body>
+    <div class="meta">Spot: respond_to_3bet | Hand classes: 0</div>
+    <div id="plot"></div>
+    <table>
+      <thead><tr><th>hand</th><th>fold</th><th>check/call</th><th>bet/raise</th></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <script>
+      const rows = [];
+      const F = [[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]];
+      const C = [[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]];
+      const R = [[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]];
+      const ranks = ["A", "K", "Q", "J", "T", "9", "8", "7", "6", "5", "4", "3", "2"];
+
+      const tbody = document.getElementById('tbody');
+      for (const row of rows) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = '<td>' + row.hand + '</td><td>' + Number(row.frequencies.fold || 0).toFixed(3) + '</td><td>' + Number(row.frequencies.check_call || 0).toFixed(3) + '</td><td>' + Number(row.frequencies.bet_raise || 0).toFixed(3) + '</td>';
+        tbody.appendChild(tr);
+      }
+
+      const shapes = [];
+      const annotations = [];
+      const hoverPoints = [];
+      const xPad = 0.08;
+      const yPad = 0.08;
+      const innerPad = 0.02;
+      for (let i = 0; i < 13; i++) {
+        for (let j = 0; j < 13; j++) {
+          let f = Number(F[i][j] || 0);
+          let c = Number(C[i][j] || 0);
+          let r = Number(R[i][j] || 0);
+          const total = f + c + r;
+          if (total <= 0) {
+            f = 1; c = 0; r = 0;
+          }
+          const hand = (i === j) ? (ranks[i] + ranks[j]) : (i < j ? (ranks[i] + ranks[j] + 's') : (ranks[j] + ranks[i] + 'o'));
+          const x0 = j + xPad;
+          const x1 = j + 1.0 - xPad;
+          const y0 = i + yPad;
+          const y1 = i + 1.0 - yPad;
+          shapes.push({ type: 'rect', xref: 'x', yref: 'y', x0: x0, x1: x1, y0: y0, y1: y1, fillcolor: 'white', line: { color: 'rgba(0,0,0,0.2)', width: 0.4 }, layer: 'below' });
+          const foldEnd = y0 + (y1 - y0) * (f / (f + c + r));
+          const callEnd = y0 + (y1 - y0) * ((f + c) / (f + c + r));
+          if (f > 0) {
+            shapes.push({ type: 'rect', xref: 'x', yref: 'y', x0: x0 + innerPad, x1: x1 - innerPad, y0: y0 + innerPad, y1: foldEnd, fillcolor: '#dfeefe', line: { color: 'rgba(0,0,0,0.05)', width: 0.2 }, layer: 'below' });
+          }
+          if (c > 0) {
+            shapes.push({ type: 'rect', xref: 'x', yref: 'y', x0: x0 + innerPad, x1: x1 - innerPad, y0: Math.max(y0 + innerPad, foldEnd), y1: Math.min(callEnd, y1 - innerPad), fillcolor: '#b9e4b9', line: { color: 'rgba(0,0,0,0.05)', width: 0.2 }, layer: 'below' });
+          }
+          if (r > 0) {
+            shapes.push({ type: 'rect', xref: 'x', yref: 'y', x0: x0 + innerPad, x1: x1 - innerPad, y0: Math.max(y0 + innerPad, callEnd), y1: y1 - innerPad, fillcolor: '#ff6b6b', line: { color: 'rgba(0,0,0,0.05)', width: 0.2 }, layer: 'below' });
+          }
+          hoverPoints.push({ x: j + 0.5, y: i + 0.5, hand, f, c, r });
+          annotations.push({ x: j + 0.5, y: i + 0.5, xref: 'x', yref: 'y', text: hand, showarrow: false, font: { size: 8, color: '#222' } });
+        }
+      }
+
+      const hoverTrace = {
+        type: 'scatter',
+        mode: 'markers',
+        x: hoverPoints.map((p) => p.x),
+        y: hoverPoints.map((p) => p.y),
+        customdata: hoverPoints.map((p) => [p.hand, p.f, p.c, p.r]),
+        marker: { size: 12, opacity: 0, color: 'rgba(0,0,0,0)' },
+        hovertemplate: '<b>%{customdata[0]}</b><br>fold: %{customdata[1]:.3f}<br>check/call: %{customdata[2]:.3f}<br>bet/raise: %{customdata[3]:.3f}<extra></extra>',
+        showlegend: false,
+      };
+      const layout = {
+        title: 'Legacy preflop action split: ' + (rows[0] ? rows[0].spot : 'n/a'),
+        width: 920,
+        height: 920,
+        margin: { l: 40, r: 20, t: 60, b: 40 },
+        plot_bgcolor: 'white',
+        paper_bgcolor: 'white',
+        hovermode: 'closest',
+        hoverlabel: { font: { size: 14 }, bgcolor: 'rgba(17,17,17,0.92)' },
+        shapes: shapes,
+        annotations: annotations,
+        xaxis: { tickmode: 'array', tickvals: Array.from({ length: 13 }, (_, i) => i), ticktext: ranks, side: 'top', range: [-0.5, 13.5], showgrid: false, zeroline: false },
+        yaxis: { tickmode: 'array', tickvals: Array.from({ length: 13 }, (_, i) => i), ticktext: ranks, range: [13.5, -0.5], showgrid: false, zeroline: false }
+      };
+      Plotly.newPlot('plot', [hoverTrace], layout, { responsive: true, displayModeBar: false });
+    </script>
+  </body>
+</html>

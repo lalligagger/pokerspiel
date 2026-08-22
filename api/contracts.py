@@ -63,6 +63,74 @@ class SpotFrequencyResponse:
 
 
 @dataclass
+class PreflopRangeResponse:
+    """Full canonical preflop range for a spot based on the current in-memory policy."""
+
+    spot: str
+    iteration: int
+    hands: List[HandPolicy] = field(default_factory=list)
+    hand_count: int = 0
+    ready: bool = True
+    message: Optional[str] = None
+
+
+@dataclass
+class PostflopExactRequest:
+    """Exact infoset lookup for a fixed board, betting history, and hole cards."""
+
+    board: List[str]
+    history: Optional[List[str]] = None
+    hole_cards: Optional[List[str]] = None
+    player: Optional[int] = None
+    samples: int = 32
+    min_iteration: Optional[int] = None
+
+
+@dataclass
+class PostflopExactResponse:
+    """Current policy at the exact postflop infoset requested by the client."""
+
+    iteration: int
+    board: List[str] = field(default_factory=list)
+    history: List[str] = field(default_factory=list)
+    hole_cards: Optional[List[str]] = None
+    player: Optional[int] = None
+    exact_infoset_key: str = ""
+    action_probabilities: Dict[str, float] = field(default_factory=dict)
+    sample_count: int = 0
+    ready: bool = True
+    message: Optional[str] = None
+
+
+@dataclass
+class PostflopRangeRequest:
+    """Aggregate policy over a fixed in-range subset for a postflop infoset."""
+
+    board: List[str]
+    history: Optional[List[str]] = None
+    hands: List[str] = field(default_factory=list)
+    player: Optional[int] = None
+    samples: int = 32
+    min_iteration: Optional[int] = None
+
+
+@dataclass
+class PostflopRangeResponse:
+    """Average action frequencies over a chosen hand subset at a postflop infoset."""
+
+    iteration: int
+    board: List[str] = field(default_factory=list)
+    history: List[str] = field(default_factory=list)
+    hands: List[str] = field(default_factory=list)
+    player: Optional[int] = None
+    hand_count: int = 0
+    action_frequencies: Dict[str, float] = field(default_factory=dict)
+    sample_count: int = 0
+    ready: bool = True
+    message: Optional[str] = None
+
+
+@dataclass
 class ProbeResponse:
     """Response payload for a single selected-node probe."""
 
@@ -105,3 +173,4 @@ class SolverStatusResponse:
     last_probe_at: Optional[int] = None
     min_iteration: Optional[int] = None
     probe_budget_remaining: Optional[int] = None
+    selected_node_summary: List[Dict[str, Any]] = field(default_factory=list)

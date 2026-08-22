@@ -73,8 +73,13 @@ HULH_ACTION_SEQUENCE_TO_HISTORY = {
 HULH_NODE_LABELS = {
     "first_to_act": "first_to_act",
     "response_to_limp": "response_to_limp",
+    "respond_to_limp": "response_to_limp",
     "response_to_open": "response_to_open",
+    "respond_to_open": "response_to_open",
     "response_to_limp_raise": "response_to_limp_raise",
+    "respond_to_limp_raise": "response_to_limp_raise",
+    "response_to_limp_reraise": "response_to_limp_reraise",
+    "respond_to_limp_reraise": "response_to_limp_reraise",
     "response_to_open_3bet": "response_to_open_3bet",
     "response_to_open_4bet": "response_to_open_4bet",
     "response_to_open_5bet": "response_to_open_5bet",
@@ -101,7 +106,13 @@ def format_hulh_history_label(history):
         return "response_to_open"
     if normalized == ["call", "bet"]:
         return "response_to_limp_raise"
+    if normalized == ["call", "raise"]:
+        return "response_to_limp_raise"
+    if normalized == ["call", "raise", "raise"]:
+        return "response_to_limp_reraise"
     if normalized == ["bet", "bet"]:
+        return "response_to_open_3bet"
+    if normalized == ["raise", "raise"]:
         return "response_to_open_3bet"
     if normalized == ["bet", "bet", "fold"]:
         return "response_to_open_3bet_fold"
@@ -109,7 +120,11 @@ def format_hulh_history_label(history):
         return "response_to_open_3bet_call"
     if normalized == ["bet", "bet", "raise"]:
         return "response_to_open_4bet"
+    if normalized == ["raise", "raise", "raise"]:
+        return "response_to_open_4bet"
     if normalized == ["bet", "bet", "raise", "raise"]:
+        return "response_to_open_5bet"
+    if normalized == ["raise", "raise", "raise", "raise"]:
         return "response_to_open_5bet"
     if normalized == ["bet", "bet", "raise", "fold"]:
         return "response_to_open_4bet_fold"
@@ -131,6 +146,12 @@ NODE_PRESETS = {
         {"name": "response_to_open_3bet", "history": ["bet", "bet"]},
         {"name": "response_to_open_4bet", "history": ["bet", "bet", "raise"]},
         {"name": "response_to_open_5bet", "history": ["bet", "bet", "raise", "raise"]},
+    ],
+    "hulh-preflop-lw": [
+        {"name": "first_to_act", "history": []},
+        {"name": "response_to_limp", "history": ["call"]},
+        {"name": "response_to_open", "history": ["bet"]},
+        {"name": "response_to_limp_reraise", "history": ["call", "raise", "raise"]},
     ],
     "root": [{"name": "first_to_act", "history": []}],
 }
@@ -728,8 +749,14 @@ def sample_random_actor_state(game):
     return state if state is not None and state.current_player() >= 0 else None
 
 
-def sample_distinct_deal_states(game, target_count: int, max_attempts: int = 200):
-    """Return fresh root states with diverse private-card/board signatures for reporting."""
+def sample_distinct_deal_states(game, target_count: int, max_attempts: int = 200, dedupe: bool = False):
+    """Return fresh root states for reporting.
+
+    We intentionally disable hole-card/board deduplication by default because
+    deduping changes the sampling distribution and biases action-frequency
+    estimates. The opt-in `dedupe=True` mode remains available for diversity-only
+    coverage experiments.
+    """
     states = []
     seen = set()
     attempts = 0
@@ -739,10 +766,11 @@ def sample_distinct_deal_states(game, target_count: int, max_attempts: int = 200
         resolved = sample_random_actor_state(game)
         if resolved is None:
             continue
-        signature = exact_hole_board_signature(resolved)
-        if signature in seen:
-            continue
-        seen.add(signature)
+        if dedupe:
+            signature = exact_hole_board_signature(resolved)
+            if signature in seen:
+                continue
+            seen.add(signature)
         states.append(resolved)
 
     return states
@@ -951,8 +979,13 @@ def choose_action_from_family(legal_actions, family: str):
     return sorted(matching)[0]
 
 
-def prepare_selected_node_probes(game, node_specs, samples_per_node: int, max_attempts: int = None):
-    """Sample distinct deal states for each selected node."""
+def prepare_selected_node_probes(game, node_specs, samples_per_node: int, max_attempts: int = None, dedupe: bool = False):
+    """Sample deal states for each selected node.
+
+    We intentionally keep the default path unbiased: one random deal is one sample.
+    Dedupe-by-signature remains available as an explicit `dedupe=True` option for
+    diversity-only coverage studies, but it is not used in the normal export path.
+    """
     if max_attempts is None:
         max_attempts = max(samples_per_node * 20, 2000)
 
@@ -961,25 +994,23 @@ def prepare_selected_node_probes(game, node_specs, samples_per_node: int, max_at
         seen = set()
         attempts = 0
         no_progress_rounds = 0
-        cold_start = True
-        while len(seen) < samples_per_node and attempts < max_attempts:
+        while len(probes) < len(node_specs) * samples_per_node and attempts < max_attempts:
             attempts += 1
             state = state_after_history(game, spec["history"])
             if state is None:
                 continue
-            signature = exact_hole_board_signature(state)
-            if signature in seen:
-                no_progress_rounds += 1
-                if len(seen) > 0 and no_progress_rounds >= max(50, min(250, samples_per_node // 2)):
-                    break
-                continue
-
-            seen.add(signature)
-            cold_start = False
-            no_progress_rounds = 0
+            if dedupe:
+                signature = exact_hole_board_signature(state)
+                if signature in seen:
+                    no_progress_rounds += 1
+                    if len(seen) > 0 and no_progress_rounds >= max(50, min(250, samples_per_node // 2)):
+                        break
+                    continue
+                seen.add(signature)
+                no_progress_rounds = 0
             probes.append({"node_name": spec["name"], "history": list(spec["history"]), "state": state})
 
-        if len(seen) < samples_per_node:
+        if dedupe and len(seen) < samples_per_node:
             warnings.warn(
                 f"only sampled {len(seen)} distinct deals for selected node '{spec['name']}' (requested {samples_per_node}); continuing with the available states",
                 UserWarning,
@@ -1326,6 +1357,7 @@ def profile_variant(
     report_mode: str = "policy",
     output_json_path: str = None,
     range_samples: int | None = None,
+    postflop_samples: int | None = None,
     heartbeat_seconds: float = 10.0,
     node_preset: str = None,
     node_selectors=(),
@@ -1354,6 +1386,8 @@ def profile_variant(
         raise ValueError("sample counts and history depth cannot be negative")
     if range_samples is not None and range_samples < 0:
         raise ValueError("range_samples cannot be negative")
+    if postflop_samples is not None and postflop_samples < 0:
+        raise ValueError("postflop_samples cannot be negative")
     if heartbeat_seconds < 0:
         raise ValueError("heartbeat_seconds cannot be negative")
     if stability_threshold <= 0:
@@ -1564,6 +1598,7 @@ def profile_variant(
         "history_depth": history_depth,
         "street_samples": street_samples,
         "range_samples": range_samples,
+        "postflop_samples": max(int(postflop_samples if postflop_samples is not None else 32), 1),
         "samples_per_node": probe_count,
         "selected_node_preset": node_preset or ("hulh-preflop" if name == "hulh" else "root"),
         "selected_nodes": selected_node_specs,
@@ -1690,6 +1725,12 @@ def main():
         help="distinct deals sampled per selected node for the final range export (default: 1000)",
     )
     parser.add_argument(
+        "--postflop-samples",
+        type=int,
+        default=32,
+        help="fallback sample count for query-time postflop exact/range lookups (default: 32)",
+    )
+    parser.add_argument(
         "--preset",
         choices=sorted(NODE_PRESETS),
         default=None,
@@ -1767,6 +1808,7 @@ def main():
         report_mode=args.report_mode,
         output_json_path=args.output_json,
         range_samples=args.range_samples,
+        postflop_samples=args.postflop_samples,
         heartbeat_seconds=args.heartbeat_seconds,
         node_preset=args.preset,
         node_selectors=args.node,

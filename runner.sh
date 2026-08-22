@@ -4,8 +4,14 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CANONICAL_CONFIG_PATH="$ROOT_DIR/cfg/solve_config_light.json"
 LEGACY_CONFIG_PATH="$ROOT_DIR/solve_config_light.json"
-CONFIG_PATH="${1:-$CANONICAL_CONFIG_PATH}"
+CONFIG_PATH="${1:-${CONFIG_PATH:-}}"
 DEPLOY_TARGET="${2:-local}"
+
+if [[ -z "$CONFIG_PATH" ]]; then
+  echo "Usage: $0 <config.json> [local|gce]" >&2
+  echo "Example: $0 cfg/solve_config_light.json local" >&2
+  exit 1
+fi
 
 # Only the runner/CLI uses JSON profiles. The live FastAPI app does not read
 # these config files directly; it owns its runtime state in memory.
@@ -92,6 +98,7 @@ args = [
     "--iterations", str(config.get("iterations", 100)),
     "--preset", config.get("preset", "hulh-preflop"),
     "--range-samples", str(config.get("range_samples", 1000)),
+    "--postflop-samples", str(config.get("postflop_samples", 32)),
     "--stability-threshold", str(config.get("stability_threshold", 0.01)),
     "--stop-patience", str(config.get("stop_patience", 3)),
     "--min-iterations", str(config.get("min_iterations", 0)),
@@ -122,13 +129,21 @@ from pathlib import Path
 
 config_path = Path(sys.argv[1])
 config = json.loads(config_path.read_text(encoding='utf-8'))
-env_map = config.get('solver_env') or config.get('solver_overrides') or {}
-if not isinstance(env_map, dict):
-    env_map = {}
+
+env_map = {
+    'POKERSPIEL_SOLVER': config.get('solver'),
+    'POKERSPIEL_PRESET': config.get('preset'),
+    'POKERSPIEL_RANGE_SAMPLES': config.get('range_samples'),
+    'POKERSPIEL_POSTFLOP_SAMPLES': config.get('postflop_samples'),
+    'POKERSPIEL_STABILITY_THRESHOLD': config.get('stability_threshold'),
+    'POKERSPIEL_STOP_PATIENCE': config.get('stop_patience'),
+    'POKERSPIEL_MIN_ITERATIONS': config.get('min_iterations'),
+    'POKERSPIEL_CHECKPOINT_EVERY': config.get('checkpoint_every') if config.get('checkpoint_every') is not None else config.get('stability_checkpoint'),
+    'POKERSPIEL_OUTPUT_JSON': config.get('output_json'),
+}
+env_map = {key: value for key, value in env_map.items() if value is not None}
 exports = []
 for key, value in env_map.items():
-    if value is None:
-        continue
     if isinstance(value, (dict, list)):
         value = json.dumps(value, separators=(',', ':'))
     exports.append(f"{key}={shlex.quote(str(value))}")
@@ -143,7 +158,18 @@ if [[ -n "$SOLVER_ENV_EXPORTS" ]]; then
 import json, sys
 from pathlib import Path
 config = json.loads(Path(sys.argv[1]).read_text(encoding='utf-8'))
-print(len((config.get('solver_env') or config.get('solver_overrides') or {})))
+keys = [
+    'POKERSPIEL_SOLVER',
+    'POKERSPIEL_PRESET',
+    'POKERSPIEL_RANGE_SAMPLES',
+    'POKERSPIEL_POSTFLOP_SAMPLES',
+    'POKERSPIEL_STABILITY_THRESHOLD',
+    'POKERSPIEL_STOP_PATIENCE',
+    'POKERSPIEL_MIN_ITERATIONS',
+    'POKERSPIEL_CHECKPOINT_EVERY',
+    'POKERSPIEL_OUTPUT_JSON',
+]
+print(sum(1 for key in keys if config.get(key.lower().replace('pokerpiel_', '').replace('pokerpiel', '').replace('pokerspiel', '')) is not None))
 PY
 )"
   printf '==> exporting %s env values\n' "$SOLVER_ENV_COUNT"
@@ -206,13 +232,20 @@ PY
 import json, shlex, sys
 from pathlib import Path
 config = json.loads(Path(sys.argv[1]).read_text(encoding='utf-8'))
-env_map = config.get('solver_env') or config.get('solver_overrides') or {}
-if not isinstance(env_map, dict):
-    env_map = {}
+env_map = {
+    'POKERSPIEL_SOLVER': config.get('solver'),
+    'POKERSPIEL_PRESET': config.get('preset'),
+    'POKERSPIEL_RANGE_SAMPLES': config.get('range_samples'),
+    'POKERSPIEL_POSTFLOP_SAMPLES': config.get('postflop_samples'),
+    'POKERSPIEL_STABILITY_THRESHOLD': config.get('stability_threshold'),
+    'POKERSPIEL_STOP_PATIENCE': config.get('stop_patience'),
+    'POKERSPIEL_MIN_ITERATIONS': config.get('min_iterations'),
+    'POKERSPIEL_CHECKPOINT_EVERY': config.get('checkpoint_every') if config.get('checkpoint_every') is not None else config.get('stability_checkpoint'),
+    'POKERSPIEL_OUTPUT_JSON': config.get('output_json'),
+}
+env_map = {key: value for key, value in env_map.items() if value is not None}
 args = []
 for key, value in env_map.items():
-    if value is None:
-        continue
     if isinstance(value, (dict, list)):
         value = json.dumps(value, separators=(',', ':'))
     args.append(f"-e {key}={shlex.quote(str(value))}")

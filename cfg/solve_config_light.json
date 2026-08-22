@@ -1,37 +1,16 @@
 {
-  "name": "lightweight-local-or-gce",
-  "deploy": "gce",
-  "project": "pokerspiel",
-  "zone": "us-west1-b",
   "mode": "hulh",
-  "solver": "outcome",
-  "preset": "hulh-preflop",
-  "iterations": 5000,
-  "stability_checkpoint": 1000,
-  "stability_threshold": 0.02,
-  "stop_patience": 2,
-  "min_iterations": 0,
+  "solver": "external",
+  "preset": "hulh-preflop-lw",
+  "iterations": 1000000,
+  "checkpoint_every": 10000,
+  "stability_threshold": 0.9,
+  "stop_patience": 3,
+  "min_iterations": 10000,
   "range_samples": 250,
-  "range_last_n": 200,
+  "range_last_n": 1000,
   "report_mode": "summary",
   "artifact_mode": "lightweight",
-  "checkpoint_history_limit": 0,
-  "output_json": "./app/data/solve_light/report.json",
-  "solver_env": {
-    "POKERSPIEL_SOLVER": "outcome",
-    "POKERSPIEL_PRESET": "hulh-preflop",
-    "POKERSPIEL_RANGE_SAMPLES": 250,
-    "POKERSPIEL_STABILITY_THRESHOLD": 0.02,
-    "POKERSPIEL_STOP_PATIENCE": 2,
-    "POKERSPIEL_MIN_ITERATIONS": 0,
-    "POKERSPIEL_OUTPUT_JSON": "./app/data/solve_light/report.json"
-  },
-  "notes": [
-    "Fast smoke test",
-    "Zero checkpointing",
-    "Range export only",
-    "No full snapshot artifacts",
-    "Good multi-instance validation profile",
-    "Values under solver_env are materialized as generated environment variables at launch time"
-  ]
+  "checkpoint_history_limit": 2,
+  "output_json": "./app/data/solve_light/report.json"
 }
