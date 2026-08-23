@@ -244,6 +244,25 @@ def test_prepare_selected_node_probes_accepts_reduced_flop_sampler_mode():
     assert all(probe["node_name"] == "first_to_act" for probe in probes)
 
 
+def test_prepare_selected_node_probes_does_not_mutate_original_wrapped_state():
+    game = pyspiel.load_game("python_pokerkit_wrapper", GAME_CONFIGS["hulh"])
+    base_state = game.new_initial_state()
+    original_board = list(getattr(getattr(base_state, "_wrapped_state", None), "board_cards", []) or [])
+
+    probes = prepare_selected_node_probes(
+        game,
+        [{"name": "first_to_act", "history": []}],
+        samples_per_node=1,
+        flop_sampler="landmark_25",
+        landmark_count=25,
+    )
+
+    assert list(getattr(getattr(base_state, "_wrapped_state", None), "board_cards", []) or []) == original_board
+    assert probes
+    assert getattr(getattr(probes[0]["state"], "_wrapped_state", None), "board_cards", None) is not None
+    assert len(getattr(getattr(probes[0]["state"], "_wrapped_state", None), "board_cards", []) or []) == 3
+
+
 def test_cached_preflop_ranges_are_served_while_solver_is_still_scoring():
     service = SolverService()
     service.runtime.state = SolverState.SCORING

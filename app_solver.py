@@ -1,3 +1,4 @@
+import copy
 import hashlib
 import json
 import logging
@@ -1192,9 +1193,11 @@ def prepare_selected_node_probes(game, node_specs, samples_per_node: int, max_at
                 continue
             if not replay_history_matches_spot(spec["history"], spec["name"]):
                 continue
+            sampled_state = state
             if members and len(members) > 0:
                 selected_board = tuple(rng.choice(members))
-                wrapped = getattr(state, "_wrapped_state", None)
+                sampled_state = copy.deepcopy(state)
+                wrapped = getattr(sampled_state, "_wrapped_state", None)
                 if wrapped is not None:
                     try:
                         adapted = list(getattr(wrapped, "board_cards", []) or [])
@@ -1203,7 +1206,7 @@ def prepare_selected_node_probes(game, node_specs, samples_per_node: int, max_at
                     except Exception:
                         pass
             if dedupe:
-                signature = exact_hole_board_signature(state)
+                signature = exact_hole_board_signature(sampled_state)
                 if signature in seen:
                     no_progress_rounds += 1
                     if len(seen) > 0 and no_progress_rounds >= max(50, min(250, samples_per_node // 2)):
@@ -1211,7 +1214,7 @@ def prepare_selected_node_probes(game, node_specs, samples_per_node: int, max_at
                     continue
                 seen.add(signature)
                 no_progress_rounds = 0
-            node_probes.append({"node_name": spec["name"], "history": list(spec["history"]), "state": state})
+            node_probes.append({"node_name": spec["name"], "history": list(spec["history"]), "state": sampled_state})
 
         probes.extend(node_probes)
 
