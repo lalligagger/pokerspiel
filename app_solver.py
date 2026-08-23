@@ -24,6 +24,7 @@ logging.getLogger("absl").setLevel(logging.ERROR)
 from range_export import (
     aggregate_range_profiles,
     aggregate_selected_node_ranges,
+    canonical_preflop_label,
     export_range_dump,
 )
 
@@ -691,7 +692,12 @@ def infer_action_mapping(state):
 
 
 def exact_infoset_key_for_state(state, history=None):
-    """Build a canonical exact infoset key from the PokerKit wrapper state."""
+    """Build a canonical exact infoset key from the PokerKit wrapper state.
+
+    Preflop infosets are keyed only by the canonical 13x13 hand class, so suited and
+    offsuit distinctions are preserved at the class level while exact suit identity is
+    intentionally hidden until the flop chance node has occurred.
+    """
     if state is None:
         return "unknown"
 
@@ -714,6 +720,10 @@ def exact_infoset_key_for_state(state, history=None):
             board_cards = list(getattr(wrapped, "board_cards", []) or [])
         except Exception:
             board_cards = []
+
+    if street == "preflop":
+        preflop_class = canonical_preflop_label(hole_cards) or "unknown"
+        return f"street={street}|player={player}|class={preflop_class}|board=empty|hist={history_list}"
 
     return (
         f"street={street}|player={player}|hole={sorted(str(card) for card in hole_cards)}"
@@ -819,7 +829,12 @@ def summarize_policy_profiles(snapshots):
 
 
 def exact_hole_board_signature(state):
-    """Return a stable exact private-card plus board signature for a state."""
+    """Return a stable exact private-card plus board signature for a state.
+
+    Preflop signatures intentionally collapse to the canonical hand class so that
+    all range lookbacks operate on the 13x13 matrix representation rather than on
+    exact suit-specific hole-card identities.
+    """
     wrapped = getattr(state, "_wrapped_state", None)
     if wrapped is None:
         return "unknown"
@@ -829,11 +844,17 @@ def exact_hole_board_signature(state):
         hole_cards = list(getattr(wrapped, "hole_cards", []) or [])
         board_cards = list(getattr(wrapped, "board_cards", []) or [])
         if hole_cards and player < len(hole_cards):
-            hole = sorted(str(card) for card in hole_cards[player])
+            hole = list(hole_cards[player])
         else:
             hole = []
         board = sorted(str(card) for card in board_cards)
-        return f"player={player}|hole={hole}|board={board}"
+
+        if not board:
+            class_label = canonical_preflop_label(hole) or "unknown"
+            return f"player={player}|class={class_label}|board=empty"
+
+        hole_key = sorted(str(card) for card in hole)
+        return f"player={player}|hole={hole_key}|board={board}"
     except Exception:
         return "unknown"
 
@@ -1859,6 +1880,10 @@ def profile_variant(
     memory_stats = max_rss_mb()
     print(f"memory: max_rss_mb={memory_stats['max_rss_mb']:.2f} if memory_stats['max_rss_mb'] is not None else 'unavailable'")
 
+    final_preflop_range_table = [
+        row for row in aggregate_range_profiles(final_records) if str(row.get("street") or "").lower() == "preflop"
+    ]
+
     report = {
         "schema_version": 2,
         "artifact_mode": artifact_mode,
@@ -1892,6 +1917,8 @@ def profile_variant(
         "selected_node_records": final_records if include_full_policy else [],
         "range_policies": final_ranges,
         "selected_node_ranges": final_ranges,
+        "final_preflop_range_table": final_preflop_range_table,
+        "preflop_range_table": final_preflop_range_table,
         "selected_node_summary": selected_summary,
         "full_run_ranges": aggregate_selected_node_ranges(final_records),
         "warm_start": {"infosets": warm_start_infosets} if report_mode in {"warm_start", "all"} else {"infosets": []},

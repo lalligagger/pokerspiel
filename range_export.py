@@ -97,8 +97,18 @@ def extract_private_holding_key(state, player_index: int | None = None) -> str:
     return canonical_cards(actor_hole)
 
 
+def preflop_class_key_for_cards(hole_cards: Iterable[Any] | Any) -> str:
+    """Return the canonical 13x13 preflop hand class, such as AKs, AKo, QQ."""
+    label = canonical_preflop_label(hole_cards)
+    return label if label is not None else "unknown"
+
+
 def extract_exact_infoset_key(state, history=None) -> str:
-    """Build a stable exact infoset key including private cards and betting context."""
+    """Build a stable exact infoset key including private cards and betting context.
+
+    Preflop infosets are intentionally keyed only by the canonical 13x13 hand class.
+    Suit information is revealed only after a flop chance node has occurred.
+    """
     if state is None:
         return "unknown"
 
@@ -112,9 +122,21 @@ def extract_exact_infoset_key(state, history=None) -> str:
     except Exception:
         pass
 
+    history_key = "|".join(str(item) for item in (history or []))
+    hole_cards = []
+    try:
+        hole_cards = list(getattr(wrapped, "hole_cards", []) or [])
+        if player < len(hole_cards):
+            hole_cards = list(hole_cards[player])
+    except Exception:
+        hole_cards = []
+
+    if street == "preflop":
+        preflop_class = preflop_class_key_for_cards(hole_cards)
+        return f"street={street}|player={player}|class={preflop_class}|board=empty|hist={history_key}"
+
     board_cards = getattr(wrapped, "board_cards", []) or []
     board_key = canonical_cards(board_cards) if board_cards else "empty"
-    history_key = "|".join(str(item) for item in (history or []))
     hole_key = extract_private_holding_key(state, player_index=player)
     return f"street={street}|player={player}|hole={hole_key}|board={board_key}|hist={history_key}"
 
@@ -581,15 +603,17 @@ def aggregate_preflop_context_profiles(snapshots: Iterable[Dict[str, Any]]) -> L
 
 
 def export_range_dump(snapshots: Iterable[Dict[str, Any]], output_path: str) -> Dict[str, Any]:
-    """Write the full-run cumulative range summary keyed by exact private state + board context."""
+    """Write the full-run cumulative range summary keyed by canonical preflop class + exact postflop context."""
     rows = aggregate_range_profiles(snapshots)
     flattened_preflop = aggregate_flattened_preflop_ranges(snapshots)
     context_rows = aggregate_preflop_context_profiles(snapshots)
     selected_node_ranges = aggregate_selected_node_ranges(snapshots)
+    preflop_rows = [row for row in rows if str(row.get("street") or "").lower() == "preflop"]
     payload = {
         "range_rows": rows,
         "range_count": len(rows),
         "unique_infosets": len(rows),
+        "preflop_range_table": preflop_rows,
         "preflop_flattened": flattened_preflop,
         "preflop_context_rows": context_rows,
         "selected_node_ranges": selected_node_ranges,

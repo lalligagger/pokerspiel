@@ -1026,6 +1026,31 @@ def test_aggregate_selected_node_ranges_groups_by_selected_node_and_hand():
     assert ranges["nodes"][0]["hands"][0]["policy"]["fold"] == 0.25
 
 
+def test_preflop_infoset_keys_use_13x13_hand_class_not_exact_hole_cards():
+    class StubWrappedState:
+        def __init__(self, hole_cards, board_cards=None):
+            self.hole_cards = hole_cards
+            self.board_cards = board_cards or []
+
+    class StubState:
+        def __init__(self, player, hole_cards, board_cards=None):
+            self._wrapped_state = StubWrappedState(hole_cards, board_cards)
+            self._player = player
+
+        def current_player(self):
+            return self._player
+
+    preflop = StubState(0, [["Ac", "Ks"]])
+    key = exact_infoset_key_for_state(preflop, history=[])
+    assert "class=AKo" in key or "class=AKs" in key
+    assert "hole=" not in key.lower()
+
+    postflop = StubState(0, [["Ac", "Ks"]], ["2d", "3h", "4c"])
+    post_key = exact_infoset_key_for_state(postflop, history=[])
+    assert "board=" in post_key
+    assert "hole=" in post_key.lower()
+
+
 def test_filter_recent_iteration_records_keeps_only_recent_window():
     snapshots = [
         {"iteration": 10, "hole_cards": ["Ac", "Ks"], "action_probabilities": [{"action": 0, "probability": 0.9}, {"action": 4, "probability": 0.1}]},
